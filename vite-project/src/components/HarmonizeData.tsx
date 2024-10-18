@@ -1,0 +1,50 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { fetchHarmonizedData } from "@/utils/api";
+
+export function HarmonizeData() {
+	const [isHarmonizing, setIsHarmonizing] = useState(false);
+	const { toast } = useToast();
+
+	const handleHarmonize = async () => {
+		setIsHarmonizing(true);
+		try {
+			const response = await fetchHarmonizedData();
+
+			if (!response.ok) {
+				throw new Error("Failed to harmonize data");
+			}
+
+			toast({
+				title: "Harmonization Complete",
+				description: "Data has been successfully harmonized.",
+			});
+		} catch (error) {
+			console.error("Error harmonizing data:", error);
+			toast({
+				title: "Harmonization Failed",
+				description: "An error occurred while harmonizing data.",
+				variant: "destructive",
+			});
+		} finally {
+			setIsHarmonizing(false);
+		}
+	};
+
+	return (
+		<Card className="w-full">
+			<CardHeader>
+				<CardTitle>Data Harmonization</CardTitle>
+			</CardHeader>
+			<CardContent>
+				<Button onClick={handleHarmonize} disabled={isHarmonizing}>
+					{isHarmonizing ? "Harmonizing..." : "Harmonize Data"}
+				</Button>
+			</CardContent>
+		</Card>
+	);
+}
+
+export default HarmonizeData;

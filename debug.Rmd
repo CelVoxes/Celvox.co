@@ -1,0 +1,46 @@
+---
+title: "debug"
+author: "EOK"
+date: "2024-10-16"
+output: html_document
+---
+
+```{r}
+library(FNN)
+
+# Set the working directory to the backend folder
+setwd("backend")
+
+# Verify the working directory has been changed
+cat("Current working directory:", getwd(), "\n")
+
+# Optionally, list files in the new working directory to confirm
+cat("Files in the current directory:\n")
+print(list.files())
+
+source("plumber.R")
+```
+
+```{r}
+corrected <- readRDS("backend/cache/normalized_and_corrected_matrix.rds")
+# selected most variable 2000 genes
+vars <- apply(corrected, 1, var)
+corrected_2000 <- corrected[names(vars[order(vars, decreasing = T)[1:2000]]), ]
+```
+
+
+```{r}
+library(FNN)
+
+knn_result <- FNN::get.knn(corrected_2000, k = 10)
+
+knn_indices <- knn_result$nn.index
+knn_distances <- knn_result$nn.dist
+
+knn_df <- data.frame(
+    sample_id = colnames(corrected_2000),
+    knn_indices = knn_indices,
+    knn_distances = knn_distances
+)
+```
+
