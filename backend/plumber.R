@@ -503,3 +503,60 @@ gene_expression <- function(req) {
     colnames(merged)[1] <- "sample_id"
     return(list(expression = merged, available_genes = colnames(corrected)))
 }
+
+#* @get /ai-report
+#* @serializer json
+function(req) {
+    library(httr)
+    library(jsonlite)
+
+    tryCatch(
+        {
+            patient_info <- req$args$patientInfo
+
+            if (is.null(patient_info) || patient_info == "") {
+                return(list(error = "Patient information is required"))
+            }
+
+            # Get the OpenAI API key from environment variable
+            api_key <- Sys.getenv("OPENAI_API_KEY")
+            if (api_key == "") {
+                return(list(error = "OpenAI API key not found in environment variables"))
+            }
+
+            # Prepare the API request
+            url <- "https://api.openai.com/v1/chat/completions"
+            headers <- c(
+                "Content-Type" = "application/json",
+                "Authorization" = paste("Bearer", api_key)
+            )
+            body <- list(
+                model = "gpt-4o-mini",
+                messages = list(
+                    list(role = "system", content = "Make coherent paragraphs. Use markdown to format the response."),
+                    list(role = "user", content = paste(patient_info, "."))
+                )
+            )
+
+            # Make the API request
+            response <- POST(
+                url,
+                add_headers(.headers = headers),
+                body = toJSON(body, auto_unbox = TRUE),
+                encode = "json"
+            )
+
+            # Check if the request was successful
+            if (http_status(response)$category == "Success") {
+                content <- content(response, "parsed")
+                summary <- content$choices[[1]]$message$content
+                return(list(summary = summary))
+            } else {
+                return(list(error = paste("API request failed with status:", http_status(response)$message)))
+            }
+        },
+        error = function(e) {
+            return(list(error = paste("An error occurred:", e$message)))
+        }
+    )
+}

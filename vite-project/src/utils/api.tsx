@@ -129,3 +129,10 @@ export async function fetchKNNData(k: number) {
 	});
 	return response.data;
 }
+
+export async function fetchAIReport(patientInfo: string) {
+	const response = await axios.get(`${API_BASE_URL}/ai-report`, {
+		params: { patientInfo },
+	});
+	return response.data;
+}

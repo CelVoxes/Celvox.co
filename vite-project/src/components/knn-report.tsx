@@ -336,7 +336,7 @@ export function KNNReport() {
 										return (
 											<AccordionItem key={attr} value={attr}>
 												<AccordionTrigger
-													className={`text-md text-left  ${
+													className={` text-left  ${
 														isPValueSignificant ? "text-green-600" : ""
 													}`}
 												>
