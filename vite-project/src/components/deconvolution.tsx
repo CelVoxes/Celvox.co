@@ -99,6 +99,12 @@ export function DeconvolutionChart() {
 								display: true,
 								text: "Samples",
 							},
+							ticks: {
+								autoSkip: false,
+								maxRotation: 0,
+								minRotation: 0,
+								padding: 5,
+							},
 						},
 					},
 					plugins: {
@@ -119,7 +125,8 @@ export function DeconvolutionChart() {
 					},
 					layout: {
 						padding: {
-							right: 150, // Add padding to accommodate the legend
+							right: 150,
+							left: 20, // Add left padding to accommodate longer sample names
 						},
 					},
 				},

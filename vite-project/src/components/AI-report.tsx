@@ -23,11 +23,13 @@ import {
 	fetchDrugResponseData,
 	fetchTSNEData,
 	fetchMutationTSNEData,
+	fetchAIReport,
 } from "@/utils/api";
 import {
 	adjustPValues,
 	calculateHypergeometricPValue,
 	renderMarkdown,
+	calculateTTest,
 } from "@/utils/zzz";
 
 export const AIAMLReport = () => {
@@ -39,6 +41,7 @@ export const AIAMLReport = () => {
 	const [selectedSample, setSelectedSample] = useState<string | null>(null);
 	const [tsneData, setTsneData] = useState<any[]>([]);
 	const [kValue, setKValue] = useState(20);
+	const [selectedModel, setSelectedModel] = useState<string>("gpt-4o-mini");
 
 	useEffect(() => {
 		fetchTSNEData().then(setTsneData).catch(console.error);
@@ -133,7 +136,6 @@ export const AIAMLReport = () => {
 			k,
 			mutationData.length
 		);
-
 		// Process drug response
 		const drugReport = processDrugResponse(
 			drugResponseData,
@@ -298,54 +300,85 @@ export const AIAMLReport = () => {
 		neighborSampleIds: string[],
 		k: number
 	) => {
-		// Check if drugResponseData is an object with the expected structure
-		if (
-			!drugResponseData ||
-			typeof drugResponseData !== "object" ||
-			!drugResponseData.sample_id
-		) {
+		if (!drugResponseData || !Array.isArray(drugResponseData.sample_id)) {
 			console.error(
 				"Drug response data is not in the expected format:",
 				drugResponseData
 			);
-			return [];
+			return { allSamples: [], neighborSamples: [], comparisons: [] };
 		}
 
-		// Transform the data into an array of objects
-		const transformedData = Array.from(
-			{ length: drugResponseData.sample_id.length },
-			(_, i) => ({
-				sample_id: drugResponseData.sample_id[i],
-				inhibitor: drugResponseData.inhibitor[i],
-				auc: drugResponseData.auc[i],
+		// Create an array of objects from the drugResponseData
+		const drugResponses = drugResponseData.sample_id.map((_, index) => ({
+			sample_id: drugResponseData.sample_id[index],
+			inhibitor: drugResponseData.inhibitor[index],
+			auc: drugResponseData.auc[index],
+		}));
+
+		// Function to process drug responses
+		const processDrugSensitivity = (responses: any[]) => {
+			const sensitivity = responses.reduce((acc, response) => {
+				const inhibitor = response.inhibitor || "Unknown";
+				if (!acc[inhibitor]) {
+					acc[inhibitor] = { count: 0, totalAUC: 0, aucs: [] };
+				}
+				acc[inhibitor].count += 1;
+				acc[inhibitor].totalAUC += response.auc;
+				acc[inhibitor].aucs.push(response.auc);
+				return acc;
+			}, {} as Record<string, { count: number; totalAUC: number; aucs: number[] }>);
+
+			return Object.entries(sensitivity)
+				.map(([drug, { count, totalAUC, aucs }]) => ({
+					drug,
+					averageAUC: totalAUC / count,
+					count,
+					aucs,
+				}))
+				.filter((item) => !isNaN(item.averageAUC))
+				.sort((a, b) => b.averageAUC - a.averageAUC);
+		};
+
+		// Process all samples
+		const allSamples = processDrugSensitivity(
+			drugResponses.filter(
+				(response) =>
+					response.inhibitor != null &&
+					response.auc != null &&
+					!isNaN(response.auc)
+			)
+		);
+
+		// Process neighbor samples (limited to k closest neighbors)
+		const neighborDrugResponses = drugResponses.filter(
+			(response) =>
+				neighborSampleIds.slice(0, k).includes(response.sample_id) &&
+				response.inhibitor != null &&
+				response.auc != null &&
+				!isNaN(response.auc)
+		);
+		const neighborSamples = processDrugSensitivity(neighborDrugResponses);
+		// Compare neighbor samples to the rest
+		const comparisons = allSamples
+			.map((drug) => {
+				const neighborDrug = neighborSamples.find((n) => n.drug === drug.drug);
+				if (!neighborDrug) return null;
+
+				const restSamples = drug.aucs.filter(
+					(auc) => !neighborDrug.aucs.includes(auc)
+				);
+				const tTestResult = calculateTTest(neighborDrug.aucs, restSamples);
+
+				return {
+					drug: drug.drug,
+					neighborAvg: neighborDrug.averageAUC,
+					allSamplesAvg: drug.averageAUC,
+					pValue: tTestResult.pValue,
+					significant: tTestResult.pValue < 0.05,
+				};
 			})
-		);
-
-		// Filter for neighbor samples
-		const neighborDrugResponses = transformedData.filter((response) =>
-			neighborSampleIds.includes(response.sample_id)
-		);
-
-		// Process drug response data
-		const drugSensitivity = neighborDrugResponses.reduce((acc, response) => {
-			if (!acc[response.inhibitor]) {
-				acc[response.inhibitor] = { count: 0, totalAUC: 0 };
-			}
-			acc[response.inhibitor].count += 1;
-			acc[response.inhibitor].totalAUC += response.auc;
-			return acc;
-		}, {} as Record<string, { count: number; totalAUC: number }>);
-
-		// Calculate average AUC and sort by it
-		const drugReport = Object.entries(drugSensitivity)
-			.map(([drug, { count, totalAUC }]) => ({
-				drug,
-				averageAUC: totalAUC / count,
-				count,
-			}))
-			.sort((a, b) => b.averageAUC - a.averageAUC);
-
-		return drugReport;
+			.filter(Boolean);
+		return { allSamples, neighborSamples, comparisons };
 	};
 
 	const generateAIReport = async (processedData: any) => {
@@ -356,6 +389,15 @@ export const AIAMLReport = () => {
 		const { sample, metadataReport, mutationReport, drugReport } =
 			processedData;
 
+		const metadataSection = generateMetadataSection(metadataReport);
+		const mutationSection = generateMutationSection(mutationReport);
+		const drugResponseSection = generateDrugResponseSection(drugReport);
+		const integratedAnalysis = await generateIntegratedAnalysis(
+			metadataReport,
+			mutationReport,
+			drugReport
+		);
+
 		return `
 ## AI-Generated AML Report for Sample ${sample.sample_id}
 
@@ -364,22 +406,17 @@ export const AIAMLReport = () => {
 - Data sources: Gene expression, Mutations, Drug response
 
 ### 2. Metadata Analysis
-${generateMetadataSection(metadataReport)}
+${metadataSection}
 
 ### 3. Mutation Analysis
-${generateMutationSection(mutationReport)}
+${mutationSection}
 
 ### 4. Drug Response Analysis (ex-vivo)
-${generateDrugResponseSection(drugReport)}
+${drugResponseSection}
 
-### 5. Integrated Analysis
-${generateIntegratedAnalysis(metadataReport, mutationReport, drugReport)}
+### 5. Integrated Analysis (AI-generated)
+${integratedAnalysis}
 
-### 6. Potential Treatment Implications
-${generateTreatmentImplications(mutationReport, drugReport)}
-
-### 7. Future Research Directions
-${generateFutureResearchDirections(metadataReport, mutationReport, drugReport)}
 
 Please note that this AI-generated report is for research purposes only and should not be used as a substitute for professional medical advice or diagnosis.
 		`;
@@ -417,39 +454,117 @@ Please note that this AI-generated report is for research purposes only and shou
 			.join("\n");
 	};
 
-	const generateDrugResponseSection = (drugReport: any) => {
-		return drugReport
-			.slice(0, 5)
-			.map((drug: any) => {
-				return `- ${drug.drug}: Average AUC ${drug.averageAUC.toFixed(3)}`;
+	const generateDrugResponseSection = (drugReport: {
+		allSamples?: any[];
+		neighborSamples?: any[];
+		comparisons?: any[];
+	}) => {
+		if (
+			!drugReport ||
+			!drugReport.comparisons ||
+			drugReport.comparisons.length === 0
+		) {
+			return "No valid drug response data available for this sample.";
+		}
+
+		const drugCounts = drugReport.allSamples?.map((drug: any) => ({
+			...drug,
+			totalSamples: drug.count,
+		}));
+
+		// Filter drugs with at least 40 total samples
+		const validDrugs = drugCounts?.filter(
+			(drug: any) => drug.totalSamples >= 40
+		);
+
+		// Filter comparisons to only include valid drugs
+		const validComparisons = drugReport.comparisons?.filter((comparison: any) =>
+			validDrugs?.some((drug: any) => drug.drug === comparison.drug)
+		);
+
+		// Add totalSamples to comparisons
+		validComparisons?.forEach((comparison: any) => {
+			const drug = validDrugs?.find((d: any) => d.drug === comparison.drug);
+			if (drug) {
+				comparison.totalSamples = drug.totalSamples;
+			}
+		});
+
+		const significantDrugs = validComparisons
+			?.filter((drug: any) => drug.pValue < 0.05)
+			.sort((a: any, b: any) => a.pValue - b.pValue)
+			.slice(0, 5);
+
+		const topDrugs = validComparisons
+			.sort((a: any, b: any) => a.neighborAvg - b.neighborAvg)
+			.slice(0, 5);
+
+		let report = "";
+
+		if (significantDrugs.length > 0) {
+			report += `
+#### Statistically Significant Drug Responses:
+${generateDrugList(significantDrugs, true)}
+
+Note: Lower AUC indicates higher sensitivity. P-value threshold: 0.05.
+`;
+		}
+
+		report += `
+#### Top 5 Most Sensitive Drug Responses:
+${generateDrugList(topDrugs, false)}
+
+Note: These drugs show the lowest AUC values for this sample's neighbors, indicating higher sensitivity.
+`;
+
+		return report.trim();
+	};
+
+	const generateDrugList = (drugs: any[], isSignificant: boolean) => {
+		return drugs
+			.map((drug, index) => {
+				const difference = drug.neighborAvg - drug.allSamplesAvg;
+				const sensitivity = difference < 0 ? "more" : "less";
+				return `- ${drug.drug}: ${drug.neighborAvg.toFixed(2)} AUC (${Math.abs(
+					difference
+				).toFixed(
+					2
+				)} ${sensitivity} sensitive than average, p=${drug.pValue.toExponential(
+					2
+				)}${isSignificant ? " significant" : ""})`;
 			})
 			.join("\n");
 	};
 
-	const generateIntegratedAnalysis = (
+	const generateIntegratedAnalysis = async (
 		metadataReport: any,
 		mutationReport: any,
 		drugReport: any
 	) => {
+		const metadataSection = generateMetadataSection(metadataReport);
+		const mutationSection = generateMutationSection(mutationReport);
+		const drugSection = generateDrugResponseSection(drugReport);
+
+		const patientInfo =
+			"You are an expert in AML research specializing in hematology. Generate an integrated analysis based on following information about the patient: " +
+			metadataSection +
+			"\n" +
+			mutationSection +
+			"\n" +
+			drugSection +
+			"\n" +
+			"Add relevant references to the data used to support the analysis. Make sure to use markdown formatting for the response.";
+
 		// Generate integrated analysis combining metadata, mutations, and drug response
-		return "Integrated analysis of metadata, mutations, and drug response suggests...";
-	};
+		const aiReport = await fetchAIReport(patientInfo, selectedModel);
 
-	const generateTreatmentImplications = (
-		mutationReport: any,
-		drugReport: any
-	) => {
-		// Generate potential treatment implications based on mutations and drug response
-		return "Based on the mutation profile and drug response data, potential treatment options may include...";
-	};
-
-	const generateFutureResearchDirections = (
-		metadataReport: any,
-		mutationReport: any,
-		drugReport: any
-	) => {
-		// Generate suggestions for future research based on the findings
-		return "Future research could focus on investigating the relationship between...";
+		// Check if aiReport.summary is an array and has at least one element
+		if (Array.isArray(aiReport.summary) && aiReport.summary.length > 0) {
+			console.log(aiReport.summary[0]);
+			return aiReport.summary[0];
+		} else {
+			return "Unable to generate integrated analysis. Please try again.";
+		}
 	};
 
 	const copyToClipboard = () => {
@@ -490,6 +605,19 @@ Please note that this AI-generated report is for research purposes only and shou
 										{sample.sample_id}
 									</SelectItem>
 								))}
+						</SelectContent>
+					</Select>
+				</div>
+
+				<div className="flex items-center space-x-4">
+					<span className="w-24">Model:</span>
+					<Select onValueChange={setSelectedModel} value={selectedModel}>
+						<SelectTrigger className="w-full">
+							<SelectValue placeholder="Select a model" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="gpt-4o-mini">GPT-4o-mini</SelectItem>
+							<SelectItem value="gpt-4o">GPT-4o</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>

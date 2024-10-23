@@ -92,44 +92,115 @@ harmonize_data <- function() {
     sample_data <- readRDS("cache/sample_data.rds")
     metadata <- fread("data/meta.csv", data.table = F)
 
+    # Function to check if IDs are Ensembl-like
     is_ensembl <- function(ids) {
         ensembl_count <- sum(grepl("^ENSG", ids))
         ensembl_percentage <- ensembl_count / length(ids) * 100
-        message(paste0("Ensembl ID percentage: ", ensembl_percentage))
         return(ensembl_percentage > 95)
     }
 
+    # Check for gene IDs in both rownames and first column
+    check_gene_ids <- function(data) {
+        # Check if rownames are not just numbers
+        rowname_is_gene <- !all(grepl("^\\d+$", rownames(data)))
+
+        # Check if the first column contains potential gene IDs
+        first_col_is_gene <- is.character(data[[1]]) && !all(grepl("^\\d+$", data[[1]]))
+
+        if (rowname_is_gene && first_col_is_gene) {
+            message("Gene IDs found in both rownames and first column.")
+            return(list(gene_ids = rownames(data), id_in_column = TRUE))
+        } else if (rowname_is_gene) {
+            message("Gene IDs are in rownames")
+            return(list(gene_ids = rownames(data), id_in_column = FALSE))
+        } else if (first_col_is_gene) {
+            message("Gene IDs are in the first column")
+            return(list(gene_ids = data[[1]], id_in_column = TRUE))
+        } else {
+            message("No gene IDs found in rownames or first column")
+            return(NULL)
+        }
+    }
+
     # Function to strip version numbers from Ensembl IDs
-    strip_version <- function(ids) {
+    strip_ensembl_version <- function(ids) {
         gsub("\\.[0-9]+$", "", ids)
     }
 
     # Convert Ensembl IDs to gene symbols using seAMLess::grch38
     convert_to_symbols <- function(data) {
         # Check if gene IDs are in the first column or rownames
-        if (is.null(rownames(data)) || all(rownames(data) == seq_len(nrow(data)))) {
-            message("Gene IDs are in the first column")
-            gene_ids <- data[, 1]
-            id_in_column <- TRUE
+        id_info <- check_gene_ids(data)
+
+        if (!is.null(id_info)) {
+            gene_ids <- id_info$gene_ids
+            id_in_column <- id_info$id_in_column
         } else {
-            message("Gene IDs are in rownames")
-            gene_ids <- rownames(data)
-            id_in_column <- FALSE
+            message("Unable to determine gene ID location. Please check your data format.")
+            return(NULL) # or handle this case as appropriate for your workflow
         }
 
         if (is_ensembl(gene_ids)) {
             message("Converting Ensembl IDs to gene symbols...")
-            stripped_ids <- strip_version(gene_ids)
-            new_ids <- seAMLess::grch38$symbol[match(stripped_ids, seAMLess::grch38$ensgene)]
+            stripped_gene_ids <- strip_ensembl_version(gene_ids)
+            new_gene_ids <- seAMLess::grch38$symbol[match(stripped_gene_ids, seAMLess::grch38$ensgene)]
 
             # Replace NA values with original IDs
-            new_ids[is.na(new_ids)] <- gene_ids[is.na(new_ids)]
+            new_gene_ids[is.na(new_gene_ids)] <- gene_ids[is.na(new_gene_ids)]
 
-            if (id_in_column) {
-                data[, 1] <- new_ids
-            } else {
-                rownames(data) <- new_ids
+            # Calculate variance for each gene
+            gene_vars <- tryCatch(
+                {
+                    if (id_in_column) {
+                        message("Calculating variance for data with gene IDs in the first column")
+                        numeric_data <- as.matrix(data[, -1, drop = FALSE])
+                        if (!is.numeric(numeric_data)) {
+                            message("Warning: Non-numeric data detected. Attempting to convert to numeric.")
+                            numeric_data <- apply(numeric_data, 2, as.numeric)
+                        }
+                        apply(numeric_data, 1, var, na.rm = TRUE)
+                    } else {
+                        message("Calculating variance for data with gene IDs as rownames")
+                        numeric_data <- as.matrix(data)
+                        if (!is.numeric(numeric_data)) {
+                            message("Warning: Non-numeric data detected. Attempting to convert to numeric.")
+                            numeric_data <- apply(numeric_data, 2, as.numeric)
+                        }
+                        apply(numeric_data, 1, var, na.rm = TRUE)
+                    }
+                },
+                error = function(e) {
+                    message("Error in variance calculation: ", e$message)
+                    message("First few rows of data:")
+                    print(head(data))
+                    message("Data structure:")
+                    str(data)
+                    return(rep(NA, nrow(data)))
+                }
+            )
+
+            # Check for NA values in gene_vars
+            na_count <- sum(is.na(gene_vars))
+            if (na_count > 0) {
+                message(paste("Warning:", na_count, "out of", length(gene_vars), "gene variances are NA"))
             }
+
+            # Create a data frame with new IDs and variances
+            id_var_df <- data.frame(new_gene_ids = new_gene_ids, gene_ids = gene_ids, variance = gene_vars)
+
+
+            # Sort by variance (descending) and keep only the first occurrence of each gene symbol
+            id_var_df <- id_var_df[order(id_var_df$variance, decreasing = TRUE), ]
+            id_var_df <- id_var_df[!duplicated(id_var_df$new_gene_ids), ]
+
+            # Update the data with sorted and deduplicated gene symbols
+            if (id_in_column) {
+                data <- data[match(id_var_df$gene_ids, gene_ids), ]
+                data <- data[, -1, drop = FALSE]
+            } else {
+                data <- data[match(id_var_df$gene_ids, gene_ids), ]
+            }
+            rownames(data) <- id_var_df$new_gene_ids
         }
         return(data)
     }
@@ -138,27 +209,9 @@ harmonize_data <- function() {
     uncorrected <- convert_to_symbols(uncorrected)
     sample_data <- convert_to_symbols(sample_data)
 
-    # Ensure gene names are consistent between datasets
-    get_gene_ids <- function(data) {
-        if (is.null(rownames(data)) || all(rownames(data) == seq_len(nrow(data)))) {
-            return(data[, 1])
-        } else {
-            return(rownames(data))
-        }
-    }
-
     message("Getting common genes...")
-    uncorrected_genes <- get_gene_ids(uncorrected)
-    sample_genes <- get_gene_ids(sample_data)
-    common_genes <- intersect(uncorrected_genes, sample_genes)
+    common_genes <- intersect(rownames(uncorrected), rownames(sample_data))
     message(paste0("Number of common genes: ", length(common_genes)))
-
-    # Check for non-unique genes
-    message("Checking for non-unique genes...")
-    message(paste("Uncorrected data unique genes:", length(unique(uncorrected_genes))))
-    message(paste("Uncorrected data total genes:", length(uncorrected_genes)))
-    message(paste("Sample data unique genes:", length(unique(sample_genes))))
-    message(paste("Sample data total genes:", length(sample_genes)))
 
     if (length(common_genes) < 10) {
         warning("Less than 10 common genes! Please check the data format.")
@@ -170,71 +223,12 @@ harmonize_data <- function() {
         return(NULL)
     }
 
-    # Function to calculate variance for each gene
-    calc_gene_variance <- function(data) {
-        if (is.null(rownames(data)) || all(rownames(data) == seq_len(nrow(data)))) {
-            # If genes are in the first column
-            gene_vars <- apply(data[, -1], 1, var)
-            names(gene_vars) <- data[, 1]
-        } else {
-            # If genes are in rownames
-            gene_vars <- apply(data, 1, var)
-        }
-        return(gene_vars)
-    }
-
-    # Calculate variance for each dataset
-    uncorrected_vars <- calc_gene_variance(uncorrected)
-    sample_vars <- calc_gene_variance(sample_data)
-
-    # Combine variances
-    combined_vars <- uncorrected_vars + sample_vars
-    combined_vars <- combined_vars[names(combined_vars) %in% common_genes]
-
-    # Sort genes by combined variance
-    sorted_genes <- names(sort(combined_vars, decreasing = TRUE))
-
-    # Subset the data to include only common genes, handling non-unique genes, sorted by variance
-    subset_data <- function(data, sorted_genes) {
-        if (is.null(rownames(data)) || all(rownames(data) == seq_len(nrow(data)))) {
-            # If genes are in the first column
-            subset <- data[data[, 1] %in% sorted_genes, ]
-            subset <- subset[match(sorted_genes, subset[, 1]), ]
-            # Remove duplicates, keeping the first (most variable) occurrence
-            subset <- subset[!duplicated(subset[, 1]), ]
-            rownames(subset) <- subset[, 1]
-            subset <- subset[, -1]
-        } else {
-            # If genes are in rownames
-            subset <- data[rownames(data) %in% sorted_genes, ]
-            subset <- subset[match(sorted_genes, rownames(subset)), ]
-            # Remove duplicates, keeping the first (most variable) occurrence
-            subset <- subset[!duplicated(rownames(subset)), ]
-        }
-        return(subset)
-    }
-
-    message("Subsetting uncorrected data...")
-    message(paste("Uncorrected data dimensions:", paste(dim(uncorrected), collapse = "x")))
-    uncorrected <- subset_data(uncorrected, sorted_genes)
-    message(paste("Uncorrected data dimensions after subsetting:", paste(dim(uncorrected), collapse = "x")))
-
-    message("Subsetting sample data...")
-    message(paste("Sample data dimensions:", paste(dim(sample_data), collapse = "x")))
-    sample_data <- subset_data(sample_data, sorted_genes)
-    message(paste("Sample data dimensions after subsetting:", paste(dim(sample_data), collapse = "x")))
-
-    # Final check
-    if (nrow(uncorrected) != nrow(sample_data)) {
-        message("Error: Number of rows still don't match after subsetting and removing duplicates.")
-        return(NULL)
-    }
 
     message("Combining uncorrected and sample data...")
     # Add "_sample_data" suffix to sample_data column names
     colnames(sample_data) <- paste0(colnames(sample_data), "_sample_data")
     # Combine the data, keeping genes as rownames and samples as columns
-    data_to_be_corrected <- cbind(uncorrected, sample_data)
+    data_to_be_corrected <- cbind(uncorrected[common_genes, ], sample_data[common_genes, ])
 
     message("Creating batch vector...")
     batch <- c(paste0(metadata$study, metadata$gender), rep("sample_data", (ncol(sample_data))))
@@ -381,6 +375,9 @@ function() {
         ))
     }
     sample_data <- readRDS("cache/sample_data.rds")
+
+    # remove the row if it is incomplete
+    sample_data <- sample_data[complete.cases(sample_data), ]
     result <- seAMLess(sample_data)
     return(list(message = paste("Deconvolution complete. Samples:", nrow(result$Deconvolution)), deconvolution = data.frame(result$Deconvolution)))
 }
@@ -513,9 +510,17 @@ function(req) {
     tryCatch(
         {
             patient_info <- req$args$patientInfo
+            model <- req$args$model # New parameter for model selection
+
+            message(paste("Patient info:", patient_info))
+            message(paste("Selected model:", model))
 
             if (is.null(patient_info) || patient_info == "") {
                 return(list(error = "Patient information is required"))
+            }
+
+            if (is.null(model) || model == "") {
+                model <- "gpt-4o-mini" # Default model if not specified
             }
 
             # Get the OpenAI API key from environment variable
@@ -531,7 +536,7 @@ function(req) {
                 "Authorization" = paste("Bearer", api_key)
             )
             body <- list(
-                model = "gpt-4o-mini",
+                model = model, # Use the selected or default model
                 messages = list(
                     list(role = "system", content = "Make coherent paragraphs. Use markdown to format the response."),
                     list(role = "user", content = paste(patient_info, "."))
