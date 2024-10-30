@@ -89,6 +89,13 @@ get_corrected_data <- function() {
     return(corrected)
 }
 
+
+remove_low_expressed_genes <- function(data, threshold = 100) {
+    # 100 mRNA threshold
+    data <- data[rowSums(data) >= threshold, -1, drop = FALSE]
+    return(data)
+}
+
 #* @get /harmonize-data
 #* @serializer json
 harmonize_data <- function() {
@@ -215,6 +222,11 @@ harmonize_data <- function() {
     uncorrected <- convert_to_symbols(uncorrected)
     sample_data <- convert_to_symbols(sample_data)
 
+    # remove low expressed genes
+    message("Removing genes with less than total 100 mRNA for all samples...")
+    sample_data <- remove_low_expressed_genes(sample_data, threshold = 100)
+
+
     message("Getting common genes...")
     common_genes <- intersect(rownames(uncorrected), rownames(sample_data))
     message(paste0("Number of common genes: ", length(common_genes)))
@@ -254,8 +266,6 @@ harmonize_data <- function() {
         corrected_matrix <- limma::removeBatchEffect(data_to_be_corrected, batch = batch, )
     }
 
-    message("Head of corrected_matrix:")
-    print(head(corrected_matrix))
 
     message("Converting corrected_matrix to data.frame...")
     corrected_matrix <- as.data.frame(corrected_matrix)

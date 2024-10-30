@@ -282,31 +282,29 @@ export function TSNEChart() {
 
 	return (
 		<Card className="w-full h-full">
-			<CardHeader className="space-y-1">
+			<CardHeader>
 				<CardTitle>Meta t-SNE Visualization</CardTitle>
 			</CardHeader>
-			<CardContent className="flex flex-col h-[calc(100%-4rem)] space-y-4">
-				{error && <p className="text-red-500">{error}</p>}
-
-				<div className="flex-grow relative min-h-[300px] h-[50vh]">
-					{tsneData.length > 0 ? (
-						<canvas ref={chartRef} className="w-full h-full"></canvas>
-					) : (
-						<div className="w-full h-full flex items-center justify-center text-gray-500">
-							<p className="text-center px-4">
-								Click "Run TSNE" to generate the plot
-							</p>
+			<CardContent className="flex-grow flex flex-col h-[calc(100%-4rem)] min-h-[400px]">
+				{error && <p className="text-red-500 mt-2">{error}</p>}
+				
+				<div className="flex-grow relative flex items-center justify-center text-center">
+					{tsneData.length === 0 && !isLoading && (
+						<p className="text-center mt-4 flex justify-center items-center text-gray-500">
+							Click "Run TSNE" to generate the plot
+						</p>
+					)}
+					{tsneData.length > 0 && (
+						<div className="flex justify-center items-center w-full h-full">
+							<canvas ref={chartRef} className="w-full h-full"></canvas>
 						</div>
 					)}
 				</div>
 
-				<div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-					<div className="flex flex-wrap gap-2 w-full sm:w-auto">
-						<Select
-							value={selectedAttribute}
-							onValueChange={setSelectedAttribute}
-						>
-							<SelectTrigger className="w-full sm:w-[180px]">
+				<div className="flex flex-col gap-4 mt-4">
+					<div className="flex flex-col lg:flex-row gap-4">
+						<Select value={selectedAttribute} onValueChange={setSelectedAttribute}>
+							<SelectTrigger className="w-full lg:w-[180px]">
 								<SelectValue placeholder="Select attribute" />
 							</SelectTrigger>
 							<SelectContent>
@@ -331,45 +329,48 @@ export function TSNEChart() {
 							</SelectContent>
 						</Select>
 
-						<div className="flex gap-2 w-full sm:w-auto">
+						<div className="flex flex-wrap gap-2">
 							<Button
-								className="flex-1 sm:flex-none"
 								onClick={handleRunTSNE}
 								disabled={isLoading}
+								className="flex-1 lg:flex-none min-w-[100px]"
 							>
 								{isLoading ? "Loading..." : "Run TSNE"}
 							</Button>
 							<Button
 								variant="ghost"
 								onClick={() => setShowSettings(!showSettings)}
+								className="flex-none"
 							>
 								⚙️
 							</Button>
 							<Button
-								className="flex-1 sm:flex-none"
 								onClick={() => chartInstance.current?.resetZoom()}
 								disabled={!chartInstance.current}
+								className="flex-1 lg:flex-none min-w-[100px]"
 							>
 								Reset Zoom
 							</Button>
 						</div>
 					</div>
-				</div>
 
-				{showSettings && (
-					<div className="flex flex-wrap items-center gap-2">
-						<span className="whitespace-nowrap">Point Size:</span>
-						<Slider
-							value={[pointRadius]}
-							onValueChange={(value) => setPointRadius(value[0])}
-							min={1}
-							max={10}
-							step={1}
-							className="w-[100px] min-w-[100px]"
-						/>
-						<span>{pointRadius}</span>
-					</div>
-				)}
+					{showSettings && (
+						<div className="flex flex-col lg:flex-row items-start lg:items-center gap-2">
+							<span>Point Size:</span>
+							<div className="flex items-center gap-2 w-full lg:w-auto">
+								<Slider
+									value={[pointRadius]}
+									onValueChange={(value) => setPointRadius(value[0])}
+									min={1}
+									max={10}
+									step={1}
+									className="w-full lg:w-[100px]"
+								/>
+								<span className="min-w-[20px] text-center">{pointRadius}</span>
+							</div>
+						</div>
+					)}
+				</div>
 			</CardContent>
 		</Card>
 	);

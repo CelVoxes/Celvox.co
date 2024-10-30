@@ -12,7 +12,7 @@ export const siteConfig = {
 	],
 	links: {
 		twitter: "https://twitter.com/eonurkara",
-		github: "https://github.com/eonurk",
-		docs: "https://eonurk.github.io/AML-Dashboard/",
+		github: "https://github.com/CelVoxes",
+		docs: "https://celvox.co/",
 	},
 };

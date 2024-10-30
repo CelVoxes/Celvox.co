@@ -243,10 +243,10 @@ export function KNNReport() {
 	}
 
 	return (
-		<Card className="w-full ">
+		<Card className="w-full">
 			<CardHeader>
 				<CardTitle>KNN Metadata Report for Uploaded Samples</CardTitle>
-				<CardDescription className="text-sm ">
+				<CardDescription className="text-sm">
 					This section displays a detailed KNN (K-Nearest Neighbors) report for
 					the selected sample based on gene expression data. It shows the most
 					probable metadata values for various attributes based on the K nearest
@@ -256,32 +256,38 @@ export function KNNReport() {
 			</CardHeader>
 			<CardContent>
 				<div className="flex flex-col space-y-4 mb-6">
-					<div className="flex items-center space-x-4">
+					<div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
 						<span className="w-24">K Value:</span>
-						<Slider
-							value={[kValue]}
-							onValueChange={(value) => setKValue(value[0])}
-							min={1}
-							max={50}
-							step={1}
-							className="w-full"
-						/>
-						<span>{kValue}</span>
+						<div className="flex-1 flex items-center space-x-4">
+							<Slider
+								value={[kValue]}
+								onValueChange={(value) => setKValue(value[0])}
+								min={1}
+								max={50}
+								step={1}
+								className="w-full"
+							/>
+							<span>{kValue}</span>
+						</div>
 					</div>
-					<div className="flex items-center space-x-4">
+					<div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
 						<span className="w-24">Sample:</span>
 						<Select
 							onValueChange={setSelectedSample}
 							value={selectedSample || undefined}
-						>
+							>
 							<SelectTrigger className="w-full">
 								<SelectValue placeholder="Select a sample" />
 							</SelectTrigger>
-							<SelectContent>
+							<SelectContent className="max-h-[300px]">
 								{tsneData
 									.filter((d) => d.data_source === "uploaded")
 									.map((sample) => (
-										<SelectItem key={sample.sample_id} value={sample.sample_id}>
+										<SelectItem 
+											key={sample.sample_id} 
+											value={sample.sample_id}
+											className="break-all pr-6"
+										>
 											{sample.sample_id}
 										</SelectItem>
 									))}
@@ -302,7 +308,7 @@ export function KNNReport() {
 				{selectedSample && report[selectedSample] && (
 					<Card className="mb-4">
 						<CardHeader>
-							<CardTitle>Sample ID: {selectedSample}</CardTitle>
+							<CardTitle className="break-all">Sample ID: {selectedSample}</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<Accordion type="single" collapsible className="w-full">
@@ -365,27 +371,15 @@ export function KNNReport() {
 														/>
 													) : (
 														<>
-															<Table>
+															<Table className="block overflow-x-auto whitespace-nowrap sm:table">
 																<TableHeader>
 																	<TableRow>
-																		<TableHead className="text-left ">
-																			Value
-																		</TableHead>
-																		<TableHead className="text-left">
-																			Count
-																		</TableHead>
-																		<TableHead className="text-left">
-																			Percentage
-																		</TableHead>
-																		<TableHead className="text-left">
-																			Total in Category
-																		</TableHead>
-																		<TableHead className="text-left">
-																			P-value
-																		</TableHead>
-																		<TableHead className="text-left">
-																			Adjusted P-value
-																		</TableHead>
+																		<TableHead className="min-w-[100px]">Value</TableHead>
+																		<TableHead className="min-w-[80px]">Count</TableHead>
+																		<TableHead className="min-w-[100px]">Percentage</TableHead>
+																		<TableHead className="min-w-[120px]">Total in Category</TableHead>
+																		<TableHead className="min-w-[100px]">P-value</TableHead>
+																		<TableHead className="min-w-[120px]">Adjusted P-value</TableHead>
 																	</TableRow>
 																</TableHeader>
 																<TableBody>

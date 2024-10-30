@@ -705,17 +705,16 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 		<Card className="w-full">
 			<CardHeader>
 				<CardTitle>
-					<div className="text-2xl font-bold text-purple-600">AI Assistant</div>
-					<div className="text-sm text-blue-600">(Experimental)</div>
+					<div className="text-xl md:text-2xl font-bold text-purple-600">AI Assistant</div>
+					<div className="text-xs md:text-sm text-blue-600">(Experimental)</div>
 				</CardTitle>
-				<CardDescription>
-					Leverage Artificial Intelligence to gain insights into uploaded
-					samples
+				<CardDescription className="text-sm">
+					Leverage AI to gain insights into uploaded samples
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
-				<div className="flex items-center space-x-4">
-					<span className="w-24">Sample:</span>
+				<div className="flex flex-col md:flex-row md:items-center gap-4">
+					<span className="min-w-24">Sample:</span>
 					<Select
 						onValueChange={setSelectedSample}
 						value={selectedSample || undefined}
@@ -735,8 +734,8 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 					</Select>
 				</div>
 
-				<div className="flex items-center space-x-4">
-					<span className="w-24">Model:</span>
+				<div className="flex flex-col md:flex-row md:items-center gap-4">
+					<span className="min-w-24">Model:</span>
 					<Select onValueChange={setSelectedModel} value={selectedModel}>
 						<SelectTrigger className="w-full">
 							<SelectValue placeholder="Select a model" />
@@ -749,8 +748,8 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 					</Select>
 				</div>
 
-				<div className="flex items-center space-x-4">
-					<span className="w-24">K Value:</span>
+				<div className="flex flex-col md:flex-row md:items-center gap-4">
+					<span className="min-w-24">K Value:</span>
 					<div className="flex-1">
 						<Slider
 							value={[kValue]}
@@ -779,7 +778,7 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 				</Button>
 
 				{report && (
-					<div className="mt-8 bg-white p-8 rounded-lg shadow-lg w-full">
+					<div className="mt-8 bg-white p-4 md:p-8 rounded-lg shadow-lg w-full">
 						<div
 							className="transition-all duration-500 ease-in-out rounded-full mt-4"
 							style={{
@@ -789,21 +788,20 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 							}}
 						/>
 						<Separator className="my-2" />
-						<div className="text-sm text-justify overflow-hidden relative">
+						<div className="text-xs md:text-sm text-justify overflow-hidden relative">
 							{renderMarkdown(report.slice(0, visibleChars))}
 						</div>
 						<div className="mt-4 flex justify-end">
 							<Button onClick={copyToClipboard} variant="outline" size="sm">
-								<Copy className="w-4 h-4 mr-2" />
+								<Copy className="w-3 h-3 md:w-4 md:h-4 mr-2" />
 								Copy Report
 							</Button>
 						</div>
 					</div>
 				)}
 			</CardContent>
-			<CardFooter className="text-center text-sm text-gray-500">
-				AI models may not always be accurate. Always consult with medical
-				professionals before making any clinical decisions.
+			<CardFooter className="text-center text-xs md:text-sm text-gray-500 px-4">
+				AI models may not always be accurate. Always consult with medical professionals.
 			</CardFooter>
 		</Card>
 	);
