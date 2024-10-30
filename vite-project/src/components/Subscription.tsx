@@ -63,7 +63,7 @@ function SubscribeForm() {
 				<input
 					name="Email"
 					type="email"
-					className="flex w-full text-base px-2 py-2 mt-4 border-2"
+					className="flex w-full text-base px-2 py-2 mt-4 border-2 bg-white dark:bg-neutral-800"
 					required
 				/>
 

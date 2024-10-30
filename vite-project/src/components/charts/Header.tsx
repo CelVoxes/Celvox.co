@@ -32,9 +32,9 @@ export const SeamlessHeader = () => (
 					data, and mutation information.
 				</p>
 				<Accordion type="single" collapsible className="w-full">
-					<AccordionItem value="features">
-						<AccordionTrigger>Key Features</AccordionTrigger>
-						<AccordionContent>
+					<AccordionItem value="features" className="bg-transparent">
+						<AccordionTrigger className="bg-white hover:bg-transparent">Key Features</AccordionTrigger>
+						<AccordionContent className="bg-transparent">
 							<Table>
 								<TableBody className="text-left">
 									<TableRow>
@@ -210,9 +210,9 @@ export const SeamlessHeader = () => (
 							</Table>
 						</AccordionContent>
 					</AccordionItem>
-					<AccordionItem value="tips">
-						<AccordionTrigger>Tips & Tricks</AccordionTrigger>
-						<AccordionContent>
+					<AccordionItem value="tips" className="bg-transparent">
+						<AccordionTrigger className="bg-white hover:bg-transparent">Tips & Tricks</AccordionTrigger>
+						<AccordionContent className="bg-transparent">
 							<Table>
 								<TableBody className="text-left">
 									<TableRow>

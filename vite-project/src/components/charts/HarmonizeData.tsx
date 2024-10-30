@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { fetchHarmonizedData } from "@/utils/api";
 
@@ -36,6 +36,9 @@ export function HarmonizeData() {
 		<Card className="w-full">
 			<CardHeader>
 				<CardTitle>Data Harmonization</CardTitle>
+				<CardDescription>
+					Harmonize your uploaded data to the existing reference. It will create a normalized and corrected version of the integrated data.
+				</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<Button onClick={handleHarmonize} disabled={isHarmonizing}>

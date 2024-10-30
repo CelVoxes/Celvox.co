@@ -38,25 +38,27 @@ const components: { title: string; href: string; description: string }[] = [
 
 export function CarouselDemo() {
 	return (
-		<Carousel className="w-full max-w-xs">
-			<CarouselContent>
+		<Carousel className="w-full max-w-[300px] sm:max-w-xs">
+			<CarouselContent className="-ml-1">
 				{components.map((component) => (
-					<CarouselItem key={component.title}>
-						<div className="p-1">
-							<Card>
-								<CardContent className="flex aspect-square items-center justify-center p-6">
-									<div>
-										<h2 className="text-xl font-semibold">{component.title}</h2>
-										<p>{component.description}</p>
-									</div>
-								</CardContent>
-							</Card>
-						</div>
+					<CarouselItem key={component.title} className="pl-1">
+						<Card>
+							<CardContent className="flex aspect-[16/20] sm:aspect-square items-center justify-center p-2 sm:p-4">
+								<div className="w-full">
+									<h2 className="text-base sm:text-xl font-semibold text-center">
+										{component.title}
+									</h2>
+									<p className="text-sm text-muted-foreground mt-2 text-center">
+										{component.description}
+									</p>
+								</div>
+							</CardContent>
+						</Card>
 					</CarouselItem>
 				))}
 			</CarouselContent>
-			<CarouselPrevious />
-			<CarouselNext />
+			<CarouselPrevious className="hidden sm:flex" />
+			<CarouselNext className="hidden sm:flex" />
 		</Carousel>
 	);
 }

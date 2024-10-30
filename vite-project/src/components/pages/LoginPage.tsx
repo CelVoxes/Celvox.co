@@ -1,5 +1,5 @@
 import Login from "@/components/Login";
-import SiteHeader from "@/components/Header";
+import SiteHeader from "@/components/charts/Header";
 import { Navbar } from "@/components/header/Navbar";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";

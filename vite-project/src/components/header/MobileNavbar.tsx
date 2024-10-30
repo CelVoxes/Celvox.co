@@ -39,7 +39,7 @@ const MobileNav: React.FC<MobileNavProps> = ({ isOpen, toggleMenu }) => {
 		<div className="fixed inset-0 z-50 bg-white text-black flex flex-col">
 			<div className="flex items-center justify-between p-4 bg-white">
 				<h2 className="text-xl font-bold">Menu</h2>
-				<button onClick={toggleMenu} className="focus:outline-none">
+				<button onClick={toggleMenu} className="focus:outline-none bg-transparent ">
 					<X size={24} />
 				</button>
 			</div>
@@ -59,9 +59,9 @@ const MobileNav: React.FC<MobileNavProps> = ({ isOpen, toggleMenu }) => {
 					<li className="border-b border-black pb-2">
 						<button
 							onClick={() => setSubmenuOpen(!submenuOpen)}
-							className="flex w-full items-center justify-between p-2 text-left font-medium text-base bg-transparent"
+							className="flex w-full items-center justify-between p-2 text-left font-medium text-base bg-transparent pb-2"
 						>
-							Solutions
+							<a>Solutions</a>
 							{submenuOpen ? (
 								<ChevronUp size={24} />
 							) : (
@@ -91,10 +91,10 @@ const MobileNav: React.FC<MobileNavProps> = ({ isOpen, toggleMenu }) => {
 							<NavItem to="/profile" onClick={toggleMenu}>
 								Profile
 							</NavItem>
-							<li className="border-b border-black pb-2">
+							<li className="border-b border-black pb-2 ">
 								<button
 									onClick={handleLogout}
-									className="block w-full p-2 text-left font-medium text-base hover:bg-gray-100"
+									className="block w-full p-2 text-left font-medium text-base hover:bg-gray-100 bg-transparent"
 								>
 									Logout
 								</button>

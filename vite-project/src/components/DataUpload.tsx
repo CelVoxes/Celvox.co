@@ -24,18 +24,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
 	Dialog,
-	DialogTrigger,
 	DialogContent,
 	DialogTitle,
 	DialogDescription,
 	DialogFooter,
 } from "@/components/ui/dialog";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 export function DataUpload() {
 	const { toast } = useToast();
@@ -155,77 +148,36 @@ export function DataUpload() {
 
 		return (
 			<>
-				{/* Mobile view */}
+				{/* Mobile view - Updated */}
 				<div className="space-y-4 md:hidden">
 					<ScrollArea className="h-[400px] w-full">
 						{cacheFiles.map((file, index) => (
-							<Card key={index}>
-								<CardHeader className="pb-2">
-									<div className="flex justify-between items-center">
-										<CardTitle className="text-sm font-medium">
-											<TooltipProvider>
-												<Tooltip>
-													<TooltipTrigger asChild>
-														<span className="truncate max-w-[200px] block">
-															{file.name}
-														</span>
-													</TooltipTrigger>
-													<TooltipContent>
-														<p>{file.name}</p>
-													</TooltipContent>
-												</Tooltip>
-											</TooltipProvider>
-										</CardTitle>
-										<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-											<DialogTrigger asChild>
-												<Button
-													variant="ghost"
-													size="sm"
-													onClick={() => confirmDelete(file.name)}
-													className="text-destructive hover:text-destructive"
-												>
-													Delete
-												</Button>
-											</DialogTrigger>
-											<DialogContent>
-												<DialogTitle>Confirm Deletion</DialogTitle>
-												<DialogDescription>
-													Are you sure you want to delete {fileToDelete}?
-												</DialogDescription>
-												<DialogFooter>
-													<Button onClick={() => setIsDialogOpen(false)}>
-														Cancel
-													</Button>
-													<Button variant="destructive" onClick={handleDelete}>
-														Confirm
-													</Button>
-												</DialogFooter>
-											</DialogContent>
-										</Dialog>
-									</div>
-								</CardHeader>
-								<CardContent className="text-sm">
-									<div className="grid grid-cols-2 gap-2">
-										<div className="text-muted-foreground text-left">Size</div>
-										<div className="text-right">
-											{(file.size / (1024 * 1024)).toFixed(2)} MB
+							<Card key={index} className="p-4 my-2">
+								<div className="space-y-2">
+									{/* Filename */}
+									<p className="font-medium break-all">{file.name}</p>
+									
+									{/* File details */}
+									<div className="space-y-1 text-sm text-muted-foreground">
+										<div className="flex justify-between gap-2">
+											<span>Size: {(file.size / (1024 * 1024)).toFixed(2)} MB</span>
+											<span>Type: {file.isUserUploaded ? 'User File' : 'Cache File'}</span>
 										</div>
-										<div className="text-muted-foreground text-left">
-											Modified
-										</div>
-										<div className="text-right">
-											{new Date(file.modified).toLocaleString()}
-										</div>
-										<div className="text-muted-foreground text-left">Type</div>
-										<div className="text-right">
-											{file.isUserUploaded ? (
-												<span className="text-blue-600">User Uploaded</span>
-											) : (
-												<span className="text-green-600">Cache File</span>
-											)}
+										<div>
+											Modified: {new Date(file.modified).toLocaleString()}
 										</div>
 									</div>
-								</CardContent>
+
+									{/* Delete button */}
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => confirmDelete(file.name)}
+										className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 w-full mt-2"
+									>
+										Delete
+									</Button>
+								</div>
 							</Card>
 						))}
 					</ScrollArea>
@@ -272,37 +224,13 @@ export function DataUpload() {
 											)}
 										</TableCell>
 										<TableCell className="p-2 border-b">
-											<Dialog
-												open={isDialogOpen}
-												onOpenChange={setIsDialogOpen}
+											<Button
+												variant="ghost"
+												onClick={() => confirmDelete(file.name)}
+												className="text-red-500 hover:text-red-700"
 											>
-												<DialogTrigger asChild>
-													<Button
-														variant="ghost"
-														onClick={() => confirmDelete(file.name)}
-														className="text-red-500 hover:text-red-700"
-													>
-														Delete
-													</Button>
-												</DialogTrigger>
-												<DialogContent>
-													<DialogTitle>Confirm Deletion</DialogTitle>
-													<DialogDescription>
-														Are you sure you want to delete {fileToDelete}?
-													</DialogDescription>
-													<DialogFooter>
-														<Button onClick={() => setIsDialogOpen(false)}>
-															Cancel
-														</Button>
-														<Button
-															variant="destructive"
-															onClick={handleDelete}
-														>
-															Confirm
-														</Button>
-													</DialogFooter>
-												</DialogContent>
-											</Dialog>
+												Delete
+											</Button>
 										</TableCell>
 									</TableRow>
 								))
@@ -316,6 +244,22 @@ export function DataUpload() {
 						</TableBody>
 					</Table>
 				</div>
+
+				{/* Move Dialog outside of the mapping functions */}
+				<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+					<DialogContent>
+						<DialogTitle>Confirm Deletion</DialogTitle>
+						<DialogDescription>
+							Are you sure you want to delete {fileToDelete}?
+						</DialogDescription>
+						<DialogFooter>
+							<Button onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+							<Button variant="destructive" onClick={handleDelete}>
+								Confirm
+							</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
 			</>
 		);
 	};

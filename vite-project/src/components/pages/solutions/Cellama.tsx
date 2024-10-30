@@ -11,8 +11,8 @@ export function Cellama() {
 		<>
 			<Navbar />
 			{/* Quote Section */}
-			<div className="h-[30rem] max-w-4xl mx-auto flex justify-center items-center px-4">
-				<div className="text-md mx-auto font-normal text-neutral-600 dark:text-neutral-400">
+			<div className="min-h-[20rem] md:h-[30rem] max-w-4xl mx-auto flex justify-center items-center px-4 py-8">
+				<div className="text-sm md:text-md mx-auto font-normal text-neutral-600 dark:text-neutral-400">
 					<blockquote cite="https://pubmed.ncbi.nlm.nih.gov/22186258/">
 						"We need merely to assume that changes in the genotype produce
 						correlated changes in the adult phenotype, but the mechanism of this
@@ -24,21 +24,21 @@ export function Cellama() {
 				</div>
 			</div>
 			{/* Logo Section */}
-			<div className="h-[30rem] max-w-4xl mx-auto flex justify-center items-center px-4">
+			<div className="min-h-[20rem] md:h-[30rem] max-w-4xl mx-auto flex justify-center items-center px-4 py-8">
 				<div className="text-center">
-					<h1 className="text-2xl mb-8 font-normal text-neutral-600 dark:text-neutral-400">
+					<h1 className="text-xl md:text-2xl mb-8 font-normal text-neutral-600 dark:text-neutral-400">
 						Introducing CeLLama
 					</h1>
 					<img
 						src={cellama_logo}
 						alt="CeLLama Logo"
-						className="h-64 w-64 rounded-full mx-auto"
+						className="h-48 w-48 md:h-64 md:w-64 rounded-full mx-auto"
 					/>
 				</div>
 			</div>
 			{/* Description Section */}
-			<div className="h-[20rem] max-w-4xl mx-auto flex justify-center items-center px-4">
-				<div className="text-lg mx-auto font-normal text-neutral-600 dark:text-neutral-400 text-center">
+			<div className="min-h-[15rem] md:h-[20rem] max-w-4xl mx-auto flex justify-center items-center px-4 py-8">
+				<div className="text-base md:text-lg mx-auto font-normal text-neutral-600 dark:text-neutral-400 text-center">
 					<p className="mb-6">
 						<span className="font-bold">ceLLama</span> is an open-source
 						streamlined automation pipeline for cell type annotations using
@@ -56,8 +56,8 @@ export function Cellama() {
 				</div>
 			</div>
 			{/* Explanation Section */}
-			<div className="max-w-3xl mx-auto py-20 px-4">
-				<div className="space-y-6 font-normal leading-relaxed text-neutral-600 dark:text-neutral-400">
+			<div className="max-w-3xl mx-auto py-12 md:py-20 px-4">
+				<div className="space-y-6 text-sm md:text-base font-normal leading-relaxed text-neutral-600 dark:text-neutral-400">
 					<p>
 						The relationship between genotype and phenotype is orchestrated by
 						the complex interplay of <i>genes</i> - the fundamental units of
@@ -81,11 +81,11 @@ export function Cellama() {
 				</div>
 			</div>
 			{/* Carousel Section */}
-			<div className="h-[20rem] max-w-4xl mx-auto flex justify-center items-center px-4">
+			<div className="min-h-[15rem] md:h-[20rem] max-w-4xl mx-auto flex justify-center items-center py-8">
 				<CarouselDemo />
 			</div>
 			{/* License Section */}
-			<div className="h-[5rem] max-w-4xl mx-auto flex justify-center items-center px-4">
+			<div className="min-h-[4rem] md:h-[5rem] max-w-4xl mx-auto flex justify-center items-center px-4 py-4">
 				<div className="mx-auto text-xs text-neutral-600 dark:text-neutral-400">
 					Note: This project is licensed under the CC BY-NC 4.0 License,
 					allowing use with attribution for non-commercial purposes. For more

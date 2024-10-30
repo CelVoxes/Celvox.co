@@ -167,7 +167,7 @@ export function DeconvolutionChart() {
 	return (
 		<Card className="w-full h-full">
 			<CardHeader className="space-y-1.5 p-4 sm:p-6">
-				<CardTitle className="text-lg sm:text-xl">
+				<CardTitle>
 					Deconvolution Analysis
 				</CardTitle>
 			</CardHeader>

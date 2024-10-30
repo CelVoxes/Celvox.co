@@ -57,7 +57,7 @@ const ContactPage: React.FC = () => {
 		<>
 			<Navbar />
 			<div className="min-h-screen bg-gradient-to-b from-background to-muted">
-				<div className="max-w-4xl w-full mx-auto px-4 py-16">
+				<div className="max-w-4xl w-full mx-auto px-0 md:px-4 py-16">
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
 						{/* Contact Info Section */}
 						<div className="space-y-8">
@@ -73,8 +73,8 @@ const ContactPage: React.FC = () => {
 						</div>
 
 						{/* Contact Form Section */}
-						<Card className="rounded-xl shadow-lg">
-							<CardHeader>
+						<Card className="rounded-xl shadow-lg ">
+							<CardHeader> 
 								<CardTitle className="text-2xl font-semibold">
 									Send us a Message
 								</CardTitle>
