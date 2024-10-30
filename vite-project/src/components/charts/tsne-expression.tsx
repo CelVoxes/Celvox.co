@@ -1,12 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { fetchGeneExpressionData } from "../utils/api";
-import { Button } from "../components/ui/button";
-import {
-	Card,
-	CardHeader,
-	CardTitle,
-	CardContent,
-} from "../components/ui/card";
+import { fetchGeneExpressionData } from "../../utils/api";
+import { Button } from "../ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import Chart from "chart.js/auto";
 import { scaleLinear } from "d3-scale";
 import { interpolateViridis } from "d3-scale-chromatic";
@@ -38,19 +33,18 @@ export function GeneExpressionTSNE() {
 	const [error, setError] = useState<string | null>(null);
 	const chartRef = useRef<HTMLCanvasElement | null>(null);
 	const chartInstance = useRef<Chart | null>(null);
-	const [selectedGene, setSelectedGene] = useState("ENSG00000000419.13");
+	const [selectedGene, setSelectedGene] = useState("NPM1");
 	const [availableGenes, setAvailableGenes] = useState<string[]>([]);
 	const [geneSearch, setGeneSearch] = useState("");
 	const [isSelectOpen, setIsSelectOpen] = useState(false);
 
-	const handleGeneSelection = async (value: string) => {
-		setIsLoading(true);
-		await handleFetchData(value);
+	const handleGeneSelection = (value: string) => {
 		setSelectedGene(value);
-		setIsLoading(false);
+		handleFetchData(value);
 	};
 
 	const handleFetchData = async (gene: string = selectedGene) => {
+		setIsLoading(true);
 		setError(null);
 		try {
 			const response = await fetchGeneExpressionData(gene);
@@ -59,7 +53,7 @@ export function GeneExpressionTSNE() {
 			}
 
 			setAvailableGenes(response.available_genes);
-			console.log(response.expression);
+
 			const geneExpression = response.expression.map(
 				(item: GeneExpressionData) => ({
 					sample_id: item.sample_id,
@@ -69,11 +63,7 @@ export function GeneExpressionTSNE() {
 				})
 			);
 			setGeneExpressionData(geneExpression);
-
-			// Update the selected gene if it's not already set
-			if (!selectedGene && response.available_genes.length > 0) {
-				setSelectedGene(response.available_genes[0]);
-			}
+			setSelectedGene(gene); // Ensure the selected gene is updated
 		} catch (error) {
 			console.error("Failed to load data:", error);
 			setError(
@@ -81,6 +71,8 @@ export function GeneExpressionTSNE() {
 					? error.message
 					: "Failed to load data. Please try again."
 			);
+		} finally {
+			setIsLoading(false);
 		}
 	};
 
@@ -255,17 +247,16 @@ export function GeneExpressionTSNE() {
 							disabled={isLoading}
 						>
 							<SelectTrigger>
-								<SelectValue placeholder="Select a gene" />
+								<SelectValue placeholder="Select a gene">
+									{selectedGene}
+								</SelectValue>
 							</SelectTrigger>
 							<SelectContent>
 								{isSelectOpen && <VirtualizedSelectContent />}
 							</SelectContent>
 						</Select>
 					</div>
-					<Button
-						onClick={() => handleFetchData(selectedGene)}
-						disabled={isLoading}
-					>
+					<Button onClick={() => handleFetchData()} disabled={isLoading}>
 						{isLoading ? "Loading..." : "Fetch Data"}
 					</Button>
 				</div>

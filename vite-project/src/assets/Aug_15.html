@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <script type="module">
+import RefreshRuntime from "/@react-refresh"
+RefreshRuntime.injectIntoGlobalHook(window)
+window.$RefreshReg$ = () => {}
+window.$RefreshSig$ = () => (type) => type
+window.__vite_plugin_react_preamble_installed__ = true
+</script>
+
+    <script type="module" src="Aug_15_files/client.js"></script>
+
+    <meta charset="UTF-8">
+    <link rel="icon" href="http://localhost:5173/assets/logo.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indicator Insights</title>
+  <style type="text/css" data-vite-dev-id="/Users/onur-lumc/Desktop/trader/frontend/src/App.css">#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+</style><style type="text/css" data-vite-dev-id="/Users/onur-lumc/Desktop/trader/frontend/src/index.css">/*
+! tailwindcss v3.4.9 | MIT License | https://tailwindcss.com
+*//*
+1. Prevent padding and border from affecting element width. (https://github.com/mozdevs/cssremedy/issues/4)
+2. Allow adding a border to an element by just adding a border-width. (https://github.com/tailwindcss/tailwindcss/pull/116)
+*/
+
+*,
+::before,
+::after {
+  box-sizing: border-box; /* 1 */
+  border-width: 0; /* 2 */
+  border-style: solid; /* 2 */
+  border-color: #e5e7eb; /* 2 */
+}
+
+::before,
+::after {
+  --tw-content: '';
+}
+
+/*
+1. Use a consistent sensible line-height in all browsers.
+2. Prevent adjustments of font size after orientation changes in iOS.
+3. Use a more readable tab size.
+4. Use the user's configured `sans` font-family by default.
+5. Use the user's configured `sans` font-feature-settings by default.
+6. Use the user's configured `sans` font-variation-settings by default.
+7. Disable tap highlights on iOS
+*/
+
+html,
+:host {
+  line-height: 1.5; /* 1 */
+  -webkit-text-size-adjust: 100%; /* 2 */
+  -moz-tab-size: 4; /* 3 */
+  -o-tab-size: 4;
+     tab-size: 4; /* 3 */
+  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; /* 4 */
+  font-feature-settings: normal; /* 5 */
+  font-variation-settings: normal; /* 6 */
+  -webkit-tap-highlight-color: transparent; /* 7 */
+}
+
+/*
+1. Remove the margin in all browsers.
+2. Inherit line-height from `html` so users can set them as a class directly on the `html` element.
+*/
+
+body {
+  margin: 0; /* 1 */
+  line-height: inherit; /* 2 */
+}
+
+/*
+1. Add the correct height in Firefox.
+2. Correct the inheritance of border color in Firefox. (https://bugzilla.mozilla.org/show_bug.cgi?id=190655)
+3. Ensure horizontal rules are visible by default.
+*/
+
+hr {
+  height: 0; /* 1 */
+  color: inherit; /* 2 */
+  border-top-width: 1px; /* 3 */
+}
+
+/*
+Add the correct text decoration in Chrome, Edge, and Safari.
+*/
+
+abbr:where([title]) {
+  -webkit-text-decoration: underline dotted;
+          text-decoration: underline dotted;
+}
+
+/*
+Remove the default font size and weight for headings.
+*/
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/*
+Reset links to optimize for opt-in styling instead of opt-out.
+*/
+
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+/*
+Add the correct font weight in Edge and Safari.
+*/
+
+b,
+strong {
+  font-weight: bolder;
+}
+
+/*
+1. Use the user's configured `mono` font-family by default.
+2. Use the user's configured `mono` font-feature-settings by default.
+3. Use the user's configured `mono` font-variation-settings by default.
+4. Correct the odd `em` font sizing in all browsers.
+*/
+
+code,
+kbd,
+samp,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; /* 1 */
+  font-feature-settings: normal; /* 2 */
+  font-variation-settings: normal; /* 3 */
+  font-size: 1em; /* 4 */
+}
+
+/*
+Add the correct font size in all browsers.
+*/
+
+small {
+  font-size: 80%;
+}
+
+/*
+Prevent `sub` and `sup` elements from affecting the line height in all browsers.
+*/
+
+sub,
+sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+sub {
+  bottom: -0.25em;
+}
+
+sup {
+  top: -0.5em;
+}
+
+/*
+1. Remove text indentation from table contents in Chrome and Safari. (https://bugs.chromium.org/p/chromium/issues/detail?id=999088, https://bugs.webkit.org/show_bug.cgi?id=201297)
+2. Correct table border color inheritance in all Chrome and Safari. (https://bugs.chromium.org/p/chromium/issues/detail?id=935729, https://bugs.webkit.org/show_bug.cgi?id=195016)
+3. Remove gaps between table borders by default.
+*/
+
+table {
+  text-indent: 0; /* 1 */
+  border-color: inherit; /* 2 */
+  border-collapse: collapse; /* 3 */
+}
+
+/*
+1. Change the font styles in all browsers.
+2. Remove the margin in Firefox and Safari.
+3. Remove default padding in all browsers.
+*/
+
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit; /* 1 */
+  font-feature-settings: inherit; /* 1 */
+  font-variation-settings: inherit; /* 1 */
+  font-size: 100%; /* 1 */
+  font-weight: inherit; /* 1 */
+  line-height: inherit; /* 1 */
+  letter-spacing: inherit; /* 1 */
+  color: inherit; /* 1 */
+  margin: 0; /* 2 */
+  padding: 0; /* 3 */
+}
+
+/*
+Remove the inheritance of text transform in Edge and Firefox.
+*/
+
+button,
+select {
+  text-transform: none;
+}
+
+/*
+1. Correct the inability to style clickable types in iOS and Safari.
+2. Remove default button styles.
+*/
+
+button,
+input:where([type='button']),
+input:where([type='reset']),
+input:where([type='submit']) {
+  -webkit-appearance: button; /* 1 */
+  background-color: transparent; /* 2 */
+  background-image: none; /* 2 */
+}
+
+/*
+Use the modern Firefox focus style for all focusable elements.
+*/
+
+:-moz-focusring {
+  outline: auto;
+}
+
+/*
+Remove the additional `:invalid` styles in Firefox. (https://github.com/mozilla/gecko-dev/blob/2f9eacd9d3d995c937b4251a5557d95d494c9be1/layout/style/res/forms.css#L728-L737)
+*/
+
+:-moz-ui-invalid {
+  box-shadow: none;
+}
+
+/*
+Add the correct vertical alignment in Chrome and Firefox.
+*/
+
+progress {
+  vertical-align: baseline;
+}
+
+/*
+Correct the cursor style of increment and decrement buttons in Safari.
+*/
+
+::-webkit-inner-spin-button,
+::-webkit-outer-spin-button {
+  height: auto;
+}
+
+/*
+1. Correct the odd appearance in Chrome and Safari.
+2. Correct the outline style in Safari.
+*/
+
+[type='search'] {
+  -webkit-appearance: textfield; /* 1 */
+  outline-offset: -2px; /* 2 */
+}
+
+/*
+Remove the inner padding in Chrome and Safari on macOS.
+*/
+
+::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+
+/*
+1. Correct the inability to style clickable types in iOS and Safari.
+2. Change font properties to `inherit` in Safari.
+*/
+
+::-webkit-file-upload-button {
+  -webkit-appearance: button; /* 1 */
+  font: inherit; /* 2 */
+}
+
+/*
+Add the correct display in Chrome and Safari.
+*/
+
+summary {
+  display: list-item;
+}
+
+/*
+Removes the default spacing and border for appropriate elements.
+*/
+
+blockquote,
+dl,
+dd,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+hr,
+figure,
+p,
+pre {
+  margin: 0;
+}
+
+fieldset {
+  margin: 0;
+  padding: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+ol,
+ul,
+menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+Reset default styling for dialogs.
+*/
+dialog {
+  padding: 0;
+}
+
+/*
+Prevent resizing textareas horizontally by default.
+*/
+
+textarea {
+  resize: vertical;
+}
+
+/*
+1. Reset the default placeholder opacity in Firefox. (https://github.com/tailwindlabs/tailwindcss/issues/3300)
+2. Set the default placeholder color to the user's configured gray 400 color.
+*/
+
+input::-moz-placeholder, textarea::-moz-placeholder {
+  opacity: 1; /* 1 */
+  color: #9ca3af; /* 2 */
+}
+
+input::placeholder,
+textarea::placeholder {
+  opacity: 1; /* 1 */
+  color: #9ca3af; /* 2 */
+}
+
+/*
+Set the default cursor for buttons.
+*/
+
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
+/*
+Make sure disabled buttons don't get the pointer cursor.
+*/
+:disabled {
+  cursor: default;
+}
+
+/*
+1. Make replaced elements `display: block` by default. (https://github.com/mozdevs/cssremedy/issues/14)
+2. Add `vertical-align: middle` to align replaced elements more sensibly by default. (https://github.com/jensimmons/cssremedy/issues/14#issuecomment-634934210)
+   This can trigger a poorly considered lint error in some tools but is included by design.
+*/
+
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block; /* 1 */
+  vertical-align: middle; /* 2 */
+}
+
+/*
+Constrain images and videos to the parent width and preserve their intrinsic aspect ratio. (https://github.com/mozdevs/cssremedy/issues/14)
+*/
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Make elements with the HTML hidden attribute stay hidden by default */
+[hidden] {
+  display: none;
+}
+	:root {
+		--background: 0 0% 100%;
+		--foreground: 222.2 84% 4.9%;
+		--card: 0 0% 100%;
+		--card-foreground: 222.2 84% 4.9%;
+		--popover: 0 0% 100%;
+		--popover-foreground: 222.2 84% 4.9%;
+		--primary: 222.2 47.4% 11.2%;
+		--primary-foreground: 210 40% 98%;
+		--secondary: 210 40% 96.1%;
+		--secondary-foreground: 222.2 47.4% 11.2%;
+		--muted: 210 40% 96.1%;
+		--muted-foreground: 215.4 16.3% 46.9%;
+		--accent: 210 40% 96.1%;
+		--accent-foreground: 222.2 47.4% 11.2%;
+		--destructive: 0 84.2% 60.2%;
+		--destructive-foreground: 210 40% 98%;
+		--border: 214.3 31.8% 91.4%;
+		--input: 214.3 31.8% 91.4%;
+		--ring: 222.2 84% 4.9%;
+		--radius: 0.5rem;
+		--chart-1: 12 76% 61%;
+		--chart-2: 173 58% 39%;
+		--chart-3: 197 37% 24%;
+		--chart-4: 43 74% 66%;
+		--chart-5: 27 87% 67%;
+	}
+
+	.dark {
+		--background: 222.2 84% 4.9%;
+		--foreground: 210 40% 98%;
+		--card: 222.2 84% 4.9%;
+		--card-foreground: 210 40% 98%;
+		--popover: 222.2 84% 4.9%;
+		--popover-foreground: 210 40% 98%;
+		--primary: 210 40% 98%;
+		--primary-foreground: 222.2 47.4% 11.2%;
+		--secondary: 217.2 32.6% 17.5%;
+		--secondary-foreground: 210 40% 98%;
+		--muted: 217.2 32.6% 17.5%;
+		--muted-foreground: 215 20.2% 65.1%;
+		--accent: 217.2 32.6% 17.5%;
+		--accent-foreground: 210 40% 98%;
+		--destructive: 0 62.8% 30.6%;
+		--destructive-foreground: 210 40% 98%;
+		--border: 217.2 32.6% 17.5%;
+		--input: 217.2 32.6% 17.5%;
+		--ring: 212.7 26.8% 83.9%;
+		--chart-1: 220 70% 50%;
+		--chart-2: 160 60% 45%;
+		--chart-3: 30 80% 55%;
+		--chart-4: 280 65% 60%;
+		--chart-5: 340 75% 55%;
+	}
+	* {
+  border-color: hsl(var(--border));
+}
+	body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+*, ::before, ::after {
+  --tw-border-spacing-x: 0;
+  --tw-border-spacing-y: 0;
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-pan-x:  ;
+  --tw-pan-y:  ;
+  --tw-pinch-zoom:  ;
+  --tw-scroll-snap-strictness: proximity;
+  --tw-gradient-from-position:  ;
+  --tw-gradient-via-position:  ;
+  --tw-gradient-to-position:  ;
+  --tw-ordinal:  ;
+  --tw-slashed-zero:  ;
+  --tw-numeric-figure:  ;
+  --tw-numeric-spacing:  ;
+  --tw-numeric-fraction:  ;
+  --tw-ring-inset:  ;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-color: rgb(59 130 246 / 0.5);
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+  --tw-blur:  ;
+  --tw-brightness:  ;
+  --tw-contrast:  ;
+  --tw-grayscale:  ;
+  --tw-hue-rotate:  ;
+  --tw-invert:  ;
+  --tw-saturate:  ;
+  --tw-sepia:  ;
+  --tw-drop-shadow:  ;
+  --tw-backdrop-blur:  ;
+  --tw-backdrop-brightness:  ;
+  --tw-backdrop-contrast:  ;
+  --tw-backdrop-grayscale:  ;
+  --tw-backdrop-hue-rotate:  ;
+  --tw-backdrop-invert:  ;
+  --tw-backdrop-opacity:  ;
+  --tw-backdrop-saturate:  ;
+  --tw-backdrop-sepia:  ;
+  --tw-contain-size:  ;
+  --tw-contain-layout:  ;
+  --tw-contain-paint:  ;
+  --tw-contain-style:  ;
+}
+
+::backdrop {
+  --tw-border-spacing-x: 0;
+  --tw-border-spacing-y: 0;
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-pan-x:  ;
+  --tw-pan-y:  ;
+  --tw-pinch-zoom:  ;
+  --tw-scroll-snap-strictness: proximity;
+  --tw-gradient-from-position:  ;
+  --tw-gradient-via-position:  ;
+  --tw-gradient-to-position:  ;
+  --tw-ordinal:  ;
+  --tw-slashed-zero:  ;
+  --tw-numeric-figure:  ;
+  --tw-numeric-spacing:  ;
+  --tw-numeric-fraction:  ;
+  --tw-ring-inset:  ;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-color: rgb(59 130 246 / 0.5);
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+  --tw-blur:  ;
+  --tw-brightness:  ;
+  --tw-contrast:  ;
+  --tw-grayscale:  ;
+  --tw-hue-rotate:  ;
+  --tw-invert:  ;
+  --tw-saturate:  ;
+  --tw-sepia:  ;
+  --tw-drop-shadow:  ;
+  --tw-backdrop-blur:  ;
+  --tw-backdrop-brightness:  ;
+  --tw-backdrop-contrast:  ;
+  --tw-backdrop-grayscale:  ;
+  --tw-backdrop-hue-rotate:  ;
+  --tw-backdrop-invert:  ;
+  --tw-backdrop-opacity:  ;
+  --tw-backdrop-saturate:  ;
+  --tw-backdrop-sepia:  ;
+  --tw-contain-size:  ;
+  --tw-contain-layout:  ;
+  --tw-contain-paint:  ;
+  --tw-contain-style:  ;
+}
+.absolute {
+  position: absolute;
+}
+.relative {
+  position: relative;
+}
+.left-2 {
+  left: 0.5rem;
+}
+.z-50 {
+  z-index: 50;
+}
+.-mx-1 {
+  margin-left: -0.25rem;
+  margin-right: -0.25rem;
+}
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+.my-0\.5 {
+  margin-top: 0.125rem;
+  margin-bottom: 0.125rem;
+}
+.my-1 {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+.mr-2 {
+  margin-right: 0.5rem;
+}
+.mt-4 {
+  margin-top: 1rem;
+}
+.flex {
+  display: flex;
+}
+.inline-flex {
+  display: inline-flex;
+}
+.table {
+  display: table;
+}
+.grid {
+  display: grid;
+}
+.aspect-video {
+  aspect-ratio: 16 / 9;
+}
+.h-10 {
+  height: 2.5rem;
+}
+.h-11 {
+  height: 2.75rem;
+}
+.h-12 {
+  height: 3rem;
+}
+.h-2 {
+  height: 0.5rem;
+}
+.h-2\.5 {
+  height: 0.625rem;
+}
+.h-3\.5 {
+  height: 0.875rem;
+}
+.h-4 {
+  height: 1rem;
+}
+.h-9 {
+  height: 2.25rem;
+}
+.h-\[300px\] {
+  height: 300px;
+}
+.h-\[40rem\] {
+  height: 40rem;
+}
+.h-\[var\(--radix-select-trigger-height\)\] {
+  height: var(--radix-select-trigger-height);
+}
+.h-full {
+  height: 100%;
+}
+.h-px {
+  height: 1px;
+}
+.max-h-96 {
+  max-height: 24rem;
+}
+.w-0 {
+  width: 0px;
+}
+.w-1 {
+  width: 0.25rem;
+}
+.w-10 {
+  width: 2.5rem;
+}
+.w-2 {
+  width: 0.5rem;
+}
+.w-2\.5 {
+  width: 0.625rem;
+}
+.w-3\.5 {
+  width: 0.875rem;
+}
+.w-4 {
+  width: 1rem;
+}
+.w-full {
+  width: 100%;
+}
+.min-w-32 {
+  min-width: 8rem;
+}
+.min-w-\[8rem\] {
+  min-width: 8rem;
+}
+.min-w-\[var\(--radix-select-trigger-width\)\] {
+  min-width: var(--radix-select-trigger-width);
+}
+.flex-1 {
+  flex: 1 1 0%;
+}
+.shrink-0 {
+  flex-shrink: 0;
+}
+.caption-bottom {
+  caption-side: bottom;
+}
+@keyframes spin {
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+.cursor-default {
+  cursor: default;
+}
+.touch-none {
+  touch-action: none;
+}
+.select-none {
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+}
+.flex-col {
+  flex-direction: column;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.items-start {
+  align-items: flex-start;
+}
+.items-end {
+  align-items: flex-end;
+}
+.items-center {
+  align-items: center;
+}
+.items-stretch {
+  align-items: stretch;
+}
+.justify-center {
+  justify-content: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.gap-1 {
+  gap: 0.25rem;
+}
+.gap-1\.5 {
+  gap: 0.375rem;
+}
+.gap-2 {
+  gap: 0.5rem;
+}
+.gap-4 {
+  gap: 1rem;
+}
+.space-y-0 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0px * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0px * var(--tw-space-y-reverse));
+}
+.space-y-1\.5 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.375rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.375rem * var(--tw-space-y-reverse));
+}
+.overflow-hidden {
+  overflow: hidden;
+}
+.whitespace-nowrap {
+  white-space: nowrap;
+}
+.rounded-\[2px\] {
+  border-radius: 2px;
+}
+.rounded-\[inherit\] {
+  border-radius: inherit;
+}
+.rounded-full {
+  border-radius: 9999px;
+}
+.rounded-lg {
+  border-radius: var(--radius);
+}
+.rounded-md {
+  border-radius: calc(var(--radius) - 2px);
+}
+.rounded-sm {
+  border-radius: calc(var(--radius) - 4px);
+}
+.border {
+  border-width: 1px;
+}
+.border-\[1\.5px\] {
+  border-width: 1.5px;
+}
+.border-b {
+  border-bottom-width: 1px;
+}
+.border-l {
+  border-left-width: 1px;
+}
+.border-t {
+  border-top-width: 1px;
+}
+.border-dashed {
+  border-style: dashed;
+}
+.border-\[--color-border\] {
+  border-color: var(--color-border);
+}
+.border-border\/50 {
+  border-color: hsl(var(--border) / 0.5);
+}
+.border-input {
+  border-color: hsl(var(--input));
+}
+.border-primary {
+  border-color: hsl(var(--primary));
+}
+.border-l-transparent {
+  border-left-color: transparent;
+}
+.border-t-transparent {
+  border-top-color: transparent;
+}
+.bg-\[--color-bg\] {
+  background-color: var(--color-bg);
+}
+.bg-background {
+  background-color: hsl(var(--background));
+}
+.bg-border {
+  background-color: hsl(var(--border));
+}
+.bg-card {
+  background-color: hsl(var(--card));
+}
+.bg-destructive {
+  background-color: hsl(var(--destructive));
+}
+.bg-muted {
+  background-color: hsl(var(--muted));
+}
+.bg-muted\/50 {
+  background-color: hsl(var(--muted) / 0.5);
+}
+.bg-popover {
+  background-color: hsl(var(--popover));
+}
+.bg-primary {
+  background-color: hsl(var(--primary));
+}
+.bg-secondary {
+  background-color: hsl(var(--secondary));
+}
+.bg-transparent {
+  background-color: transparent;
+}
+.p-1 {
+  padding: 0.25rem;
+}
+.p-4 {
+  padding: 1rem;
+}
+.p-6 {
+  padding: 1.5rem;
+}
+.p-\[1px\] {
+  padding: 1px;
+}
+.px-2\.5 {
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+}
+.px-3 {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+.px-8 {
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+.py-1 {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+.py-1\.5 {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+.py-5 {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+.pb-3 {
+  padding-bottom: 0.75rem;
+}
+.pb-4 {
+  padding-bottom: 1rem;
+}
+.pl-8 {
+  padding-left: 2rem;
+}
+.pr-2 {
+  padding-right: 0.5rem;
+}
+.pt-0 {
+  padding-top: 0px;
+}
+.pt-3 {
+  padding-top: 0.75rem;
+}
+.text-left {
+  text-align: left;
+}
+.text-center {
+  text-align: center;
+}
+.align-middle {
+  vertical-align: middle;
+}
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.text-2xl {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+.text-4xl {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+}
+.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+.text-xs {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+.font-medium {
+  font-weight: 500;
+}
+.font-normal {
+  font-weight: 400;
+}
+.font-semibold {
+  font-weight: 600;
+}
+.tabular-nums {
+  --tw-numeric-spacing: tabular-nums;
+  font-variant-numeric: var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction);
+}
+.leading-none {
+  line-height: 1;
+}
+.tracking-tight {
+  letter-spacing: -0.025em;
+}
+.text-card-foreground {
+  color: hsl(var(--card-foreground));
+}
+.text-current {
+  color: currentColor;
+}
+.text-destructive-foreground {
+  color: hsl(var(--destructive-foreground));
+}
+.text-foreground {
+  color: hsl(var(--foreground));
+}
+.text-green-500 {
+  --tw-text-opacity: 1;
+  color: rgb(34 197 94 / var(--tw-text-opacity));
+}
+.text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+}
+.text-neutral-600 {
+  --tw-text-opacity: 1;
+  color: rgb(82 82 82 / var(--tw-text-opacity));
+}
+.text-popover-foreground {
+  color: hsl(var(--popover-foreground));
+}
+.text-primary {
+  color: hsl(var(--primary));
+}
+.text-primary-foreground {
+  color: hsl(var(--primary-foreground));
+}
+.text-red-500 {
+  --tw-text-opacity: 1;
+  color: rgb(239 68 68 / var(--tw-text-opacity));
+}
+.text-secondary-foreground {
+  color: hsl(var(--secondary-foreground));
+}
+.underline-offset-4 {
+  text-underline-offset: 4px;
+}
+.opacity-50 {
+  opacity: 0.5;
+}
+.shadow-md {
+  --tw-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --tw-shadow-colored: 0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+.shadow-sm {
+  --tw-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --tw-shadow-colored: 0 1px 2px 0 var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+.shadow-xl {
+  --tw-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --tw-shadow-colored: 0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+.outline-none {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+.outline {
+  outline-style: solid;
+}
+.ring-offset-background {
+  --tw-ring-offset-color: hsl(var(--background));
+}
+.filter {
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+.transition-colors {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+.transition-transform {
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+.duration-200 {
+  transition-duration: 200ms;
+}
+@keyframes enter {
+
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1)) rotate(var(--tw-enter-rotate, 0));
+  }
+}
+@keyframes exit {
+
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1)) rotate(var(--tw-exit-rotate, 0));
+  }
+}
+.duration-200 {
+  animation-duration: 200ms;
+}
+
+.file\:border-0::file-selector-button {
+  border-width: 0px;
+}
+
+.file\:bg-transparent::file-selector-button {
+  background-color: transparent;
+}
+
+.file\:text-sm::file-selector-button {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.file\:font-medium::file-selector-button {
+  font-weight: 500;
+}
+
+.placeholder\:text-muted-foreground::-moz-placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.placeholder\:text-muted-foreground::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.hover\:bg-accent:hover {
+  background-color: hsl(var(--accent));
+}
+
+.hover\:bg-destructive\/90:hover {
+  background-color: hsl(var(--destructive) / 0.9);
+}
+
+.hover\:bg-muted\/50:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.hover\:bg-primary\/90:hover {
+  background-color: hsl(var(--primary) / 0.9);
+}
+
+.hover\:bg-secondary\/80:hover {
+  background-color: hsl(var(--secondary) / 0.8);
+}
+
+.hover\:text-accent-foreground:hover {
+  color: hsl(var(--accent-foreground));
+}
+
+.hover\:underline:hover {
+  text-decoration-line: underline;
+}
+
+.focus\:bg-accent:focus {
+  background-color: hsl(var(--accent));
+}
+
+.focus\:text-accent-foreground:focus {
+  color: hsl(var(--accent-foreground));
+}
+
+.focus\:outline-none:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus\:ring-2:focus {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.focus\:ring-ring:focus {
+  --tw-ring-color: hsl(var(--ring));
+}
+
+.focus\:ring-offset-2:focus {
+  --tw-ring-offset-width: 2px;
+}
+
+.focus-visible\:outline-none:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus-visible\:ring-2:focus-visible {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.focus-visible\:ring-ring:focus-visible {
+  --tw-ring-color: hsl(var(--ring));
+}
+
+.focus-visible\:ring-offset-2:focus-visible {
+  --tw-ring-offset-width: 2px;
+}
+
+.disabled\:pointer-events-none:disabled {
+  pointer-events: none;
+}
+
+.disabled\:cursor-not-allowed:disabled {
+  cursor: not-allowed;
+}
+
+.disabled\:opacity-50:disabled {
+  opacity: 0.5;
+}
+
+.peer:disabled ~ .peer-disabled\:cursor-not-allowed {
+  cursor: not-allowed;
+}
+
+.peer:disabled ~ .peer-disabled\:opacity-70 {
+  opacity: 0.7;
+}
+
+.data-\[disabled\]\:pointer-events-none[data-disabled] {
+  pointer-events: none;
+}
+
+.data-\[side\=bottom\]\:translate-y-1[data-side="bottom"] {
+  --tw-translate-y: 0.25rem;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.data-\[side\=left\]\:-translate-x-1[data-side="left"] {
+  --tw-translate-x: -0.25rem;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.data-\[side\=right\]\:translate-x-1[data-side="right"] {
+  --tw-translate-x: 0.25rem;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.data-\[side\=top\]\:-translate-y-1[data-side="top"] {
+  --tw-translate-y: -0.25rem;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+@keyframes accordion-up {
+
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+
+  to {
+    height: 0;
+  }
+}
+
+.data-\[state\=closed\]\:animate-accordion-up[data-state="closed"] {
+  animation: accordion-up 0.2s ease-out;
+}
+
+@keyframes accordion-down {
+
+  from {
+    height: 0;
+  }
+
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+.data-\[state\=open\]\:animate-accordion-down[data-state="open"] {
+  animation: accordion-down 0.2s ease-out;
+}
+
+.data-\[state\=checked\]\:bg-primary[data-state="checked"] {
+  background-color: hsl(var(--primary));
+}
+
+.data-\[state\=selected\]\:bg-muted[data-state="selected"] {
+  background-color: hsl(var(--muted));
+}
+
+.data-\[state\=checked\]\:text-primary-foreground[data-state="checked"] {
+  color: hsl(var(--primary-foreground));
+}
+
+.data-\[disabled\]\:opacity-50[data-disabled] {
+  opacity: 0.5;
+}
+
+.data-\[state\=open\]\:animate-in[data-state="open"] {
+  animation-name: enter;
+  animation-duration: 150ms;
+  --tw-enter-opacity: initial;
+  --tw-enter-scale: initial;
+  --tw-enter-rotate: initial;
+  --tw-enter-translate-x: initial;
+  --tw-enter-translate-y: initial;
+}
+
+.data-\[state\=closed\]\:animate-out[data-state="closed"] {
+  animation-name: exit;
+  animation-duration: 150ms;
+  --tw-exit-opacity: initial;
+  --tw-exit-scale: initial;
+  --tw-exit-rotate: initial;
+  --tw-exit-translate-x: initial;
+  --tw-exit-translate-y: initial;
+}
+
+.data-\[state\=closed\]\:fade-out-0[data-state="closed"] {
+  --tw-exit-opacity: 0;
+}
+
+.data-\[state\=open\]\:fade-in-0[data-state="open"] {
+  --tw-enter-opacity: 0;
+}
+
+.data-\[state\=closed\]\:zoom-out-95[data-state="closed"] {
+  --tw-exit-scale: .95;
+}
+
+.data-\[state\=open\]\:zoom-in-95[data-state="open"] {
+  --tw-enter-scale: .95;
+}
+
+.data-\[side\=bottom\]\:slide-in-from-top-2[data-side="bottom"] {
+  --tw-enter-translate-y: -0.5rem;
+}
+
+.data-\[side\=left\]\:slide-in-from-right-2[data-side="left"] {
+  --tw-enter-translate-x: 0.5rem;
+}
+
+.data-\[side\=right\]\:slide-in-from-left-2[data-side="right"] {
+  --tw-enter-translate-x: -0.5rem;
+}
+
+.data-\[side\=top\]\:slide-in-from-bottom-2[data-side="top"] {
+  --tw-enter-translate-y: 0.5rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+
+  @keyframes bounce {
+
+    0%, 100% {
+      transform: translateY(-25%);
+      animation-timing-function: cubic-bezier(0.8,0,1,1);
+    }
+
+    50% {
+      transform: none;
+      animation-timing-function: cubic-bezier(0,0,0.2,1);
+    }
+  }
+
+  .motion-safe\:animate-bounce {
+    animation: bounce 1s infinite;
+  }
+}
+
+.dark\:text-neutral-400:is(.dark *) {
+  --tw-text-opacity: 1;
+  color: rgb(163 163 163 / var(--tw-text-opacity));
+}
+
+@media (min-width: 640px) {
+
+  .sm\:ml-auto {
+    margin-left: auto;
+  }
+
+  .sm\:flex-row {
+    flex-direction: row;
+  }
+
+  .sm\:text-left {
+    text-align: left;
+  }
+}
+
+.\[\&\:has\(\[role\=checkbox\]\)\]\:pr-0:has([role=checkbox]) {
+  padding-right: 0px;
+}
+
+.\[\&\>span\]\:line-clamp-1>span {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.\[\&\>svg\]\:h-2\.5>svg {
+  height: 0.625rem;
+}
+
+.\[\&\>svg\]\:h-3>svg {
+  height: 0.75rem;
+}
+
+.\[\&\>svg\]\:w-2\.5>svg {
+  width: 0.625rem;
+}
+
+.\[\&\>svg\]\:w-3>svg {
+  width: 0.75rem;
+}
+
+.\[\&\>svg\]\:text-muted-foreground>svg {
+  color: hsl(var(--muted-foreground));
+}
+
+.\[\&\>tr\]\:last\:border-b-0:last-child>tr {
+  border-bottom-width: 0px;
+}
+
+.\[\&\[data-state\=open\]\>svg\]\:rotate-180[data-state=open]>svg {
+  --tw-rotate: 180deg;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.\[\&_\.recharts-cartesian-axis-tick_text\]\:fill-muted-foreground .recharts-cartesian-axis-tick text {
+  fill: hsl(var(--muted-foreground));
+}
+
+.\[\&_\.recharts-cartesian-grid_line\[stroke\=\'\#ccc\'\]\]\:stroke-border\/50 .recharts-cartesian-grid line[stroke='#ccc'] {
+  stroke: hsl(var(--border) / 0.5);
+}
+
+.\[\&_\.recharts-curve\.recharts-tooltip-cursor\]\:stroke-border .recharts-curve.recharts-tooltip-cursor {
+  stroke: hsl(var(--border));
+}
+
+.\[\&_\.recharts-dot\[stroke\=\'\#fff\'\]\]\:stroke-transparent .recharts-dot[stroke='#fff'] {
+  stroke: transparent;
+}
+
+.\[\&_\.recharts-layer\]\:outline-none .recharts-layer {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.\[\&_\.recharts-polar-grid_\[stroke\=\'\#ccc\'\]\]\:stroke-border .recharts-polar-grid [stroke='#ccc'] {
+  stroke: hsl(var(--border));
+}
+
+.\[\&_\.recharts-radial-bar-background-sector\]\:fill-muted .recharts-radial-bar-background-sector {
+  fill: hsl(var(--muted));
+}
+
+.\[\&_\.recharts-rectangle\.recharts-tooltip-cursor\]\:fill-muted .recharts-rectangle.recharts-tooltip-cursor {
+  fill: hsl(var(--muted));
+}
+
+.\[\&_\.recharts-reference-line_\[stroke\=\'\#ccc\'\]\]\:stroke-border .recharts-reference-line [stroke='#ccc'] {
+  stroke: hsl(var(--border));
+}
+
+.\[\&_\.recharts-sector\[stroke\=\'\#fff\'\]\]\:stroke-transparent .recharts-sector[stroke='#fff'] {
+  stroke: transparent;
+}
+
+.\[\&_\.recharts-sector\]\:outline-none .recharts-sector {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.\[\&_\.recharts-surface\]\:outline-none .recharts-surface {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.\[\&_tr\:last-child\]\:border-0 tr:last-child {
+  border-width: 0px;
+}
+
+.\[\&_tr\]\:border-b tr {
+  border-bottom-width: 1px;
+}
+</style></head>
+  <body style="">
+    <div id="root"><img src="Aug_15_files/logo.png" alt="Logo" style="width: 150px; height: auto;"><div class="h-[40rem] flex justify-center items-center px-4"><div class="text-2xl mx-auto font-normal text-neutral-600 dark:text-neutral-400">Would you make profit in the stock market using indicators?<div class="text-4xl motion-safe:animate-bounce">⌄</div></div></div><div class="rounded-lg border bg-card text-card-foreground shadow-sm"><div class="flex flex-col p-6 items-center gap-2 space-y-0 border-b py-5 sm:flex-row"><div class="flex-1 gap-1 text-center sm:text-left"><h3 class="text-2xl font-semibold leading-none tracking-tight">NTES</h3><p class="text-sm text-red-500">$89.36 (-13.42%)</p></div><div class="flex gap-2"><button type="button" role="combobox" aria-controls="radix-:r1:" aria-expanded="false" aria-autocomplete="none" dir="ltr" data-state="closed" class="h-10 w-full items-center justify-between border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&amp;&gt;span]:line-clamp-1 flex min-w-32 rounded-lg sm:ml-auto" aria-label="Select a value"><span style="pointer-events: none;">NetEase, Inc.</span><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down h-4 w-4 opacity-50" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button><button type="button" role="combobox" aria-controls="radix-:r3:" aria-expanded="false" aria-autocomplete="none" dir="ltr" data-state="closed" class="h-10 w-full items-center justify-between border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&amp;&gt;span]:line-clamp-1 flex min-w-32 rounded-lg sm:ml-auto" aria-label="Select a value"><span style="pointer-events: none;">1 Year</span><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down h-4 w-4 opacity-50" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div><div class="flex gap-2"><button type="button" role="checkbox" aria-checked="true" data-state="checked" value="on" class="peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" id="RMI"><span data-state="checked" class="flex items-center justify-center text-current" style="pointer-events: none;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check h-4 w-4"><path d="M20 6 9 17l-5-5"></path></svg></span></button><label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="RMI">RMI</label><button type="button" role="checkbox" aria-checked="false" data-state="unchecked" value="on" class="peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" id="RSI"></button><div class="grid gap-1.5 leading-none"><label for="RSI" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">RSI</label></div></div></div><div class="p-6 pt-0"><br><canvas role="img" height="1166" width="2332" style="box-sizing: border-box; display: block; height: 583px; width: 1166px;"></canvas><div class="flex-col p-6 flex items-center gap-2 space-y-0 py-5 sm:flex-row"><div class="grid flex-1 gap-1 text-center sm:text-left"><h3 class="text-2xl font-semibold leading-none tracking-tight">RMI(14)</h3><p class="text-sm text-green-500">Total Profit: 256.89%</p></div></div><canvas role="img" height="1166" width="2332" style="box-sizing: border-box; display: block; height: 583px; width: 1166px;"></canvas></div><div class="flex items-center p-6 pt-0"></div></div><div class="h-[40rem] flex justify-center items-center px-4"><div class="text-2xl mx-auto font-normal text-neutral-600 dark:text-neutral-400">Can you check an indicator for all stocks?<div class="text-4xl motion-safe:animate-bounce">⌄</div></div></div><div class="grid justify-center items-center "><div class="rounded-lg border bg-card text-card-foreground shadow-sm"><div class="flex flex-col space-y-1.5 p-6"><h3 class="text-2xl font-semibold leading-none tracking-tight">Backtest Indicator</h3><p class="text-sm text-muted-foreground">Check the value proposition of an indicator across all stocks with one-click.</p></div><div class="p-6 pt-0"><form><div class="grid items-center gap-4"><div class="flex flex-col space-y-1.5"><label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="indicator">Indicator</label><button type="button" role="combobox" aria-controls="radix-:r5:" aria-expanded="false" aria-autocomplete="none" dir="ltr" data-state="closed" class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&amp;&gt;span]:line-clamp-1" id="indicator"><span style="pointer-events: none;">RMI</span><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down h-4 w-4 opacity-50" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button><select aria-hidden="true" tabindex="-1" style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; overflow-wrap: normal;"><option value="RMI" selected="selected">RMI</option></select></div><button type="button" role="combobox" aria-controls="radix-:r7:" aria-expanded="false" aria-autocomplete="none" dir="ltr" data-state="closed" class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&amp;&gt;span]:line-clamp-1"><span style="pointer-events: none;">1 Year</span><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down h-4 w-4 opacity-50" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button><select aria-hidden="true" tabindex="-1" style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; overflow-wrap: normal;"><option value="1d">1 Day</option><option value="1w">1 Week</option><option value="1m">1 Month</option><option value="3m">3 Months</option><option value="ytd">Year to Date</option><option value="1y" selected="selected">1 Year</option><option value="all">All</option></select></div></form></div><div class="items-center p-6 pt-0 flex justify-between"><button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">Cancel</button><button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">Start</button></div></div><div class="mt-4"><div class="rounded-lg border bg-card text-card-foreground shadow-sm"><div class="p-6 pt-0"><br><div dir="ltr" class="relative overflow-hidden h-[300px]" style="position: relative; --radix-scroll-area-corner-width: 0px; --radix-scroll-area-corner-height: 0px;"><style>[data-radix-scroll-area-viewport]{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}[data-radix-scroll-area-viewport]::-webkit-scrollbar{display:none}</style><div data-radix-scroll-area-viewport="" class="h-full w-full rounded-[inherit]" style="overflow: hidden scroll;"><div style="min-width: 100%; display: table;"><table class="w-full caption-bottom text-sm"><caption class="mt-4 text-sm text-muted-foreground">All trading involves risks. <br>This table is not a recommendation of a specific security or investment strategy.</caption><thead class="[&amp;_tr]:border-b"><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"><th class="h-12 px-4 align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 text-center">Symbol</th><th class="h-12 px-4 align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 text-center">Last Signal</th><th class="h-12 px-4 align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 text-center">Last Signal Price</th><th class="h-12 px-4 align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 text-center">Current Price</th><th class="h-12 px-4 align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 text-center">Indicator Profit</th></tr></thead><tbody class="[&amp;_tr:last-child]:border-0"><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">AAPL</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">221.16</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">224.85</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">132.94%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">ADBE</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">536.55</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">554.99</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">337.27%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">ADI</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">215.31</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">221.08</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">209.72%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">ADP</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">262.80</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">264.43</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">109.55%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">ADSK</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">246.22</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">250.07</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">332.70%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">ALGN</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">204.95</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">236.46</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">479.35%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">AMAT</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">207.67</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">208.64</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">399.85%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">AMD</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">140.71</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">145.85</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">715.83%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">AMGN</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">322.71</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">324.28</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">192.45%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">AMZN</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">175.26</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">175.74</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">224.08%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">ASML</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">859.52</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">912.40</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">603.63%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">AVGO</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">163.16</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">164.39</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">594.21%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">BIDU</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">85.08</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">86.66</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">383.73%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">BIIB</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">202.16</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">201.43</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">176.84%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">BKNG</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">3304.91</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">3613.46</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">250.58%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">BMRN</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">90.54</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">89.84</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">125.40%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">BYND</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">6.32</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">6.07</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">39.85%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">CDNS</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">279.74</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">280.23</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">264.11%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">CDW</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">220.38</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">220.82</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">106.96%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">CHKP</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">183.37</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">185.43</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">120.68%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">CHTR</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">353.29</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">354.02</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">293.66%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">CMCSA</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">39.30</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">39.22</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">39.17%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">COST</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">803.19</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">871.39</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">206.17%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">CRWD</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">217.17</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">261.87</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">540.24%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">CSCO</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">45.02</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">48.99</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">22.52%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">CSX</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">33.92</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">33.51</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">9.44%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">CTAS</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">755.24</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">768.26</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">154.17%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">CTSH</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">73.37</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">75.26</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">77.80%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">DLTR</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">92.46</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">95.72</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">91.99%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">DOCU</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">51.85</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">56.59</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">85.94%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">EA</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">146.26</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">147.32</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">61.45%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">EBAY</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">57.21</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">56.15</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">40.59%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">EXC</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">35.18</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">37.19</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">23.68%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">EXPE</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">127.69</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">130.60</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">325.41%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">FAST</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">65.93</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">66.91</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">61.84%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">FLEX</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">30.64</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">31.56</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">89.86%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">GILD</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">73.11</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">74.15</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">75.58%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">GOOGL</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">158.82</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">160.12</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">182.41%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">GOOG</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">160.57</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">161.95</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">197.95%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">IDXX</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">480.67</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">475.25</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">246.88%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">ILMN</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">118.64</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">127.71</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">362.76%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">INCY</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">61.90</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">61.71</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">45.30%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">INTC</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">20.10</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">20.39</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">75.11%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">INTU</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">647.96</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">646.79</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">266.91%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">ISRG</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">432.33</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">476.29</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">303.19%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">JD</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">24.91</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">27.14</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">162.85%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">KHC</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">35.06</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">34.44</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">28.15%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">KLAC</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">717.40</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">821.93</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">518.50%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">LBTYA</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">17.98</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">18.89</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">5.92%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">LRCX</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">793.94</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">869.55</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">408.17%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">LULU</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">241.66</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">255.27</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">225.50%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">LU</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">2.13</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">2.85</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">33.26%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">MAR</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">217.10</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">219.60</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">147.30%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">MCHP</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">78.15</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">79.88</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">138.83%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">MDLZ</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">70.25</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">70.27</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">45.02%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">META</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">479.67</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">538.61</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">602.87%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">MNST</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">46.21</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">47.03</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">21.31%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">MRNA</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">81.31</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">85.61</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">712.46%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">MRVL</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">59.69</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">68.56</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">222.78%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">MSFT</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">419.87</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">418.78</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">149.59%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">MU</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">104.97</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">105.51</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">389.02%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">NFLX</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">598.52</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">666.00</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">457.10%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">NTAP</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">127.10</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">129.76</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">87.02%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">NTES</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">87.89</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">89.56</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">257.67%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">NVDA</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">120.88</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">121.78</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">575.53%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">NXPI</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">242.81</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">251.45</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">309.34%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">OKTA</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">94.94</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">97.23</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">422.24%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">PCAR</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">94.88</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">94.78</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">102.40%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">PAYX</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">124.98</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">125.81</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">68.01%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">PEP</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">173.73</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">172.50</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">61.46%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">PDD</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">144.77</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">145.74</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">325.11%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">PLTR</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">29.98</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">31.31</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">177.63%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">PTON</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">4.21</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">3.05</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-red-500">-4.89%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">PYPL</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">64.28</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">67.71</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">151.34%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">QCOM</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">163.62</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">172.34</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">230.34%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">REGN</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">1082.01</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">1166.94</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">192.72%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">ROKU</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">55.19</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">58.49</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">421.48%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">ROST</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">138.84</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">145.81</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">76.08%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">SBUX</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">75.95</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">93.81</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">98.88%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">SNOW</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">126.80</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">127.61</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">376.05%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">SIRI</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">-</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">3.17</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-red-500">0.00%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">SNPS</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">486.32</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">547.03</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">461.74%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">SWKS</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">104.35</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">107.37</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">173.86%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">TMUS</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">195.55</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">193.46</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">57.40%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">TTD</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">97.03</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">101.13</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">419.48%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">TTWO</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">145.18</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">147.43</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">209.03%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">TXG</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">21.23</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">21.83</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">463.99%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">TXN</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">195.59</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">200.01</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">135.86%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">VRSK</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">266.82</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">268.16</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">102.08%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">VRSN</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">174.15</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">177.99</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">75.86%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">VRTX</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">470.90</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">471.64</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">171.38%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">WBA</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">12.01</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">10.74</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">2.17%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">WDC</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">61.52</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">62.75</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">220.93%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-green-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">WDAY</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Buy</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">212.73</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">231.20</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">251.63%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">ZM</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">56.66</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">57.91</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">120.65%</td></tr><tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted text-red-500"><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">ZS</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">Sell</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">189.45</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">189.05</td><td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-green-500">449.40%</td></tr></tbody></table></div></div></div></div></div></div></div></div>
+    <script type="module" src="Aug_15_files/main.js"></script>
+  
+
+</body></html>

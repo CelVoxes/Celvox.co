@@ -14,7 +14,7 @@ import { fetchMutationTSNEData } from "@/utils/api";
 import { Input } from "@/components/ui/input";
 import debounce from "lodash/debounce";
 import { scaleLinear } from "d3-scale";
-import { interpolateRgb } from "d3-interpolate";
+import { interpolateViridis } from "d3-scale-chromatic";
 import zoomPlugin from "chartjs-plugin-zoom";
 
 // Register the zoom plugin
@@ -53,7 +53,6 @@ export function MutationTSNE() {
 		try {
 			const response = await fetchMutationTSNEData();
 
-			console.log(response);
 			if (
 				Array.isArray(response) &&
 				response.length > 0 &&
@@ -89,7 +88,6 @@ export function MutationTSNE() {
 
 	useEffect(() => {
 		if (!chartRef.current) {
-			console.error("Chart reference is null. Skipping chart creation.");
 			return;
 		}
 
@@ -126,10 +124,7 @@ export function MutationTSNE() {
 			typeof d.VAF === "number" ? d.VAF : parseFloat(d.VAF as string) || 0
 		);
 		const vafExtent = [0, Math.max(...vafValues)];
-		const colorScale = scaleLinear<string>()
-			.domain(vafExtent)
-			.range(["blue", "red"])
-			.interpolate(interpolateRgb);
+		const colorScale = scaleLinear<number>().domain(vafExtent).range([0, 1]);
 
 		chartInstance.current = new Chart(ctx, {
 			type: "scatter",
@@ -157,7 +152,9 @@ export function MutationTSNE() {
 							study: item.study,
 							cluster: item.cluster,
 						})),
-						backgroundColor: filteredData.map((item) => colorScale(item.VAF)),
+						backgroundColor: filteredData.map((item) =>
+							interpolateViridis(colorScale(item.VAF))
+						),
 						pointRadius: pointRadius,
 						order: 1,
 					},
@@ -171,34 +168,25 @@ export function MutationTSNE() {
 						position: "right",
 						align: "start",
 						labels: {
-							boxWidth: 10,
+							boxWidth: 20,
+							boxHeight: 20,
 							padding: 10,
+							usePointStyle: true,
+							pointStyle: "rectRounded",
 							generateLabels: () => {
-								// Create a color scale legend for VAF
-								const values = data
-									.map((item) =>
-										typeof item.VAF === "number"
-											? item.VAF
-											: parseFloat(item.VAF as string)
-									)
-									.filter((value): value is number => !isNaN(value));
-
-								const min = Math.min(...values);
-								const max = Math.max(...values);
-								return [
-									{
-										text: `${min.toFixed(2)}`,
-										fillStyle: colorScale(min),
-									},
-									{ text: "", fillStyle: colorScale(min + (max - min) * 0.25) },
-									{ text: "", fillStyle: colorScale(min + (max - min) * 0.5) },
-									{ text: "", fillStyle: colorScale(min + (max - min) * 0.75) },
-									{
-										text: `${max.toFixed(2)}`,
-										fillStyle: colorScale(max),
-									},
-								];
+								const steps = 5;
+								const min = vafExtent[0];
+								const max = vafExtent[1];
+								const stepSize = (max - min) / (steps - 1);
+								return Array.from({ length: steps }, (_, i) => ({
+									text: (min + i * stepSize).toFixed(2),
+									fillStyle: interpolateViridis(i / (steps - 1)),
+								}));
 							},
+						},
+						title: {
+							display: true,
+							text: "VAF",
 						},
 					},
 					tooltip: {
@@ -290,7 +278,7 @@ export function MutationTSNE() {
 			<CardContent className="flex flex-col h-[calc(100%-4rem)]">
 				{error && <p className="text-red-500 mt-2">{error}</p>}
 				<div className="flex-grow relative">
-					<div className="h-[500px]">
+					<div className="h-[300px] sm:h-[400px] md:h-[500px]">
 						{data.length > 0 ? (
 							<canvas ref={chartRef} className="w-full h-full"></canvas>
 						) : (
@@ -300,47 +288,56 @@ export function MutationTSNE() {
 						)}
 					</div>
 				</div>
-				<div className="flex flex-row space-x-2">
-					<Input
-						type="text"
-						placeholder="Search genes..."
-						onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-							debouncedSetGeneFilter(e.target.value)
-						}
-						className="w-[120px]"
-					/>
-					<Select onValueChange={setSelectedGene} value={selectedGene}>
-						<SelectTrigger className="w-[120px]">
-							<SelectValue placeholder="Select a gene" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="All">Select Gene</SelectItem>
-							{filteredGenes.map((gene) => (
-								<SelectItem key={gene} value={gene}>
-									{gene}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-					<div className="flex-grow"></div>
-					<Button onClick={fetchData} disabled={isLoading}>
-						{isLoading ? "Loading..." : "Load Data"}
-					</Button>
-					<Button
-						variant="ghost"
-						onClick={() => setShowSettings(!showSettings)}
-					>
-						⚙️
-					</Button>
-					<Button
-						onClick={() => chartInstance.current?.resetZoom()}
-						disabled={!chartInstance.current}
-					>
-						Reset Zoom
-					</Button>
+				<div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+					<div className="flex space-x-2">
+						<Input
+							type="text"
+							placeholder="Search genes..."
+							onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+								debouncedSetGeneFilter(e.target.value)
+							}
+							className="w-full sm:w-[120px]"
+						/>
+						<Select onValueChange={setSelectedGene} value={selectedGene}>
+							<SelectTrigger className="w-full sm:w-[120px]">
+								<SelectValue placeholder="Select a gene" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="All">Select Gene</SelectItem>
+								{filteredGenes.map((gene) => (
+									<SelectItem key={gene} value={gene}>
+										{gene}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+					<div className="flex space-x-2 justify-end sm:flex-grow">
+						<Button
+							onClick={fetchData}
+							disabled={isLoading}
+							className="flex-grow sm:flex-grow-0"
+						>
+							{isLoading ? "Loading..." : "Load Data"}
+						</Button>
+						<Button
+							variant="ghost"
+							onClick={() => setShowSettings(!showSettings)}
+							className="flex-grow sm:flex-grow-0"
+						>
+							⚙️
+						</Button>
+						<Button
+							onClick={() => chartInstance.current?.resetZoom()}
+							disabled={!chartInstance.current}
+							className="flex-grow sm:flex-grow-0"
+						>
+							Reset Zoom
+						</Button>
+					</div>
 				</div>
 				{showSettings && (
-					<div className="flex items-center space-x-2 mt-2">
+					<div className="flex items-center space-x-2 mt-2 flex-wrap">
 						<span>Point Size:</span>
 						<Slider
 							value={[pointRadius]}

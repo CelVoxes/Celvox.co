@@ -32,7 +32,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { calculateHypergeometricPValue, adjustPValues } from "@/utils/zzz";
-import { PDFChart } from "@/components/histogram-chart";
+import { PDFChart } from "@/components/charts/histogram-chart";
 
 interface KNNDataItem {
 	sample_id: string;

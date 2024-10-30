@@ -1,12 +1,6 @@
 "use client";
 
-import {
-	Card,
-	CardHeader,
-	CardTitle,
-	CardDescription,
-	CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button"; // Import the Button component
 
@@ -14,7 +8,6 @@ import {
 	Table,
 	TableHeader,
 	TableRow,
-	TableHead,
 	TableBody,
 	TableCell,
 } from "@/components/ui/table";
@@ -30,8 +23,14 @@ import {
 	SelectValue,
 } from "@/components/ui/select"; // Import Select components
 
+interface DrugResponse {
+	sample_id: string;
+	inhibitor: string;
+	auc: number;
+}
+
 export function ClusterAssociationCard() {
-	const [drugResponseData, setDrugResponseData] = useState<any[]>([]);
+	const [drugResponseData, setDrugResponseData] = useState<DrugResponse[]>([]);
 	const [selectedDrug, setSelectedDrug] = useState<string>("");
 	const [selectedMetadata, setSelectedMetadata] = useState<string>("clusters"); // State for selected metadata
 	const [clusterData, setClusterData] = useState<{
@@ -43,43 +42,28 @@ export function ClusterAssociationCard() {
 		setIsLoading(true);
 		try {
 			const rawData = await fetchDrugResponseData();
-			const transformedData = Array.from(
-				{ length: rawData.sample_id.length },
-				(_, i) => ({
-					sample_id: rawData.sample_id[i],
-					inhibitor: rawData.inhibitor[i],
-					auc: rawData.auc[i],
-					clusters: rawData["clusters"][i],
-					family: rawData["family"][i],
-					sex: rawData["sex"][i],
-					tissue: rawData["tissue"][i],
-					prim_rec: rawData["prim_rec"][i],
-					FAB: rawData["FAB"][i],
-					WHO_2022: rawData["WHO_2022"][i],
-					ICC_2022: rawData["ICC_2022"][i],
-					KMT2A_diagnosis: rawData["KMT2A_diagnosis"][i],
-					rare_diagnosis: rawData["rare_diagnosis"][i],
-					study: rawData["study"][i],
-					blasts: rawData["blasts"][i],
-					age: rawData["age"][i],
-					// Add other metadata fields here if needed
-				})
-			);
+			const transformedData = rawData.sample_id.map((_: unknown, i: number) => {
+				const entry: Record<string, unknown> = {};
+				Object.keys(rawData).forEach((key) => {
+					entry[key] = rawData[key][i];
+				});
+				return entry;
+			});
 			setDrugResponseData(transformedData);
 			const drugs = Array.from(
-				new Set(transformedData.map((item) => item.inhibitor).filter(Boolean))
+				new Set(
+					transformedData
+						.map((item: DrugResponse) => item.inhibitor)
+						.filter(Boolean)
+				)
 			);
-			setSelectedDrug(drugs[0]);
+			setSelectedDrug(drugs[0] as string);
 		} catch (error) {
 			console.error("Failed to load drug response data:", error);
 		} finally {
 			setIsLoading(false);
 		}
 	};
-
-	useEffect(() => {
-		handleFetchData();
-	}, []);
 
 	useEffect(() => {
 		if (drugResponseData.length > 0 && selectedDrug) {
@@ -91,7 +75,7 @@ export function ClusterAssociationCard() {
 				[key: string]: { count: number; avgAUC: number };
 			} = {};
 			filteredData.forEach((item) => {
-				const cluster = item[selectedMetadata]; // Use selected metadata
+				const cluster = item[selectedMetadata as keyof DrugResponse]; // Use selected metadata
 				if (!newClusterData[cluster]) {
 					newClusterData[cluster] = { count: 0, avgAUC: 0 };
 				}
@@ -113,36 +97,44 @@ export function ClusterAssociationCard() {
 	}, [drugResponseData, selectedDrug, selectedMetadata]);
 
 	return (
-		<Card className="h-full">
+		<Card className="h-full w-full">
 			<CardHeader>
 				<CardTitle>Drug Response List</CardTitle>
 			</CardHeader>
-			<CardContent>
-				<ScrollArea className="h-[400px]">
-					<Table className="w-full border-collapse">
-						<TableHeader>
-							<TableRow>
-								<TableCell className="text-left">Cluster</TableCell>
-								<TableCell className="text-left">Count</TableCell>
-								<TableCell className="text-left">Avg AUC</TableCell>
-							</TableRow>
-						</TableHeader>
-						<TableBody className="text-sm justify-left">
-							{Object.entries(clusterData).map(
-								([cluster, { count, avgAUC }]) => (
-									<TableRow key={cluster}>
-										<TableCell>{cluster}</TableCell>
-										<TableCell>{count}</TableCell>
-										<TableCell>{avgAUC.toFixed(2)}</TableCell>
-									</TableRow>
-								)
-							)}
-						</TableBody>
-					</Table>
-				</ScrollArea>
-				<div className="flex gap-4 mt-4 items-center">
+			<CardContent className="flex-grow flex flex-col space-y-4">
+				{drugResponseData.length === 0 ? (
+					<div className="flex-grow flex items-center justify-center">
+						<p className="text-center text-gray-500">
+							Click "Fetch Data" to get drug response table
+						</p>
+					</div>
+				) : (
+					<ScrollArea className="h-[400px] w-full">
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableCell className="font-semibold">Cluster</TableCell>
+									<TableCell className="font-semibold">Count</TableCell>
+									<TableCell className="font-semibold">Avg AUC</TableCell>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{Object.entries(clusterData).map(
+									([cluster, { count, avgAUC }]) => (
+										<TableRow key={cluster}>
+											<TableCell>{cluster}</TableCell>
+											<TableCell>{count}</TableCell>
+											<TableCell>{avgAUC.toFixed(2)}</TableCell>
+										</TableRow>
+									)
+								)}
+							</TableBody>
+						</Table>
+					</ScrollArea>
+				)}
+				<div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
 					<Select value={selectedDrug} onValueChange={setSelectedDrug}>
-						<SelectTrigger className="w-[180px]">
+						<SelectTrigger className="w-full sm:w-[180px]">
 							<SelectValue placeholder="Select Drug" />
 						</SelectTrigger>
 						<SelectContent>
@@ -156,7 +148,7 @@ export function ClusterAssociationCard() {
 						</SelectContent>
 					</Select>
 					<Select value={selectedMetadata} onValueChange={setSelectedMetadata}>
-						<SelectTrigger className="w-[180px]">
+						<SelectTrigger className="w-full sm:w-[180px]">
 							<SelectValue placeholder="Select Metadata" />
 						</SelectTrigger>
 						<SelectContent>
@@ -174,18 +166,18 @@ export function ClusterAssociationCard() {
 								"study",
 								"blasts",
 								"age",
-							].map(
-								(
-									meta // Add other metadata options here
-								) => (
-									<SelectItem key={meta} value={meta}>
-										{meta}
-									</SelectItem>
-								)
-							)}
+							].map((meta) => (
+								<SelectItem key={meta} value={meta}>
+									{meta}
+								</SelectItem>
+							))}
 						</SelectContent>
 					</Select>
-					<Button onClick={handleFetchData} disabled={isLoading}>
+					<Button
+						onClick={handleFetchData}
+						disabled={isLoading}
+						className="w-full sm:w-auto"
+					>
 						{isLoading ? "Loading..." : "Fetch Data"}
 					</Button>
 				</div>

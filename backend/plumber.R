@@ -1,3 +1,4 @@
+library(fst)
 library(data.table)
 
 #* @post /load-sample-data
@@ -40,7 +41,7 @@ function(req) {
                 return(list(error = "Failed to receive file or file is empty"))
             }
 
-            # Read the CSV file
+            # Read the fst file
             tryCatch(
                 {
                     sample_data <- fread(temp_file, data.table = FALSE)
@@ -51,9 +52,11 @@ function(req) {
                 }
             )
 
-            # Process the data
-            rownames(sample_data) <- sample_data[[1]]
-            sample_data <- sample_data[, -1, drop = FALSE]
+            print(head(sample_data))
+
+            if (!dir.exists("cache")) {
+                dir.create("cache", recursive = TRUE)
+            }
 
             # Save the sample data to cache
             message("Saving sample data to cache...")
@@ -61,7 +64,7 @@ function(req) {
                 dir.create("cache", recursive = TRUE)
                 message("Created 'cache' directory.")
             }
-            saveRDS(sample_data, "cache/sample_data.rds")
+            write_fst(sample_data, "cache/sample_data.fst")
 
             # Return success response
             message("File uploaded and processed successfully.")
@@ -79,7 +82,10 @@ function(req) {
 }
 
 get_corrected_data <- function() {
-    corrected <- readRDS("cache/normalized_and_corrected_matrix.rds")
+    corrected <- read_fst("cache/normalized_and_corrected_matrix.fst")
+    rownames(corrected) <- corrected[, 1]
+    corrected <- corrected[, -1, drop = FALSE]
+
     return(corrected)
 }
 
@@ -89,7 +95,7 @@ harmonize_data <- function() {
     library(sva)
 
     uncorrected <- fread("data/counts/uncorrected_counts.csv", data.table = F)
-    sample_data <- readRDS("cache/sample_data.rds")
+    sample_data <- read_fst("cache/sample_data.fst")
     metadata <- fread("data/meta.csv", data.table = F)
 
     # Function to check if IDs are Ensembl-like
@@ -248,9 +254,24 @@ harmonize_data <- function() {
         corrected_matrix <- limma::removeBatchEffect(data_to_be_corrected, batch = batch, )
     }
 
+    message("Head of corrected_matrix:")
+    print(head(corrected_matrix))
+
+    message("Converting corrected_matrix to data.frame...")
+    corrected_matrix <- as.data.frame(corrected_matrix)
+
+    # add rownames to the first column
+    corrected_matrix <- cbind(rownames(corrected_matrix), corrected_matrix)
+    colnames(corrected_matrix)[1] <- "gene_id"
+
     message("Returning normalized and corrected data...")
-    saveRDS(corrected_matrix, "cache/normalized_and_corrected_matrix.rds")
-    return(corrected_matrix)
+    start_time <- Sys.time()
+    write_fst(corrected_matrix, "cache/normalized_and_corrected_matrix.fst")
+    write_fst(corrected_matrix[, "gene_id", drop = FALSE], "cache/gene_ids.fst")
+    end_time <- Sys.time()
+    message("Time taken to write fst: ", difftime(end_time, start_time, units = "secs"))
+
+    return(list(message = "Normalized and corrected data saved to cache"))
 }
 
 
@@ -258,14 +279,19 @@ harmonize_data <- function() {
 # TO DO: There should be two modes: discovery and diagnosis
 run_tsne <- function() {
     library(Rtsne)
-    if (file.exists("cache/tsne_result.rds")) {
+    if (file.exists("cache/tsne_result.fst")) {
         message("Loaded t-SNE results from cache...")
 
-        tsne_df <- readRDS("cache/tsne_result.rds")
+        tsne_df <- read_fst("cache/tsne_result.fst")
+        rownames(tsne_df) <- tsne_df[, 1]
+        tsne_df <- tsne_df[, -1, drop = FALSE]
     } else {
         message("Reading corrected counts file...")
         # read the corrected counts file
-        corrected <- readRDS("cache/normalized_and_corrected_matrix.rds")
+        corrected <- read_fst("cache/normalized_and_corrected_matrix.fst")
+
+        rownames(corrected) <- corrected[, 1]
+        corrected <- corrected[, -1, drop = FALSE]
 
         # selected most variable 2000 genes
         vars <- apply(corrected, 1, var)
@@ -278,7 +304,9 @@ run_tsne <- function() {
 
         rownames(tsne_df) <- colnames(corrected_2000)
         message("Saving t-SNE results to cache...")
-        saveRDS(tsne_df, "cache/tsne_result.rds")
+        tsne_df <- cbind(rownames(tsne_df), tsne_df)
+        colnames(tsne_df)[1] <- "sample_id"
+        write_fst(tsne_df, "cache/tsne_result.fst")
     }
     return(tsne_df)
 }
@@ -309,6 +337,7 @@ tsne <- function() {
     # Merge metadata only for the original samples
     result <- merge(result, metadata, by = "sample_id", all.x = TRUE)
 
+    # returning the result (as long as it is not too big)
     return(result)
 }
 
@@ -364,7 +393,7 @@ function() {
     # Load the exampleTCGA dataset
     library(seAMLess)
     library(Biobase) # for ExpressionSet
-    if (!file.exists("cache/sample_data.rds")) {
+    if (!file.exists("cache/sample_data.fst")) {
         message("Sample data not found. Returning example data.")
         # Load example data from seAMLess package
         data(exampleTCGA)
@@ -374,7 +403,10 @@ function() {
             deconvolution = as.list(result$Deconvolution)
         ))
     }
-    sample_data <- readRDS("cache/sample_data.rds")
+    sample_data <- read_fst("cache/sample_data.fst")
+
+    # remove gene names with __no_feature or __ambiguous
+    sample_data <- sample_data[!grepl("__no_feature|__ambiguous", sample_data[, 1]), ]
 
     # remove the row if it is incomplete
     sample_data <- sample_data[complete.cases(sample_data), ]
@@ -464,6 +496,10 @@ delete_cache_file <- function(req) {
 }
 
 
+get_gene_ids <- function() {
+    return(read_fst("cache/gene_ids.fst"))
+}
+
 # Add a filter to include CORS headers
 #* @filter cors
 cors <- function(req, res) {
@@ -481,24 +517,24 @@ cors <- function(req, res) {
 #* @get /gene-expression
 #* @serializer json
 gene_expression <- function(req) {
-    corrected <- fread("data/counts/normalised_and_corrected_counts.csv", data.table = F)
-    rownames(corrected) <- corrected[, 1]
-    corrected <- corrected[, -1]
-
     gene <- req$args$gene
     tsne_result <- run_tsne()
 
+    message("gene:")
+    print(gene)
+
     message(paste("Fetching gene expression data for:", gene))
-    message(paste("Corrected data rows:", nrow(corrected)))
-
-
-    if (!gene %in% colnames(corrected)) {
-        return(list(error = "Gene not found"))
+    gene_ids <- get_gene_ids()
+    if (!gene %in% gene_ids$gene_id) {
+        return(list(error = "Gene not found", available_genes = gene_ids$gene_id))
     }
+    corrected <- read_fst("cache/normalized_and_corrected_matrix.fst")
+    rownames(corrected) <- corrected[, 1]
+    corrected <- corrected[, -1, drop = FALSE]
 
-    merged <- merge(tsne_result, corrected[, gene, drop = FALSE], by = 0)
+    merged <- merge(tsne_result, t(corrected[gene, , drop = FALSE]), by = 0)
     colnames(merged)[1] <- "sample_id"
-    return(list(expression = merged, available_genes = colnames(corrected)))
+    return(list(expression = merged, available_genes = gene_ids$gene_id))
 }
 
 #* @get /ai-report
@@ -564,4 +600,39 @@ function(req) {
             return(list(error = paste("An error occurred:", e$message)))
         }
     )
+}
+
+#* Get QC metrics for RNA-seq data
+#* @get /qc-metrics
+function() {
+    # Read the normalized and corrected counts
+    sample_data <- read_fst("cache/sample_data.fst")
+    rownames(sample_data) <- sample_data[, 1]
+    sample_data <- sample_data[, -1, drop = FALSE]
+
+    # Calculate library sizes
+    lib_sizes <- colSums(sample_data)
+
+    # Calculate basic statistics for each sample
+    sample_stats <- data.frame(
+        sample_id = colnames(sample_data),
+        lib_size = lib_sizes,
+        detected_genes = colSums(sample_data > 0),
+        median_expression = apply(sample_data, 2, median),
+        mean_expression = colMeans(sample_data)
+    )
+
+    # Calculate correlation matrix
+    cor_matrix <- cor(sample_data)
+
+    # Calculate expression quantiles for boxplot
+    expression_quantiles <- apply(sample_data, 2, quantile,
+        probs = c(0, 0.25, 0.5, 0.75, 1)
+    )
+
+    return(list(
+        sample_stats = sample_stats,
+        correlation_matrix = cor_matrix,
+        expression_quantiles = expression_quantiles
+    ))
 }

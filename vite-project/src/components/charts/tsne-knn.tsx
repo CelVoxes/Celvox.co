@@ -41,7 +41,7 @@ export function TSNEKNNChart() {
 	const [knnData, setKnnData] = useState<KNNDataItem[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [kValue, setKValue] = useState(5);
+	const [kValue, setKValue] = useState(20);
 	const chartRef = useRef<HTMLCanvasElement | null>(null);
 	const chartInstance = useRef<Chart | null>(null);
 	const [pointRadius, setPointRadius] = useState(4);
@@ -111,6 +111,17 @@ export function TSNEKNNChart() {
 				chartInstance.current.destroy();
 			}
 
+			// Replace the debounced render with requestAnimationFrame
+			let animationFrameId: number;
+			const smoothRender = () => {
+				if (chartInstance.current) {
+					animationFrameId = requestAnimationFrame(() => {
+						chartInstance.current?.render();
+					});
+				}
+			};
+
+			// Update zoom and pan options
 			chartInstance.current = new Chart(ctx as ChartItem, {
 				type: "scatter",
 				data: {
@@ -131,11 +142,19 @@ export function TSNEKNNChart() {
 						},
 						zoom: {
 							zoom: {
-								wheel: { enabled: true },
+								wheel: {
+									enabled: true,
+									speed: 0.05, // Reduce zoom speed further
+								},
 								pinch: { enabled: true },
 								mode: "xy",
+								onZoom: smoothRender,
 							},
-							pan: { enabled: true, mode: "xy" },
+							pan: {
+								enabled: true,
+								mode: "xy",
+								onPan: smoothRender,
+							},
 						},
 						tooltip: {
 							callbacks: {
@@ -198,10 +217,20 @@ export function TSNEKNNChart() {
 							setHoveredSample(null);
 						}
 					},
+					animation: {
+						duration: 0, // Disable animations for better performance
+					},
 				},
 			});
+
+			// Cleanup animation frame on unmount
+			return () => {
+				if (animationFrameId) {
+					cancelAnimationFrame(animationFrameId);
+				}
+			};
 		}
-	}, [tsneData, knnData, pointRadius, kValue, selectedAttribute]);
+	}, [tsneData, knnData, pointRadius, selectedAttribute]);
 
 	useEffect(() => {
 		if (chartInstance.current && hoveredSample) {
@@ -351,7 +380,7 @@ export function TSNEKNNChart() {
 							value={[kValue]}
 							onValueChange={(value) => setKValue(value[0])}
 							min={1}
-							max={20}
+							max={50}
 							step={1}
 							className="w-[100px]"
 						/>

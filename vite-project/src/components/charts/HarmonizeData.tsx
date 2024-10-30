@@ -12,14 +12,13 @@ export function HarmonizeData() {
 		setIsHarmonizing(true);
 		try {
 			const response = await fetchHarmonizedData();
-
-			if (!response.ok) {
+			if (!response.message) {
 				throw new Error("Failed to harmonize data");
 			}
 
 			toast({
 				title: "Harmonization Complete",
-				description: "Data has been successfully harmonized.",
+				description: response.message,
 			});
 		} catch (error) {
 			console.error("Error harmonizing data:", error);

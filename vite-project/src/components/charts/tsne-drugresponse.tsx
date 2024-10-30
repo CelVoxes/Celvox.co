@@ -9,7 +9,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import Chart, { ChartItem, TooltipItem } from "chart.js/auto";
+import Chart, { ChartDataset, ChartItem, TooltipItem } from "chart.js/auto";
 import { Slider } from "@/components/ui/slider";
 import { scaleLinear } from "d3-scale";
 import { interpolateViridis } from "d3-scale-chromatic";
@@ -26,6 +26,14 @@ interface DrugResponseData {
 	X2: number;
 	clusters: string;
 }
+
+// Add this type definition
+type DataPoint = {
+	x: number;
+	y: number;
+	sample: string;
+	response: number | null;
+};
 
 export function DrugResponseTSNE() {
 	const [drugResponseData, setDrugResponseData] = useState<DrugResponseData[]>(
@@ -46,7 +54,6 @@ export function DrugResponseTSNE() {
 		setError(null);
 		try {
 			const rawData = await fetchDrugResponseData();
-			console.log("Raw data:", rawData);
 
 			// Check if rawData is in the expected format
 			if (
@@ -71,24 +78,20 @@ export function DrugResponseTSNE() {
 			);
 
 			setDrugResponseData(transformedData as unknown as DrugResponseData[]);
-			console.log("Transformed data:", transformedData);
 
 			const drugs = Array.from(
 				new Set(transformedData.map((item) => item.inhibitor).filter(Boolean))
 			);
-			console.log("Available drugs:", drugs); // Log available drugs
 			setAvailableDrugs(drugs);
 
 			// Sort drugs by effectiveness
 			const sortedDrugs = [...drugs].sort(
 				(a, b) => calculateDrugEffectiveness(b) - calculateDrugEffectiveness(a)
 			);
-			console.log("Sorted drugs:", sortedDrugs); // Log sorted drugs
 			setSortedDrugs(sortedDrugs);
 
 			// Select the first drug in the sorted list
 			setSelectedDrug(sortedDrugs[0]);
-			console.log("Selected drug:", sortedDrugs[0]); // Log selected drug
 		} catch (error) {
 			console.error("Failed to load drug response data:", error);
 			setError(
@@ -139,7 +142,6 @@ export function DrugResponseTSNE() {
 			const allSamples = [
 				...new Set(drugResponseData.map((item) => item.sample_id)),
 			];
-			console.log("Filtered data:", filteredData);
 			const responseValues = filteredData.map((item) => item.auc);
 			const minValue = Math.min(...responseValues);
 			const maxValue = Math.max(...responseValues);
@@ -148,7 +150,7 @@ export function DrugResponseTSNE() {
 				.domain([minValue, maxValue])
 				.range([0, 1]);
 
-			const datasets = [
+			const datasets: ChartDataset<"scatter", DataPoint[]>[] = [
 				{
 					label: `${selectedDrug} (without response)`,
 					data: allSamples
@@ -187,7 +189,7 @@ export function DrugResponseTSNE() {
 
 			chartInstance.current = new Chart(ctx as ChartItem, {
 				type: "scatter",
-				data: { datasets: datasets as any },
+				data: { datasets },
 				options: {
 					responsive: true,
 					maintainAspectRatio: false,
@@ -260,11 +262,11 @@ export function DrugResponseTSNE() {
 	}, [drugResponseData, selectedDrug, pointRadius]);
 
 	return (
-		<Card className="flex-1 h-full min-h-[500px] mr-4">
+		<Card className="h-full w-full">
 			<CardHeader>
 				<CardTitle>Drug Response t-SNE</CardTitle>
 			</CardHeader>
-			<CardContent className="flex-grow flex flex-col h-[calc(100%-4rem)] min-h-[400px] ">
+			<CardContent className="flex-grow flex flex-col h-[calc(100%-4rem)] min-h-[400px]">
 				{error && <p className="text-red-500 mt-2">{error}</p>}
 				<div className="flex-grow relative flex items-center justify-center text-center">
 					{drugResponseData.length === 0 && !isLoading && (
@@ -278,51 +280,64 @@ export function DrugResponseTSNE() {
 						</div>
 					)}
 				</div>
-				<div className="flex flex-wrap gap-4 mt-4 items-center justify-between">
-					<Select value={selectedDrug} onValueChange={setSelectedDrug}>
-						<SelectTrigger className="w-[180px]">
-							<SelectValue placeholder="Select drug" />
-						</SelectTrigger>
-						<SelectContent>
-							{sortedDrugs.map((drug) => (
-								<SelectItem key={drug} value={drug}>
-									{drug}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-					<div className="flex gap-2">
-						<Button onClick={handleFetchData} disabled={isLoading}>
-							{isLoading ? "Loading..." : "Fetch Data"}
-						</Button>
-						<Button
-							variant="ghost"
-							onClick={() => setShowSettings(!showSettings)}
-						>
-							⚙️
-						</Button>
+				<div className="flex flex-col gap-4 mt-4">
+					<div className="flex flex-col lg:flex-row gap-4">
+						<Select value={selectedDrug} onValueChange={setSelectedDrug}>
+							<SelectTrigger className="w-full lg:w-[180px]">
+								<SelectValue placeholder="Select drug" />
+							</SelectTrigger>
+							<SelectContent className="max-h-[200px]">
+								{sortedDrugs.map((drug) => (
+									<SelectItem key={drug} value={drug}>
+										{drug}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+
+						<div className="flex flex-wrap gap-2">
+							<Button
+								onClick={handleFetchData}
+								disabled={isLoading}
+								className="flex-1 lg:flex-none min-w-[100px]"
+							>
+								{isLoading ? "Loading..." : "Fetch Data"}
+							</Button>
+							<Button
+								variant="ghost"
+								onClick={() => setShowSettings(!showSettings)}
+								className="flex-none"
+							>
+								⚙️
+							</Button>
+							<Button
+								onClick={() => chartInstance.current?.resetZoom()}
+								disabled={!chartInstance.current}
+								className="flex-1 lg:flex-none min-w-[100px]"
+							>
+								Reset Zoom
+							</Button>
+						</div>
 					</div>
-					<Button
-						onClick={() => chartInstance.current?.resetZoom()}
-						disabled={!chartInstance.current}
-					>
-						Reset Zoom
-					</Button>
+
+					{/* Settings section */}
+					{showSettings && (
+						<div className="flex flex-col lg:flex-row items-start lg:items-center gap-2">
+							<span>Point Size:</span>
+							<div className="flex items-center gap-2 w-full lg:w-auto">
+								<Slider
+									value={[pointRadius]}
+									onValueChange={(value) => setPointRadius(value[0])}
+									min={1}
+									max={10}
+									step={1}
+									className="w-full lg:w-[100px]"
+								/>
+								<span className="min-w-[20px] text-center">{pointRadius}</span>
+							</div>
+						</div>
+					)}
 				</div>
-				{showSettings && (
-					<div className="flex items-center space-x-2 mt-2">
-						<span>Point Size:</span>
-						<Slider
-							value={[pointRadius]}
-							onValueChange={(value) => setPointRadius(value[0])}
-							min={1}
-							max={10}
-							step={1}
-							className="w-[100px]"
-						/>
-						<span>{pointRadius}</span>
-					</div>
-				)}
 			</CardContent>
 		</Card>
 	);

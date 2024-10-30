@@ -136,3 +136,8 @@ export async function fetchAIReport(patientInfo: string, model: string) {
 	});
 	return response.data;
 }
+
+export async function fetchQCMetrics() {
+	const response = await axios.get(`${API_BASE_URL}/qc-metrics`);
+	return response.data;
+}

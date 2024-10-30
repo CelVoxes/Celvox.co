@@ -20,7 +20,7 @@ import { Slider } from "@/components/ui/slider";
 import { scaleLinear } from "d3-scale";
 import { interpolateViridis } from "d3-scale-chromatic";
 import zoomPlugin from "chartjs-plugin-zoom"; // Add this import
-
+import { generateColorMap } from "@/utils/zzz";
 // Register the zoom plugin
 Chart.register(zoomPlugin);
 
@@ -282,112 +282,96 @@ export function TSNEChart() {
 
 	return (
 		<Card className="w-full h-full">
-			<CardHeader>
+			<CardHeader className="space-y-1">
 				<CardTitle>Meta t-SNE Visualization</CardTitle>
 			</CardHeader>
-			<CardContent className="flex flex-col h-[calc(100%-4rem)]">
-				{error && <p className="text-red-500 mt-2">{error}</p>}
-				<div className="flex-grow relative">
-					<div className="h-[500px]">
-						{tsneData.length > 0 ? (
-							<canvas ref={chartRef} className="w-full h-full"></canvas>
-						) : (
-							<div className="w-full h-full flex items-center justify-center text-gray-500">
-								<p>Click "Run TSNE" to generate the plot</p>
-							</div>
-						)}
-					</div>
+			<CardContent className="flex flex-col h-[calc(100%-4rem)] space-y-4">
+				{error && <p className="text-red-500">{error}</p>}
+
+				<div className="flex-grow relative min-h-[300px] h-[50vh]">
+					{tsneData.length > 0 ? (
+						<canvas ref={chartRef} className="w-full h-full"></canvas>
+					) : (
+						<div className="w-full h-full flex items-center justify-center text-gray-500">
+							<p className="text-center px-4">
+								Click "Run TSNE" to generate the plot
+							</p>
+						</div>
+					)}
 				</div>
-				<div className="flex flex-wrap gap-4 mt-4 items-center justify-between">
-					<Select
-						value={selectedAttribute}
-						onValueChange={setSelectedAttribute}
-					>
-						<SelectTrigger className="w-[180px]">
-							<SelectValue placeholder="Select attribute" />
-						</SelectTrigger>
-						<SelectContent>
-							{[
-								"sex",
-								"tissue",
-								"prim_rec",
-								"FAB",
-								"WHO_2022",
-								"ICC_2022",
-								"KMT2A_diagnosis",
-								"rare_diagnosis",
-								"clusters",
-								"study",
-								"blasts",
-								"age",
-							].map((attr) => (
-								<SelectItem key={attr} value={attr}>
-									{attr}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-					<div className="flex gap-2">
-						<Button onClick={handleRunTSNE} disabled={isLoading}>
-							{isLoading ? "Loading..." : "Run TSNE"}
-						</Button>
-						<Button
-							variant="ghost"
-							onClick={() => setShowSettings(!showSettings)}
+
+				<div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+					<div className="flex flex-wrap gap-2 w-full sm:w-auto">
+						<Select
+							value={selectedAttribute}
+							onValueChange={setSelectedAttribute}
 						>
-							⚙️
-						</Button>
+							<SelectTrigger className="w-full sm:w-[180px]">
+								<SelectValue placeholder="Select attribute" />
+							</SelectTrigger>
+							<SelectContent>
+								{[
+									"sex",
+									"tissue",
+									"prim_rec",
+									"FAB",
+									"WHO_2022",
+									"ICC_2022",
+									"KMT2A_diagnosis",
+									"rare_diagnosis",
+									"clusters",
+									"study",
+									"blasts",
+									"age",
+								].map((attr) => (
+									<SelectItem key={attr} value={attr}>
+										{attr}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+
+						<div className="flex gap-2 w-full sm:w-auto">
+							<Button
+								className="flex-1 sm:flex-none"
+								onClick={handleRunTSNE}
+								disabled={isLoading}
+							>
+								{isLoading ? "Loading..." : "Run TSNE"}
+							</Button>
+							<Button
+								variant="ghost"
+								onClick={() => setShowSettings(!showSettings)}
+							>
+								⚙️
+							</Button>
+							<Button
+								className="flex-1 sm:flex-none"
+								onClick={() => chartInstance.current?.resetZoom()}
+								disabled={!chartInstance.current}
+							>
+								Reset Zoom
+							</Button>
+						</div>
 					</div>
-					<Button
-						onClick={() => chartInstance.current?.resetZoom()}
-						disabled={!chartInstance.current}
-					>
-						Reset Zoom
-					</Button>
 				</div>
+
 				{showSettings && (
-					<div className="flex items-center space-x-2 mt-2">
-						<span>Point Size:</span>
+					<div className="flex flex-wrap items-center gap-2">
+						<span className="whitespace-nowrap">Point Size:</span>
 						<Slider
 							value={[pointRadius]}
 							onValueChange={(value) => setPointRadius(value[0])}
 							min={1}
 							max={10}
 							step={1}
-							className="w-[100px]"
+							className="w-[100px] min-w-[100px]"
 						/>
 						<span>{pointRadius}</span>
 					</div>
 				)}
 			</CardContent>
 		</Card>
-	);
-}
-
-function generateColorMap(uniqueValues: string[]) {
-	const colors = [
-		"#8884d8",
-		"#82ca9d",
-		"#ffc658",
-		"#ff7300",
-		"#a4de6c",
-		"#ff6347",
-		"#9932cc",
-		"#8b0000",
-		"#e32636",
-		"#3cb371",
-		"#ffa500",
-		"#800080",
-		"#ffc0cb",
-		"#808000",
-		"#00ff00",
-		"#ffb6c1",
-		"#ffa07a",
-		"#ffd700",
-		"#ff6347",
-	];
-	return Object.fromEntries(
-		uniqueValues.map((value, index) => [value, colors[index % colors.length]])
 	);
 }
 

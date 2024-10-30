@@ -142,3 +142,30 @@ function tDistribution(t: number, df: number): number {
 	const result = 1 - 0.5 * Math.pow(x, df / 2);
 	return result;
 }
+
+export function generateColorMap(uniqueValues: string[]) {
+	const colors = [
+		"#8884d8",
+		"#82ca9d",
+		"#ffc658",
+		"#ff7300",
+		"#a4de6c",
+		"#ff6347",
+		"#9932cc",
+		"#8b0000",
+		"#e32636",
+		"#3cb371",
+		"#ffa500",
+		"#800080",
+		"#ffc0cb",
+		"#808000",
+		"#00ff00",
+		"#ffb6c1",
+		"#ffa07a",
+		"#ffd700",
+		"#ff6347",
+	];
+	return Object.fromEntries(
+		uniqueValues.map((value, index) => [value, colors[index % colors.length]])
+	);
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
 	Card,
 	CardHeader,
@@ -31,6 +31,76 @@ import {
 	renderMarkdown,
 	calculateTTest,
 } from "@/utils/zzz";
+import { Slider } from "@/components/ui/slider";
+
+interface DrugData {
+	drug: string;
+	averageAUC: number;
+	count: number;
+	aucs: number[];
+	totalSamples: number; // Add this line
+}
+
+interface DrugComparison {
+	drug: string;
+	neighborAvg: number;
+	allSamplesAvg: number;
+	pValue: number;
+	significant: boolean;
+	totalSamples?: number; // Add this optional property
+}
+
+interface DrugReport {
+	allSamples?: DrugData[];
+	neighborSamples?: DrugData[];
+	comparisons?: (DrugComparison | null)[];
+}
+
+interface MetadataReportItem {
+	mostProbable: string;
+	probability: number;
+	breakdown: Array<{
+		value: string | number;
+		count: number;
+		percentage: number;
+		pValue: string;
+		adjustedPValue: string;
+		totalInCategory: number;
+	}>;
+}
+
+interface DrugResponse {
+	sample_id: string; // Add this line
+	inhibitor: string;
+	auc: number;
+}
+
+interface ProcessedData {
+	sample: {
+		sample_id: string;
+		[key: string]: unknown;
+	};
+	metadataReport: Record<string, MetadataReportItem>;
+	mutationReport: Array<{
+		gene: string;
+		count: number;
+		pValue: number;
+		neighborFrequency: string;
+		databaseFrequency: string;
+	}>;
+	drugReport: {
+		allSamples?: DrugData[];
+		neighborSamples?: DrugData[];
+		comparisons?: (DrugComparison | null)[]; // Allow null values in the array
+	};
+}
+
+// Update this interface
+interface TSNEDataItem {
+	sample_id: string;
+	data_source: string;
+	[key: string]: unknown;
+}
 
 export const AIAMLReport = () => {
 	const [report, setReport] = useState<string>("");
@@ -39,7 +109,7 @@ export const AIAMLReport = () => {
 	const [progress, setProgress] = useState(0);
 	const { toast } = useToast();
 	const [selectedSample, setSelectedSample] = useState<string | null>(null);
-	const [tsneData, setTsneData] = useState<any[]>([]);
+	const [tsneData, setTsneData] = useState<TSNEDataItem[]>([]);
 	const [kValue, setKValue] = useState(20);
 	const [selectedModel, setSelectedModel] = useState<string>("gpt-4o-mini");
 
@@ -92,9 +162,12 @@ export const AIAMLReport = () => {
 				kValue
 			);
 
-			const aiReport = await generateAIReport(processedData);
-
-			setReport(aiReport);
+			if (processedData) {
+				const aiReport = await generateAIReport(processedData);
+				setReport(aiReport);
+			} else {
+				setReport("Failed to process data. Please try again.");
+			}
 		} catch (error) {
 			console.error("Error generating report:", error);
 			setReport("Failed to generate report. Please try again.");
@@ -105,10 +178,10 @@ export const AIAMLReport = () => {
 
 	const processData = (
 		selectedSample: string,
-		knnData: any[],
-		drugResponseData: any[],
-		mutationData: any[],
-		tsneData: any[],
+		knnData: { sample_id: string; knn_indices: number[] }[],
+		drugResponseData: { sample_id: string; inhibitor: string; auc: number }[],
+		mutationData: { sample_id: string; gene_id: string }[],
+		tsneData: TSNEDataItem[],
 		k: number
 	) => {
 		const sample = tsneData.find((d) => d.sample_id === selectedSample);
@@ -124,7 +197,7 @@ export const AIAMLReport = () => {
 			.filter(Boolean);
 
 		const neighborSampleIds = neighbors.map(
-			(neighbor: any) => neighbor.sample_id
+			(neighbor: { sample_id: string }) => neighbor.sample_id
 		);
 
 		// Process metadata
@@ -151,7 +224,11 @@ export const AIAMLReport = () => {
 		};
 	};
 
-	const processMetadata = (neighbors: any[], tsneData: any[], k: number) => {
+	const processMetadata = (
+		neighbors: { sample_id: string }[],
+		tsneData: TSNEDataItem[],
+		k: number
+	) => {
 		const METADATA_ATTRIBUTES = [
 			"sex",
 			"tissue",
@@ -165,7 +242,7 @@ export const AIAMLReport = () => {
 			"blasts",
 		];
 
-		const report: Record<string, any> = {};
+		const report: Record<string, MetadataReportItem> = {};
 
 		// Calculate overall frequencies
 		const overallFrequencies: Record<
@@ -173,20 +250,24 @@ export const AIAMLReport = () => {
 			Record<string | number, number>
 		> = {};
 		METADATA_ATTRIBUTES.forEach((attr) => {
-			overallFrequencies[attr] = tsneData.reduce((acc, sample) => {
-				const value = sample[attr];
-				if (value !== null && value !== undefined && value !== "NA") {
-					acc[value] = (acc[value] || 0) + 1;
-				}
-				return acc;
-			}, {} as Record<string | number, number>);
+			overallFrequencies[attr] = tsneData.reduce(
+				(acc: Record<string | number, number>, sample) => {
+					const value = sample[attr as keyof typeof sample];
+					if (value !== null && value !== undefined && value !== "NA") {
+						acc[value as string | number] =
+							(acc[value as string | number] || 0) + 1;
+					}
+					return acc;
+				},
+				{}
+			);
 		});
 
 		METADATA_ATTRIBUTES.forEach((attr) => {
 			const values = neighbors
-				.map((neighbor) => neighbor[attr])
+				.map((neighbor) => neighbor[attr as keyof typeof neighbor])
 				.filter(
-					(value): value is string | number =>
+					(value): value is string =>
 						value !== null && value !== undefined && value !== "NA"
 				);
 
@@ -248,7 +329,7 @@ export const AIAMLReport = () => {
 	};
 
 	const processMutations = (
-		mutationData: any[],
+		mutationData: { sample_id: string; gene_id: string }[],
 		neighborSampleIds: string[],
 		k: number,
 		totalSamples: number
@@ -296,11 +377,15 @@ export const AIAMLReport = () => {
 	};
 
 	const processDrugResponse = (
-		drugResponseData: any,
+		drugResponseData: {
+			sample_id: string;
+			inhibitor: string;
+			auc: number;
+		}[],
 		neighborSampleIds: string[],
 		k: number
 	) => {
-		if (!drugResponseData || !Array.isArray(drugResponseData.sample_id)) {
+		if (!drugResponseData || !Array.isArray(drugResponseData)) {
 			console.error(
 				"Drug response data is not in the expected format:",
 				drugResponseData
@@ -309,24 +394,36 @@ export const AIAMLReport = () => {
 		}
 
 		// Create an array of objects from the drugResponseData
-		const drugResponses = drugResponseData.sample_id.map((_, index) => ({
-			sample_id: drugResponseData.sample_id[index],
-			inhibitor: drugResponseData.inhibitor[index],
-			auc: drugResponseData.auc[index],
+		const drugResponses = drugResponseData.map((item) => ({
+			sample_id: item.sample_id,
+			inhibitor: item.inhibitor,
+			auc: item.auc,
 		}));
 
 		// Function to process drug responses
-		const processDrugSensitivity = (responses: any[]) => {
-			const sensitivity = responses.reduce((acc, response) => {
-				const inhibitor = response.inhibitor || "Unknown";
-				if (!acc[inhibitor]) {
-					acc[inhibitor] = { count: 0, totalAUC: 0, aucs: [] };
-				}
-				acc[inhibitor].count += 1;
-				acc[inhibitor].totalAUC += response.auc;
-				acc[inhibitor].aucs.push(response.auc);
-				return acc;
-			}, {} as Record<string, { count: number; totalAUC: number; aucs: number[] }>);
+		const processDrugSensitivity = (responses: DrugResponse[]) => {
+			const sensitivity = responses.reduce(
+				(
+					acc: Record<
+						string,
+						{ count: number; totalAUC: number; aucs: number[] }
+					>,
+					response: DrugResponse
+				) => {
+					const inhibitor = response.inhibitor || "Unknown";
+					if (!acc[inhibitor]) {
+						acc[inhibitor] = { count: 0, totalAUC: 0, aucs: [] };
+					}
+					acc[inhibitor].count += 1;
+					acc[inhibitor].totalAUC += response.auc;
+					acc[inhibitor].aucs.push(response.auc);
+					return acc;
+				},
+				{} as Record<
+					string,
+					{ count: number; totalAUC: number; aucs: number[] }
+				>
+			);
 
 			return Object.entries(sensitivity)
 				.map(([drug, { count, totalAUC, aucs }]) => ({
@@ -334,6 +431,7 @@ export const AIAMLReport = () => {
 					averageAUC: totalAUC / count,
 					count,
 					aucs,
+					totalSamples: count, // Add this line
 				}))
 				.filter((item) => !isNaN(item.averageAUC))
 				.sort((a, b) => b.averageAUC - a.averageAUC);
@@ -351,7 +449,7 @@ export const AIAMLReport = () => {
 
 		// Process neighbor samples (limited to k closest neighbors)
 		const neighborDrugResponses = drugResponses.filter(
-			(response) =>
+			(response: DrugResponse) =>
 				neighborSampleIds.slice(0, k).includes(response.sample_id) &&
 				response.inhibitor != null &&
 				response.auc != null &&
@@ -381,7 +479,7 @@ export const AIAMLReport = () => {
 		return { allSamples, neighborSamples, comparisons };
 	};
 
-	const generateAIReport = async (processedData: any) => {
+	const generateAIReport = async (processedData: ProcessedData) => {
 		if (!processedData) {
 			return "Unable to generate report due to missing data.";
 		}
@@ -422,12 +520,14 @@ Please note that this AI-generated report is for research purposes only and shou
 		`;
 	};
 
-	const generateMetadataSection = (metadataReport: any) => {
+	const generateMetadataSection = (
+		metadataReport: Record<string, MetadataReportItem>
+	) => {
 		return Object.entries(metadataReport)
-			.map(([attr, data]: [string, any]) => {
+			.map(([attr, data]: [string, MetadataReportItem]) => {
 				const breakdown = data.breakdown || [];
 				const smallestPValueItem = breakdown.reduce(
-					(min: any, item: any) =>
+					(min: { pValue: string }, item: { pValue: string }) =>
 						parseFloat(item.pValue) < parseFloat(min.pValue) ? item : min,
 					{ pValue: "1" }
 				);
@@ -443,22 +543,32 @@ Please note that this AI-generated report is for research purposes only and shou
 			.join("\n");
 	};
 
-	const generateMutationSection = (mutationReport: any) => {
+	const generateMutationSection = (
+		mutationReport: {
+			gene: string;
+			count: number;
+			pValue: number;
+			neighborFrequency: string;
+		}[]
+	) => {
 		return mutationReport
 			.slice(0, 5)
-			.map((gene: any) => {
-				return `- ${gene.gene}: Found in ${
-					gene.neighborFrequency
-				} neighbors (p-value: ${gene.pValue.toExponential(2)})`;
-			})
+			.map(
+				(gene: {
+					gene: string;
+					count: number;
+					pValue: number;
+					neighborFrequency: string;
+				}) => {
+					return `- ${gene.gene}: Found in ${
+						gene.neighborFrequency
+					} neighbors (p-value: ${gene.pValue.toExponential(2)})`;
+				}
+			)
 			.join("\n");
 	};
 
-	const generateDrugResponseSection = (drugReport: {
-		allSamples?: any[];
-		neighborSamples?: any[];
-		comparisons?: any[];
-	}) => {
+	const generateDrugResponseSection = (drugReport: DrugReport) => {
 		if (
 			!drugReport ||
 			!drugReport.comparisons ||
@@ -467,36 +577,43 @@ Please note that this AI-generated report is for research purposes only and shou
 			return "No valid drug response data available for this sample.";
 		}
 
-		const drugCounts = drugReport.allSamples?.map((drug: any) => ({
+		const drugCounts = drugReport.allSamples?.map((drug: DrugData) => ({
 			...drug,
 			totalSamples: drug.count,
 		}));
 
 		// Filter drugs with at least 40 total samples
 		const validDrugs = drugCounts?.filter(
-			(drug: any) => drug.totalSamples >= 40
+			(drug: DrugData) => drug.totalSamples >= 40
 		);
 
 		// Filter comparisons to only include valid drugs
-		const validComparisons = drugReport.comparisons?.filter((comparison: any) =>
-			validDrugs?.some((drug: any) => drug.drug === comparison.drug)
+		const validComparisons = drugReport.comparisons?.filter(
+			(comparison): comparison is DrugComparison =>
+				comparison !== null &&
+				validDrugs?.some((drug: DrugData) => drug.drug === comparison.drug) ===
+					true
 		);
 
 		// Add totalSamples to comparisons
-		validComparisons?.forEach((comparison: any) => {
-			const drug = validDrugs?.find((d: any) => d.drug === comparison.drug);
+		validComparisons?.forEach((comparison: DrugComparison) => {
+			const drug = validDrugs?.find(
+				(d: DrugData) => d.drug === comparison.drug
+			);
 			if (drug) {
 				comparison.totalSamples = drug.totalSamples;
 			}
 		});
 
 		const significantDrugs = validComparisons
-			?.filter((drug: any) => drug.pValue < 0.05)
-			.sort((a: any, b: any) => a.pValue - b.pValue)
+			?.filter((drug: DrugComparison) => drug.pValue < 0.05)
+			.sort((a: DrugComparison, b: DrugComparison) => a.pValue - b.pValue)
 			.slice(0, 5);
 
 		const topDrugs = validComparisons
-			.sort((a: any, b: any) => a.neighborAvg - b.neighborAvg)
+			.sort(
+				(a: DrugComparison, b: DrugComparison) => a.neighborAvg - b.neighborAvg
+			)
 			.slice(0, 5);
 
 		let report = "";
@@ -520,9 +637,12 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 		return report.trim();
 	};
 
-	const generateDrugList = (drugs: any[], isSignificant: boolean) => {
+	const generateDrugList = (
+		drugs: DrugComparison[],
+		isSignificant: boolean
+	) => {
 		return drugs
-			.map((drug, index) => {
+			.map((drug) => {
 				const difference = drug.neighborAvg - drug.allSamplesAvg;
 				const sensitivity = difference < 0 ? "more" : "less";
 				return `- ${drug.drug}: ${drug.neighborAvg.toFixed(2)} AUC (${Math.abs(
@@ -537,9 +657,14 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 	};
 
 	const generateIntegratedAnalysis = async (
-		metadataReport: any,
-		mutationReport: any,
-		drugReport: any
+		metadataReport: Record<string, MetadataReportItem>,
+		mutationReport: {
+			gene: string;
+			count: number;
+			pValue: number;
+			neighborFrequency: string;
+		}[],
+		drugReport: DrugReport
 	) => {
 		const metadataSection = generateMetadataSection(metadataReport);
 		const mutationSection = generateMutationSection(mutationReport);
@@ -581,6 +706,7 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 			<CardHeader>
 				<CardTitle>
 					<div className="text-2xl font-bold text-purple-600">AI Assistant</div>
+					<div className="text-sm text-blue-600">(Experimental)</div>
 				</CardTitle>
 				<CardDescription>
 					Leverage Artificial Intelligence to gain insights into uploaded
@@ -618,8 +744,23 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 						<SelectContent>
 							<SelectItem value="gpt-4o-mini">GPT-4o-mini</SelectItem>
 							<SelectItem value="gpt-4o">GPT-4o</SelectItem>
+							<SelectItem value="gpt-o1-mini">GPT-o1-mini</SelectItem>
 						</SelectContent>
 					</Select>
+				</div>
+
+				<div className="flex items-center space-x-4">
+					<span className="w-24">K Value:</span>
+					<div className="flex-1">
+						<Slider
+							value={[kValue]}
+							onValueChange={(value) => setKValue(value[0])}
+							max={50}
+							min={5}
+							step={1}
+						/>
+					</div>
+					<span className="w-12 text-right">{kValue}</span>
 				</div>
 
 				<Button

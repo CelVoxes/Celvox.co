@@ -23,6 +23,16 @@ export function DeconvolutionChart() {
 	const chartRef = useRef<HTMLCanvasElement | null>(null);
 	const chartInstance = useRef<Chart | null>(null);
 	const { toast } = useToast();
+	const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+	useEffect(() => {
+		const handleResize = () => {
+			setWindowWidth(window.innerWidth);
+		};
+
+		window.addEventListener("resize", handleResize);
+		return () => window.removeEventListener("resize", handleResize);
+	}, []);
 
 	const handleRunDeconvolution = async () => {
 		setIsLoading(true);
@@ -52,6 +62,7 @@ export function DeconvolutionChart() {
 	useEffect(() => {
 		if (deconvolutionData && chartRef.current) {
 			const ctx = chartRef.current.getContext("2d");
+			const isMobile = windowWidth < 768;
 
 			if (chartInstance.current) {
 				chartInstance.current.destroy();
@@ -83,13 +94,16 @@ export function DeconvolutionChart() {
 				options: {
 					responsive: true,
 					maintainAspectRatio: false,
-					indexAxis: "y", // This makes the bars horizontal
+					indexAxis: "y",
 					scales: {
 						x: {
 							stacked: true,
 							title: {
 								display: true,
 								text: "Percentage",
+								font: {
+									size: isMobile ? 10 : 12,
+								},
 							},
 							max: 100,
 						},
@@ -98,35 +112,49 @@ export function DeconvolutionChart() {
 							title: {
 								display: true,
 								text: "Samples",
+								font: {
+									size: isMobile ? 10 : 12,
+								},
 							},
 							ticks: {
 								autoSkip: false,
 								maxRotation: 0,
 								minRotation: 0,
 								padding: 5,
+								font: {
+									size: isMobile ? 8 : 10,
+								},
+							},
+							afterFit: (scaleInstance) => {
+								scaleInstance.height = samples.length * 25;
 							},
 						},
 					},
 					plugins: {
 						legend: {
-							position: "right",
+							position: isMobile ? "bottom" : "right",
 							align: "start",
 							labels: {
-								boxWidth: 15,
+								boxWidth: isMobile ? 10 : 15,
 								font: {
-									size: 10,
+									size: isMobile ? 8 : 10,
 								},
+								padding: isMobile ? 8 : 10,
 							},
 						},
 						title: {
 							display: true,
 							text: "Cell Type Distribution Across Samples",
+							font: {
+								size: isMobile ? 12 : 14,
+							},
 						},
 					},
 					layout: {
 						padding: {
-							right: 150,
-							left: 20, // Add left padding to accommodate longer sample names
+							right: isMobile ? 10 : 150,
+							left: isMobile ? 10 : 20,
+							bottom: isMobile ? 50 : 10,
 						},
 					},
 				},
@@ -134,27 +162,36 @@ export function DeconvolutionChart() {
 
 			chartInstance.current = new Chart(ctx as ChartItem, config);
 		}
-	}, [deconvolutionData]);
+	}, [deconvolutionData, windowWidth]);
 
 	return (
 		<Card className="w-full h-full">
-			<CardHeader>
-				<CardTitle>Deconvolution Analysis</CardTitle>
+			<CardHeader className="space-y-1.5 p-4 sm:p-6">
+				<CardTitle className="text-lg sm:text-xl">
+					Deconvolution Analysis
+				</CardTitle>
 			</CardHeader>
-			<CardContent className="flex flex-col h-[calc(100%-4rem)]">
-				{error && <p className="text-red-500 mt-2">{error}</p>}
-				<div className="flex-grow relative">
+			<CardContent className="p-4 sm:p-6">
+				{error && <p className="text-red-500 mb-4">{error}</p>}
+				<div
+					className="relative overflow-y-auto overflow-x-hidden"
+					style={{ height: "calc(80vh - 200px)", minHeight: "400px" }}
+				>
 					{!deconvolutionData && (
 						<div className="flex justify-center items-center h-full absolute inset-0">
-							<p className="text-gray-500 mt-2">
+							<p className="text-muted-foreground text-sm sm:text-base">
 								Click "Run Deconvolution" to generate plot.
 							</p>
 						</div>
 					)}
-					<canvas ref={chartRef} className="w-full h-full"></canvas>
+					<canvas ref={chartRef} className="w-full"></canvas>
 				</div>
-				<div className="flex-1 flex-wrap gap-4 mb-4 items-center">
-					<Button onClick={handleRunDeconvolution} disabled={isLoading}>
+				<div className="mt-4 flex justify-center sm:justify-start">
+					<Button
+						onClick={handleRunDeconvolution}
+						disabled={isLoading}
+						className="w-full sm:w-auto"
+					>
 						{isLoading ? "Running..." : "Run Deconvolution"}
 					</Button>
 				</div>

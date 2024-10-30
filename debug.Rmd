@@ -43,4 +43,56 @@ knn_df <- data.frame(
     knn_distances = knn_distances
 )
 ```
+```{r}
+library(data.table)
+    uncorrected <- fread("backend/data/counts/uncorrected_counts.csv", data.table = F)
+    sample_data <- readRDS("backend/cache/sample_data.rds")
+```
+
+
+```{r}
+library(seAMLess)
+library(Biobase)
+seAMLess(sample_data)
+```
+```{r}
+
+gene_index =2
+norm.mat <-fread("/Users/onur-lumc/Desktop/seamless/backend/data/counts/normalised_and_corrected_counts.csv", 
+                   select = c(1, gene_index + 1),  # +1 because the first column is gene names
+                       data.table = FALSE)
+
+    # Read only the sample IDs and the requested gene column
+    gene_data <- fread("/Users/onur-lumc/Desktop/seamless/backend/data/counts/normalised_and_corrected_counts.csv", 
+                       select = c(1, gene_index),
+                       col.names = c("sample_id", "expression"),
+                       data.table = FALSE)
+
+norm.mat <-fread("/Users/onur-lumc/Desktop/seamless/backend/data/counts/normalised_and_corrected_counts.csv", data.table = FALSE)
+
+norm.mat2 <- readRDS("/Users/onur-lumc/Desktop/seamless/backend/cache/normalized_and_corrected_matrix.rds")
+```
+```{r}
+norm.fst <- read_fst('backend/cache/normalized_and_corrected_matrix.fst')
+
+write_fst(norm.fst, path = "/Users/onur-lumc/Desktop/data.fst")\
+
+
+tsne_df <- read_fst("backend/cache/tsne_result.fst")
+
+ rownames(tsne_df) <- tsne_df[, 1]
+tsne_df <- tsne_df[, -1, drop = FALSE]
+```
+
+```{r}
+
+example.tcga <- read.csv("/Users/onur-lumc/Desktop/exampleTCGA.csv")
+```
+```{r}
+library(fst)
+
+sample.fst <-read_fst("backend/cache/sample_data.fst")
+
+sample.fst <- sample.fst[!grepl("__no_feature|__ambiguous", rownames(sample.fst)), ]
+```
 

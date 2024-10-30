@@ -7,6 +7,7 @@ import {
 	CardContent,
 	CardDescription,
 } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import {
 	Table,
@@ -29,6 +30,12 @@ import {
 	DialogDescription,
 	DialogFooter,
 } from "@/components/ui/dialog";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function DataUpload() {
 	const { toast } = useToast();
@@ -137,44 +144,113 @@ export function DataUpload() {
 		}
 	};
 
-	return (
-		<Card className="w-full p-6 shadow-lg rounded-lg">
-			<CardHeader className="mb-4">
-				<CardTitle className="text-xl font-semibold">Upload Data</CardTitle>
-				<CardDescription className="text-gray-600 ">
-					Upload a CSV file with genes as rownames and samples as columns.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<div className="flex items-center space-x-4 mb-6">
-					<Input
-						type="file"
-						onChange={handleFileChange}
-						accept=".csv"
-						className="flex-1"
-					/>
-					<Button
-						onClick={handleUpload}
-						disabled={!selectedFile || isUploading}
-						className="bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-300"
-					>
-						{isUploading ? "Uploading..." : "Upload"}
-					</Button>
+	const FileList = () => {
+		if (!Array.isArray(cacheFiles) || cacheFiles.length === 0) {
+			return (
+				<div className="text-center py-4 text-muted-foreground">
+					No files available.
 				</div>
-				{selectedFile && (
-					<p className="mt-2 text-gray-700">
-						Selected file: {selectedFile.name}
-					</p>
-				)}
-				<div className="mt-4">
-					<Table className="w-full border-collapse">
+			);
+		}
+
+		return (
+			<>
+				{/* Mobile view */}
+				<div className="space-y-4 md:hidden">
+					<ScrollArea className="h-[400px] w-full">
+						{cacheFiles.map((file, index) => (
+							<Card key={index}>
+								<CardHeader className="pb-2">
+									<div className="flex justify-between items-center">
+										<CardTitle className="text-sm font-medium">
+											<TooltipProvider>
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<span className="truncate max-w-[200px] block">
+															{file.name}
+														</span>
+													</TooltipTrigger>
+													<TooltipContent>
+														<p>{file.name}</p>
+													</TooltipContent>
+												</Tooltip>
+											</TooltipProvider>
+										</CardTitle>
+										<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+											<DialogTrigger asChild>
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() => confirmDelete(file.name)}
+													className="text-destructive hover:text-destructive"
+												>
+													Delete
+												</Button>
+											</DialogTrigger>
+											<DialogContent>
+												<DialogTitle>Confirm Deletion</DialogTitle>
+												<DialogDescription>
+													Are you sure you want to delete {fileToDelete}?
+												</DialogDescription>
+												<DialogFooter>
+													<Button onClick={() => setIsDialogOpen(false)}>
+														Cancel
+													</Button>
+													<Button variant="destructive" onClick={handleDelete}>
+														Confirm
+													</Button>
+												</DialogFooter>
+											</DialogContent>
+										</Dialog>
+									</div>
+								</CardHeader>
+								<CardContent className="text-sm">
+									<div className="grid grid-cols-2 gap-2">
+										<div className="text-muted-foreground text-left">Size</div>
+										<div className="text-right">
+											{(file.size / (1024 * 1024)).toFixed(2)} MB
+										</div>
+										<div className="text-muted-foreground text-left">
+											Modified
+										</div>
+										<div className="text-right">
+											{new Date(file.modified).toLocaleString()}
+										</div>
+										<div className="text-muted-foreground text-left">Type</div>
+										<div className="text-right">
+											{file.isUserUploaded ? (
+												<span className="text-blue-600">User Uploaded</span>
+											) : (
+												<span className="text-green-600">Cache File</span>
+											)}
+										</div>
+									</div>
+								</CardContent>
+							</Card>
+						))}
+					</ScrollArea>
+				</div>
+
+				{/* Desktop view */}
+				<div className="hidden md:block">
+					<Table>
 						<TableHeader className="bg-gray-100">
 							<TableRow>
-								<TableCell className="p-2 border-b">File Name</TableCell>
-								<TableCell className="p-2 border-b">File Size</TableCell>
-								<TableCell className="p-2 border-b">Last Modified</TableCell>
-								<TableCell className="p-2 border-b">Type</TableCell>
-								<TableCell className="p-2 border-b">Actions</TableCell>
+								<TableCell className="p-2 border-b whitespace-nowrap">
+									File Name
+								</TableCell>
+								<TableCell className="p-2 border-b whitespace-nowrap">
+									Size
+								</TableCell>
+								<TableCell className="p-2 border-b whitespace-nowrap">
+									Modified
+								</TableCell>
+								<TableCell className="p-2 border-b whitespace-nowrap">
+									Type
+								</TableCell>
+								<TableCell className="p-2 border-b whitespace-nowrap">
+									Actions
+								</TableCell>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -240,6 +316,41 @@ export function DataUpload() {
 						</TableBody>
 					</Table>
 				</div>
+			</>
+		);
+	};
+
+	return (
+		<Card className="w-full">
+			<CardHeader>
+				<CardTitle>Upload Data</CardTitle>
+				<CardDescription>
+					Upload a CSV file with genes as rownames and samples as columns.
+				</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<div className="flex flex-col sm:flex-row gap-4 mb-6">
+					<Input
+						type="file"
+						onChange={handleFileChange}
+						accept=".csv"
+						className="flex-1"
+					/>
+					<Button
+						onClick={handleUpload}
+						disabled={!selectedFile || isUploading}
+					>
+						{isUploading ? "Uploading..." : "Upload"}
+					</Button>
+				</div>
+
+				{selectedFile && (
+					<p className="text-sm text-muted-foreground mb-4">
+						Selected file: {selectedFile.name}
+					</p>
+				)}
+
+				<FileList />
 			</CardContent>
 		</Card>
 	);
