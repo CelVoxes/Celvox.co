@@ -253,7 +253,7 @@ harmonize_data <- local({
         # Add "_sample_data" suffix to sample_data column names
         colnames(sample_data) <- paste0(colnames(sample_data), "_sample_data")
         # Combine the data, keeping genes as rownames and samples as columns
-        data_to_be_corrected <- cbind(uncorrected[common_genes, ], sample_data[common_genes, ])
+        uncorrected <- cbind(uncorrected[common_genes, ], sample_data[common_genes, ])
 
         message("Creating batch vector...")
         batch <- c(paste0(metadata$study, metadata$gender), rep("sample_data", (ncol(sample_data))))
@@ -263,14 +263,14 @@ harmonize_data <- local({
         correction.option <- "limma"
         if (correction.option == "combat") {
             message("Correcting data with ComBat...")
-            corrected_matrix <- ComBat_seq(as.matrix(data_to_be_corrected), batch = batch, full_mod = F)
+            corrected_matrix <- ComBat_seq(as.matrix(uncorrected), batch = batch, full_mod = F)
             # normalize library sizes
             corrected_matrix <- log2(edgeR::cpm(corrected_matrix) + 1)
         } else if (correction.option == "limma") {
             message("Correcting data with limma...")
             # normalize library sizes
-            data_to_be_corrected <- log2(edgeR::cpm(data_to_be_corrected) + 1)
-            corrected_matrix <- limma::removeBatchEffect(data_to_be_corrected, batch = batch, )
+            uncorrected <- log2(edgeR::cpm(uncorrected) + 1)
+            corrected_matrix <- limma::removeBatchEffect(uncorrected, batch = batch, )
         }
 
 
@@ -292,7 +292,6 @@ harmonize_data <- local({
         message("Cleaning up memory...")
         rm(list = c(
             "corrected_matrix",
-            "data_to_be_corrected",
             "uncorrected",
             "sample_data",
             "metadata",
