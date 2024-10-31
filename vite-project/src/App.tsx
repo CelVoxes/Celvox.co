@@ -18,6 +18,7 @@ import Blog from "@/components/pages/Blog";
 import Cellama from "@/components/pages/solutions/Cellama";
 import UserProfilePage from "@/components/pages/UserProfilePage";
 import ResetPassword from "@/components/pages/ResetPassword";
+import NotFoundPage from "@/components/pages/NotFoundPage";
 
 function App() {
 	const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -38,13 +39,14 @@ function App() {
 				<Routes>
 					<Route path="/" element={<Home />} />
 					<Route path="/about" element={<About />} />
-					<Route path="/blog" element={<Blog />} />
+					<Route path="/blog/*" element={<Blog />} />
 					<Route path="/solutions/cellama" element={<Cellama />} />
 					<Route path="/dashboard" element={<Dashboard user={user} />} />
 					<Route path="/login" element={<LoginPage user={user} />} />
 					<Route path="/profile" element={<UserProfilePage />} />
 					<Route path="/contact" element={<ContactPage />} />
 					<Route path="/reset-password" element={<ResetPassword />} />
+					<Route path="*" element={<NotFoundPage />} />
 				</Routes>
 			</Router>
 		</>
