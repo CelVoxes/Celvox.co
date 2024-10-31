@@ -89,6 +89,8 @@ get_corrected_data <- local({
         rownames(corrected) <- corrected[, 1]
         corrected <- corrected[, -1, drop = FALSE]
 
+
+
         return(corrected)
     }
 })
@@ -287,7 +289,22 @@ harmonize_data <- local({
         message("Time taken to write fst: ", difftime(end_time, start_time, units = "secs"))
 
         # Cleanup
-        rm(corrected_matrix, data_to_be_corrected, uncorrected, sample_data)
+        message("Cleaning up memory...")
+        rm(list = c(
+            "corrected_matrix",
+            "data_to_be_corrected",
+            "uncorrected",
+            "sample_data",
+            "metadata",
+            "common_genes",
+            "batch",
+            "id_var_df",
+            "gene_vars",
+            "numeric_data"
+        ), envir = environment())
+
+        # Force garbage collection multiple times
+        gc()
         gc()
 
         return(list(message = "Normalized and corrected data saved to cache"))
