@@ -667,13 +667,20 @@ function() {
         mean_expression = colMeans(sample_data)
     )
 
+
+    # Calculate expression quantiles for boxplot (0%, 25%, 50%, 75%, 100%)
+    expression_quantiles <- apply(sample_data, 2, function(x) {
+        quantile(x, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+    })
+    
+    # log2 transform / library size normalize
+    sample_data <- log2(edgeR::cpm(sample_data) + 1)
     # Calculate correlation matrix
     cor_matrix <- cor(sample_data)
 
-    # Calculate expression quantiles for boxplot
-    expression_quantiles <- apply(sample_data, 2, quantile,
-        probs = c(0, 0.25, 0.5, 0.75, 1)
-    )
+    # cleanup
+    rm(sample_data)
+    gc()
 
     return(list(
         sample_stats = sample_stats,
