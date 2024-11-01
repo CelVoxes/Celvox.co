@@ -11,6 +11,8 @@ export function HarmonizeData() {
 	const handleHarmonize = async () => {
 		setIsHarmonizing(true);
 		try {
+			
+			// if there is no harmonized data
 			const response = await fetchHarmonizedData();
 			if (!response.message) {
 				throw new Error("Failed to harmonize data");
