@@ -257,7 +257,6 @@ harmonize_data <- local({
 
         message("Creating batch vector...")
         batch <- c(paste0(metadata$study, metadata$gender), rep("sample_data", (ncol(sample_data))))
-        message(paste("Data to be corrected dimensions:", paste(dim(data_to_be_corrected), collapse = "x")))
         message(paste("Batch dimension:", length(batch)))
 
         correction.option <- "limma"
@@ -296,10 +295,7 @@ harmonize_data <- local({
             "sample_data",
             "metadata",
             "common_genes",
-            "batch",
-            "id_var_df",
-            "gene_vars",
-            "numeric_data"
+            "batch"
         ), envir = environment())
 
         # Force garbage collection multiple times

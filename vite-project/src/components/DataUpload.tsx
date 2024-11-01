@@ -39,11 +39,28 @@ export function DataUpload() {
 	>([]);
 	const [fileToDelete, setFileToDelete] = useState<string | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
+	const [filePreview, setFilePreview] = useState<string[][]>([]);
+	const [fileHeaders, setFileHeaders] = useState<string[]>([]);
 
 	const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		if (event.target.files && event.target.files.length > 0) {
 			const file = event.target.files[0];
 			setSelectedFile(file);
+			
+			const reader = new FileReader();
+			reader.onload = (e) => {
+				const text = e.target?.result as string;
+				const lines = text.split('\n');
+				
+				const headers = lines[0].split(',').map(header => header.trim());
+				setFileHeaders(headers);
+				
+				const preview = lines
+					.slice(1, 5) // Show 4 rows of data (excluding header)
+					.map(line => line.split(',').map(cell => cell.trim()));
+				setFilePreview(preview);
+			};
+			reader.readAsText(file);
 		}
 	};
 
@@ -80,19 +97,14 @@ export function DataUpload() {
 			const result = await uploadSampleData(selectedFile);
 			toast({
 				title: "Success",
-				description: `File uploaded successfully. ${result.rows} rows and ${result.cols} columns processed.`,
+				description: "File uploaded successfully. Refreshing page...",
 			});
-			setSelectedFile(null);
+			
+			// Give the toast a chance to be seen
+			setTimeout(() => {
+				window.location.reload();
+			}, 1500);
 
-			setCacheFiles((prevFiles) => [
-				...prevFiles,
-				{
-					name: selectedFile.name,
-					size: selectedFile.size,
-					modified: new Date().toISOString(),
-					isUserUploaded: true, // Mark as user uploaded
-				},
-			]);
 		} catch (error) {
 			toast({
 				title: "Error",
@@ -289,9 +301,57 @@ export function DataUpload() {
 				</div>
 
 				{selectedFile && (
-					<p className="text-sm text-muted-foreground mb-4">
-						Selected file: {selectedFile.name}
-					</p>
+					<>
+						<p className="text-sm text-muted-foreground mb-4">
+							Selected file: {selectedFile.name}
+						</p>
+						
+						{filePreview.length > 0 && (
+							<Card className="mb-6">
+								<CardHeader>
+									<CardTitle className="text-sm">File Preview</CardTitle>
+									<CardDescription>
+										Showing first 4 rows of data
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									<ScrollArea className="h-[200px] w-full">
+										{fileHeaders.length === 0 ? (
+											<p className="text-sm text-red-500">
+												Warning: File appears to be empty or in incorrect format
+											</p>
+										) : (
+											<Table>
+												<TableHeader>
+													<TableRow>
+														{fileHeaders.map((header, i) => (
+															<TableCell 
+																key={i} 
+																className="font-medium bg-muted/50"
+															>
+																{header}
+															</TableCell>
+														))}
+													</TableRow>
+												</TableHeader>
+												<TableBody>
+													{filePreview.map((row, i) => (
+														<TableRow key={i}>
+															{row.map((cell, j) => (
+																<TableCell key={j} className="p-2">
+																	{cell}
+																</TableCell>
+															))}
+														</TableRow>
+													))}
+												</TableBody>
+											</Table>
+										)}
+									</ScrollArea>
+								</CardContent>
+							</Card>
+						)}
+					</>
 				)}
 
 				<FileList />
