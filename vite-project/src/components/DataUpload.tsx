@@ -46,18 +46,18 @@ export function DataUpload() {
 		if (event.target.files && event.target.files.length > 0) {
 			const file = event.target.files[0];
 			setSelectedFile(file);
-			
+
 			const reader = new FileReader();
 			reader.onload = (e) => {
 				const text = e.target?.result as string;
-				const lines = text.split('\n');
-				
-				const headers = lines[0].split(',').map(header => header.trim());
+				const lines = text.split("\n");
+
+				const headers = lines[0].split(",").map((header) => header.trim());
 				setFileHeaders(headers);
-				
+
 				const preview = lines
 					.slice(1, 5) // Show 4 rows of data (excluding header)
-					.map(line => line.split(',').map(cell => cell.trim()));
+					.map((line) => line.split(",").map((cell) => cell.trim()));
 				setFilePreview(preview);
 			};
 			reader.readAsText(file);
@@ -94,17 +94,16 @@ export function DataUpload() {
 
 		setIsUploading(true);
 		try {
-			const result = await uploadSampleData(selectedFile);
+			await uploadSampleData(selectedFile);
 			toast({
 				title: "Success",
 				description: "File uploaded successfully. Refreshing page...",
 			});
-			
+
 			// Give the toast a chance to be seen
 			setTimeout(() => {
 				window.location.reload();
 			}, 1500);
-
 		} catch (error) {
 			toast({
 				title: "Error",
@@ -168,12 +167,16 @@ export function DataUpload() {
 								<div className="space-y-2">
 									{/* Filename */}
 									<p className="font-medium break-all">{file.name}</p>
-									
+
 									{/* File details */}
 									<div className="space-y-1 text-sm text-muted-foreground">
 										<div className="flex justify-between gap-2">
-											<span>Size: {(file.size / (1024 * 1024)).toFixed(2)} MB</span>
-											<span>Type: {file.isUserUploaded ? 'User File' : 'Cache File'}</span>
+											<span>
+												Size: {(file.size / (1024 * 1024)).toFixed(2)} MB
+											</span>
+											<span>
+												Type: {file.isUserUploaded ? "User File" : "Cache File"}
+											</span>
 										</div>
 										<div>
 											Modified: {new Date(file.modified).toLocaleString()}
@@ -305,7 +308,7 @@ export function DataUpload() {
 						<p className="text-sm text-muted-foreground mb-4">
 							Selected file: {selectedFile.name}
 						</p>
-						
+
 						{filePreview.length > 0 && (
 							<Card className="mb-6">
 								<CardHeader>
@@ -325,8 +328,8 @@ export function DataUpload() {
 												<TableHeader>
 													<TableRow>
 														{fileHeaders.map((header, i) => (
-															<TableCell 
-																key={i} 
+															<TableCell
+																key={i}
 																className="font-medium bg-muted/50"
 															>
 																{header}
