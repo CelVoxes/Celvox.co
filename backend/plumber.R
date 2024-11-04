@@ -590,8 +590,20 @@ function(req) {
 
     tryCatch(
         {
+            # Get the OpenAI API key from system environment
+            api_key <- Sys.getenv("OPENAI_API_KEY")
+            if (api_key == "") {
+                # Try to get it directly from system
+                api_key <- system("echo $OPENAI_API_KEY", intern = TRUE)
+                if (length(api_key) == 0 || api_key == "") {
+                    return(list(error = "OpenAI API key not found in environment variables"))
+                }
+                # Set it in R's environment for future use
+                Sys.setenv(OPENAI_API_KEY = api_key)
+            }
+
             patient_info <- req$args$patientInfo
-            model <- req$args$model # New parameter for model selection
+            model <- req$args$model
 
             message(paste("Patient info:", patient_info))
             message(paste("Selected model:", model))
@@ -602,12 +614,6 @@ function(req) {
 
             if (is.null(model) || model == "") {
                 model <- "gpt-4o-mini" # Default model if not specified
-            }
-
-            # Get the OpenAI API key from environment variable
-            api_key <- Sys.getenv("OPENAI_API_KEY")
-            if (api_key == "") {
-                return(list(error = "OpenAI API key not found in environment variables"))
             }
 
             # Prepare the API request
@@ -672,7 +678,7 @@ function() {
     expression_quantiles <- apply(sample_data, 2, function(x) {
         quantile(x, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
     })
-    
+
     # log2 transform / library size normalize
     sample_data <- log2(edgeR::cpm(sample_data) + 1)
     # Calculate correlation matrix
