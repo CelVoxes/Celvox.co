@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import Chart from "chart.js/auto";
 import { scaleLinear } from "d3-scale";
 import { interpolateViridis } from "d3-scale-chromatic";
+import { Slider } from "@/components/ui/slider";
 import zoomPlugin from "chartjs-plugin-zoom";
 import {
 	Select,
@@ -37,6 +38,8 @@ export function GeneExpressionTSNE() {
 	const [availableGenes, setAvailableGenes] = useState<string[]>([]);
 	const [geneSearch, setGeneSearch] = useState("");
 	const [isSelectOpen, setIsSelectOpen] = useState(false);
+	const [pointRadius, setPointRadius] = useState(4);
+	const [showSettings, setShowSettings] = useState(false);
 
 	const handleGeneSelection = (value: string) => {
 		setSelectedGene(value);
@@ -182,10 +185,15 @@ export function GeneExpressionTSNE() {
 							grid: { display: false },
 						},
 					},
+					elements: {
+						point: {
+							radius: pointRadius,
+						},
+					},
 				},
 			});
 		}
-	}, [geneExpressionData, selectedGene, isLoading]);
+	}, [geneExpressionData, selectedGene, isLoading, pointRadius]);
 
 	const filteredGenes = useMemo(() => {
 		return availableGenes.filter((gene) =>
@@ -217,48 +225,86 @@ export function GeneExpressionTSNE() {
 			<CardHeader>
 				<CardTitle>Gene Expression t-SNE Visualization</CardTitle>
 			</CardHeader>
-			<CardContent className="flex flex-col h-[calc(100%-4rem)]">
+			<CardContent className="flex-grow flex flex-col h-[calc(100%-4rem)] min-h-[400px]">
 				{error && <p className="text-red-500 mt-2">{error}</p>}
 				<div className="flex-grow relative">
-					<div className="h-[500px]">
-						{geneExpressionData.length > 0 ? (
-							<canvas ref={chartRef} className="w-full h-full"></canvas>
-						) : (
+					<div className="h-[300px] sm:h-[400px] md:h-[500px]">
+						{geneExpressionData.length === 0 && !isLoading && (
 							<div className="w-full h-full flex items-center justify-center text-gray-500">
 								<p>Click "Fetch Data" to generate the plot</p>
 							</div>
 						)}
+						{geneExpressionData.length > 0 && (
+							<canvas ref={chartRef} className="w-full h-full"></canvas>
+						)}
 					</div>
 				</div>
-				<div className="flex items-center space-x-2">
-					<div className="flex-grow">
-						<Input
-							type="text"
-							placeholder="Search genes..."
-							value={geneSearch}
-							onChange={(e) => setGeneSearch(e.target.value)}
-						/>
+				<div className="flex flex-col gap-4 mt-4">
+					<div className="flex flex-col sm:flex-row sm:space-y-0 sm:space-x-2">
+						<div className="flex space-x-2">
+							<Input
+								type="text"
+								placeholder="Search genes..."
+								value={geneSearch}
+								onChange={(e) => setGeneSearch(e.target.value)}
+								className="w-full sm:w-[120px]"
+							/>
+							<Select
+								onValueChange={handleGeneSelection}
+								value={selectedGene}
+								onOpenChange={(open) => setIsSelectOpen(open)}
+								disabled={isLoading}
+							>
+								<SelectTrigger className="w-full sm:w-[120px]">
+									<SelectValue placeholder="Select a gene">
+										{selectedGene}
+									</SelectValue>
+								</SelectTrigger>
+								<SelectContent className="max-h-[200px]">
+									{isSelectOpen && <VirtualizedSelectContent />}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex space-x-2 justify-end sm:flex-grow">
+							<Button
+								onClick={() => handleFetchData()}
+								disabled={isLoading}
+								className="flex-grow sm:flex-grow-0"
+							>
+								{isLoading ? "Loading..." : "Fetch Data"}
+							</Button>
+							<Button
+								variant="ghost"
+								onClick={() => setShowSettings(!showSettings)}
+								className="flex-grow sm:flex-grow-0"
+							>
+								⚙️
+							</Button>
+							<Button
+								onClick={() => chartInstance.current?.resetZoom()}
+								disabled={!chartInstance.current}
+								className="flex-grow sm:flex-grow-0"
+							>
+								Reset Zoom
+							</Button>
+						</div>
 					</div>
-					<div className="w-64">
-						<Select
-							onValueChange={handleGeneSelection}
-							value={selectedGene}
-							onOpenChange={(open) => setIsSelectOpen(open)}
-							disabled={isLoading}
-						>
-							<SelectTrigger>
-								<SelectValue placeholder="Select a gene">
-									{selectedGene}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent>
-								{isSelectOpen && <VirtualizedSelectContent />}
-							</SelectContent>
-						</Select>
-					</div>
-					<Button onClick={() => handleFetchData()} disabled={isLoading}>
-						{isLoading ? "Loading..." : "Fetch Data"}
-					</Button>
+
+					{/* Settings section */}
+					{showSettings && (
+						<div className="flex items-center space-x-2 mt-2 flex-wrap">
+							<span>Point Size:</span>
+							<Slider
+								value={[pointRadius]}
+								onValueChange={(value) => setPointRadius(value[0])}
+								min={1}
+								max={10}
+								step={1}
+								className="w-[100px]"
+							/>
+							<span>{pointRadius}</span>
+						</div>
+					)}
 				</div>
 			</CardContent>
 		</Card>

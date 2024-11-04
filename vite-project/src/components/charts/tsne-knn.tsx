@@ -132,11 +132,13 @@ export function TSNEKNNChart() {
 					maintainAspectRatio: false,
 					plugins: {
 						legend: {
-							display: true,
 							position: "right",
+							align: "start",
 							labels: {
 								usePointStyle: true,
-								pointStyle: "circle",
+								pointStyle: "rect",
+								boxWidth: 30,
+								boxHeight: 15,
 								padding: 20,
 							},
 						},
@@ -317,76 +319,87 @@ export function TSNEKNNChart() {
 						)}
 					</div>
 				</div>
-				<div className="flex flex-wrap gap-4 mt-4 items-center justify-between">
-					<Select
-						value={selectedAttribute}
-						onValueChange={setSelectedAttribute}
-					>
-						<SelectTrigger className="w-[180px]">
-							<SelectValue placeholder="Select attribute" />
-						</SelectTrigger>
-						<SelectContent>
-							{[
-								"sex",
-								"tissue",
-								"prim_rec",
-								"FAB",
-								"WHO_2022",
-								"ICC_2022",
-								"KMT2A_diagnosis",
-								"rare_diagnosis",
-								"clusters",
-								"study",
-							].map((attr) => (
-								<SelectItem key={attr} value={attr}>
-									{attr}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-					<div className="flex gap-2">
-						<Button onClick={handleRunTSNEKNN} disabled={isLoading}>
-							{isLoading ? "Loading..." : "Run TSNE & KNN"}
-						</Button>
-						<Button
-							variant="ghost"
-							onClick={() => setShowSettings(!showSettings)}
-						>
-							⚙️
-						</Button>
+				<div className="flex flex-col gap-4 mt-4">
+					<div className="flex flex-col sm:flex-row sm:space-y-0 sm:space-x-2">
+						<div className="flex space-x-2">
+							<Select
+								value={selectedAttribute}
+								onValueChange={setSelectedAttribute}
+							>
+								<SelectTrigger className="w-full sm:w-[180px]">
+									<SelectValue placeholder="Select attribute" />
+								</SelectTrigger>
+								<SelectContent>
+									{[
+										"sex",
+										"tissue",
+										"prim_rec",
+										"FAB",
+										"WHO_2022",
+										"ICC_2022",
+										"KMT2A_diagnosis",
+										"rare_diagnosis",
+										"clusters",
+										"study",
+									].map((attr) => (
+										<SelectItem key={attr} value={attr}>
+											{attr}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex space-x-2 justify-end sm:flex-grow">
+							<Button
+								onClick={handleRunTSNEKNN}
+								disabled={isLoading}
+								className="flex-grow sm:flex-grow-0"
+							>
+								{isLoading ? "Loading..." : "Run TSNE & KNN"}
+							</Button>
+							<Button
+								variant="ghost"
+								onClick={() => setShowSettings(!showSettings)}
+								className="flex-grow sm:flex-grow-0"
+							>
+								⚙️
+							</Button>
+							<Button
+								onClick={() => chartInstance.current?.resetZoom()}
+								disabled={!chartInstance.current}
+								className="flex-grow sm:flex-grow-0"
+							>
+								Reset Zoom
+							</Button>
+						</div>
 					</div>
-					<Button
-						onClick={() => chartInstance.current?.resetZoom()}
-						disabled={!chartInstance.current}
-					>
-						Reset Zoom
-					</Button>
-				</div>
 
-				{showSettings && (
-					<div className="flex items-center space-x-2 mt-2">
-						<span>Point Size:</span>
-						<Slider
-							value={[pointRadius]}
-							onValueChange={(value) => setPointRadius(value[0])}
-							min={1}
-							max={10}
-							step={1}
-							className="w-[100px]"
-						/>
-						<span>{pointRadius}</span>
-						<span className="ml-4">K Value:</span>
-						<Slider
-							value={[kValue]}
-							onValueChange={(value) => setKValue(value[0])}
-							min={1}
-							max={50}
-							step={1}
-							className="w-[100px]"
-						/>
-						<span>{kValue}</span>
-					</div>
-				)}
+					{/* Settings section */}
+					{showSettings && (
+						<div className="flex items-center space-x-2 mt-2 flex-wrap">
+							<span>Point Size:</span>
+							<Slider
+								value={[pointRadius]}
+								onValueChange={(value) => setPointRadius(value[0])}
+								min={1}
+								max={10}
+								step={1}
+								className="w-[100px]"
+							/>
+							<span>{pointRadius}</span>
+							<span className="ml-4">K Value:</span>
+							<Slider
+								value={[kValue]}
+								onValueChange={(value) => setKValue(value[0])}
+								min={1}
+								max={50}
+								step={1}
+								className="w-[100px]"
+							/>
+							<span>{kValue}</span>
+						</div>
+					)}
+				</div>
 			</CardContent>
 		</Card>
 	);
