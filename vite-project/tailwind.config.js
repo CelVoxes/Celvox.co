@@ -76,6 +76,7 @@ export default {
 		},
 	},
 	plugins: [
+		require("@tailwindcss/typography"),
 		require("tailwindcss-animate"), // make sure to "npm install tailwindcss-animate"
 		require("@assistant-ui/react/tailwindcss")({ shadcn: true }),
 	],

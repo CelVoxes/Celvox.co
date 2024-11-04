@@ -28,10 +28,10 @@ import {
 import {
 	adjustPValues,
 	calculateHypergeometricPValue,
-	renderMarkdown,
 	calculateTTest,
 } from "@/utils/zzz";
 import { Slider } from "@/components/ui/slider";
+import ReactMarkdown from "react-markdown";
 
 interface DrugData {
 	drug: string;
@@ -497,22 +497,27 @@ export const AIAMLReport = () => {
 		);
 
 		return `
-## AI-Generated AML Report for Sample ${sample.sample_id}
+## AI-Generated AML Report for ${sample.sample_id}
 
 ### 1. Sample Information Summary
+
 - Sample ID: ${sample.sample_id}
 - Data sources: Gene expression, Mutations, Drug response
 
 ### 2. Metadata Analysis
+
 ${metadataSection}
 
 ### 3. Mutation Analysis
+
 ${mutationSection}
 
 ### 4. Drug Response Analysis (ex-vivo)
+
 ${drugResponseSection}
 
 ### 5. Integrated Analysis (AI-generated)
+
 ${integratedAnalysis}
 
 
@@ -702,31 +707,37 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 	};
 
 	return (
-		<Card className="w-full">
+		<Card className="w-full max-w-full overflow-x-hidden">
 			<CardHeader>
 				<CardTitle>
-					<div className="text-xl md:text-2xl font-bold text-purple-600">AI Assistant</div>
+					<div className="text-lg md:text-2xl font-bold text-purple-600">
+						AI Assistant
+					</div>
 					<div className="text-xs md:text-sm text-blue-600">(Experimental)</div>
 				</CardTitle>
-				<CardDescription className="text-sm">
+				<CardDescription className="text-xs md:text-sm">
 					Leverage AI to gain insights into uploaded samples
 				</CardDescription>
 			</CardHeader>
-			<CardContent className="space-y-4">
-				<div className="flex flex-col md:flex-row md:items-center gap-4">
-					<span className="min-w-24">Sample:</span>
+			<CardContent className="space-y-6 px-2 md:px-4">
+				<div className="flex flex-col space-y-2">
+					<span className="text-sm font-medium">Sample:</span>
 					<Select
 						onValueChange={setSelectedSample}
 						value={selectedSample || undefined}
 					>
-						<SelectTrigger className="w-full">
+						<SelectTrigger className="w-full text-sm">
 							<SelectValue placeholder="Select a sample" />
 						</SelectTrigger>
 						<SelectContent>
 							{tsneData
 								.filter((d) => d.data_source === "uploaded")
 								.map((sample) => (
-									<SelectItem key={sample.sample_id} value={sample.sample_id}>
+									<SelectItem
+										key={sample.sample_id}
+										value={sample.sample_id}
+										className="truncate"
+									>
 										{sample.sample_id}
 									</SelectItem>
 								))}
@@ -734,10 +745,10 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 					</Select>
 				</div>
 
-				<div className="flex flex-col md:flex-row md:items-center gap-4">
-					<span className="min-w-24">Model:</span>
+				<div className="flex flex-col space-y-2">
+					<span className="text-sm font-medium">Model:</span>
 					<Select onValueChange={setSelectedModel} value={selectedModel}>
-						<SelectTrigger className="w-full">
+						<SelectTrigger className="w-full text-sm">
 							<SelectValue placeholder="Select a model" />
 						</SelectTrigger>
 						<SelectContent>
@@ -748,28 +759,30 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 					</Select>
 				</div>
 
-				<div className="flex flex-col md:flex-row md:items-center gap-4">
-					<span className="min-w-24">K Value:</span>
-					<div className="flex-1">
-						<Slider
-							value={[kValue]}
-							onValueChange={(value) => setKValue(value[0])}
-							max={50}
-							min={5}
-							step={1}
-						/>
+				<div className="flex flex-col space-y-2">
+					<span className="text-sm font-medium">K Value:</span>
+					<div className="flex items-center space-x-2">
+						<div className="flex-1">
+							<Slider
+								value={[kValue]}
+								onValueChange={(value) => setKValue(value[0])}
+								max={50}
+								min={5}
+								step={1}
+							/>
+						</div>
+						<span className="w-8 text-sm text-right">{kValue}</span>
 					</div>
-					<span className="w-12 text-right">{kValue}</span>
 				</div>
 
 				<Button
 					onClick={generateReport}
 					disabled={isLoading || !selectedSample}
-					className="w-full"
+					className="w-full text-sm"
 				>
 					{isLoading ? (
 						<div className="items-center space-x-2 flex">
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+							<Loader2 className="h-4 w-4 animate-spin" />
 							<span>Analyzing...</span>
 						</div>
 					) : (
@@ -778,9 +791,9 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 				</Button>
 
 				{report && (
-					<div className="mt-8 bg-white p-4 md:p-8 rounded-lg shadow-lg w-full">
+					<div className="bg-white p-2 md:p-6 w-full mt-4">
 						<div
-							className="transition-all duration-500 ease-in-out rounded-full mt-4"
+							className="transition-all duration-500 ease-in-out rounded-full"
 							style={{
 								width: `${progress}%`,
 								height: "4px",
@@ -788,20 +801,21 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 							}}
 						/>
 						<Separator className="my-2" />
-						<div className="text-xs md:text-sm text-justify overflow-hidden relative">
-							{renderMarkdown(report.slice(0, visibleChars))}
-						</div>
+						<ReactMarkdown className="prose prose-sm max-w-none overflow-x-auto text-left">
+							{report.slice(0, visibleChars)}
+						</ReactMarkdown>
 						<div className="mt-4 flex justify-end">
 							<Button onClick={copyToClipboard} variant="outline" size="sm">
-								<Copy className="w-3 h-3 md:w-4 md:h-4 mr-2" />
-								Copy Report
+								<Copy className="w-3 h-3 mr-1.5" />
+								<span className="text-xs">Copy Report</span>
 							</Button>
 						</div>
 					</div>
 				)}
 			</CardContent>
-			<CardFooter className="text-center text-xs md:text-sm text-gray-500 px-4">
-				AI models may not always be accurate. Always consult with medical professionals.
+			<CardFooter className="text-center text-xs px-2 md:px-4 text-gray-500">
+				AI models may not always be accurate. Always consult with medical
+				professionals.
 			</CardFooter>
 		</Card>
 	);
