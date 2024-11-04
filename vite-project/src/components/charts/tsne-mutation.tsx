@@ -288,68 +288,75 @@ export function MutationTSNE() {
 						)}
 					</div>
 				</div>
-				<div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-					<div className="flex space-x-2">
-						<Input
-							type="text"
-							placeholder="Search genes..."
-							onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-								debouncedSetGeneFilter(e.target.value)
-							}
-							className="w-full sm:w-[120px]"
-						/>
-						<Select onValueChange={setSelectedGene} value={selectedGene}>
-							<SelectTrigger className="w-full sm:w-[120px]">
-								<SelectValue placeholder="Select a gene" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="All">Select Gene</SelectItem>
-								{filteredGenes.map((gene) => (
-									<SelectItem key={gene} value={gene}>
-										{gene}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+				<div className="flex flex-col gap-4 mt-4">
+					<div className="flex flex-col lg:flex-row gap-4">
+						<div className="flex gap-2">
+							<Input
+								type="text"
+								placeholder="Search genes..."
+								onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+									debouncedSetGeneFilter(e.target.value)
+								}
+								className="w-full lg:w-[120px]"
+							/>
+							<Select onValueChange={setSelectedGene} value={selectedGene}>
+								<SelectTrigger className="w-full lg:w-[120px]">
+									<SelectValue placeholder="Select a gene" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="All">Select Gene</SelectItem>
+									{filteredGenes.map((gene) => (
+										<SelectItem key={gene} value={gene}>
+											{gene}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+
+						<div className="flex flex-wrap gap-2">
+							<Button
+								onClick={fetchData}
+								disabled={isLoading}
+								className="flex-1 lg:flex-none min-w-[100px]"
+							>
+								{isLoading ? "Loading..." : "Load Data"}
+							</Button>
+							<Button
+								variant="ghost"
+								onClick={() => setShowSettings(!showSettings)}
+								className="flex-none"
+							>
+								⚙️
+							</Button>
+							<Button
+								onClick={() => chartInstance.current?.resetZoom()}
+								disabled={!chartInstance.current}
+								className="flex-1 lg:flex-none min-w-[100px]"
+							>
+								Reset Zoom
+							</Button>
+						</div>
 					</div>
-					<div className="flex space-x-2 justify-end sm:flex-grow">
-						<Button
-							onClick={fetchData}
-							disabled={isLoading}
-							className="flex-grow sm:flex-grow-0"
-						>
-							{isLoading ? "Loading..." : "Load Data"}
-						</Button>
-						<Button
-							variant="ghost"
-							onClick={() => setShowSettings(!showSettings)}
-							className="flex-grow sm:flex-grow-0"
-						>
-							⚙️
-						</Button>
-						<Button
-							onClick={() => chartInstance.current?.resetZoom()}
-							disabled={!chartInstance.current}
-							className="flex-grow sm:flex-grow-0"
-						>
-							Reset Zoom
-						</Button>
-					</div>
+
+					{/* Settings section */}
+					{showSettings && (
+						<div className="flex flex-col lg:flex-row items-start lg:items-center gap-2">
+							<span>Point Size:</span>
+							<div className="flex items-center gap-2 w-full lg:w-auto">
+								<Slider
+									value={[pointRadius]}
+									onValueChange={(value) => setPointRadius(value[0])}
+									min={1}
+									max={10}
+									step={1}
+									className="w-full lg:w-[100px]"
+								/>
+								<span className="min-w-[20px] text-center">{pointRadius}</span>
+							</div>
+						</div>
+					)}
 				</div>
-				{showSettings && (
-					<div className="flex items-center space-x-2 mt-2 flex-wrap">
-						<span>Point Size:</span>
-						<Slider
-							value={[pointRadius]}
-							onValueChange={(value) => setPointRadius(value[0])}
-							min={1}
-							max={10}
-							step={1}
-							className="w-[100px]"
-						/>
-						<span>{pointRadius}</span>
-					</div>
-				)}
 			</CardContent>
 		</Card>
 	);

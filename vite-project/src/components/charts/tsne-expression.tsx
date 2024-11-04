@@ -240,14 +240,14 @@ export function GeneExpressionTSNE() {
 					</div>
 				</div>
 				<div className="flex flex-col gap-4 mt-4">
-					<div className="flex flex-col sm:flex-row sm:space-y-0 sm:space-x-2">
-						<div className="flex space-x-2">
+					<div className="flex flex-col lg:flex-row gap-4">
+						<div className="flex gap-2">
 							<Input
 								type="text"
 								placeholder="Search genes..."
 								value={geneSearch}
 								onChange={(e) => setGeneSearch(e.target.value)}
-								className="w-full sm:w-[120px]"
+								className="w-full lg:w-[120px]"
 							/>
 							<Select
 								onValueChange={handleGeneSelection}
@@ -255,7 +255,7 @@ export function GeneExpressionTSNE() {
 								onOpenChange={(open) => setIsSelectOpen(open)}
 								disabled={isLoading}
 							>
-								<SelectTrigger className="w-full sm:w-[120px]">
+								<SelectTrigger className="w-full lg:w-[120px]">
 									<SelectValue placeholder="Select a gene">
 										{selectedGene}
 									</SelectValue>
@@ -265,25 +265,26 @@ export function GeneExpressionTSNE() {
 								</SelectContent>
 							</Select>
 						</div>
-						<div className="flex space-x-2 justify-end sm:flex-grow">
+
+						<div className="flex flex-wrap gap-2">
 							<Button
 								onClick={() => handleFetchData()}
 								disabled={isLoading}
-								className="flex-grow sm:flex-grow-0"
+								className="flex-1 lg:flex-none min-w-[100px]"
 							>
 								{isLoading ? "Loading..." : "Fetch Data"}
 							</Button>
 							<Button
 								variant="ghost"
 								onClick={() => setShowSettings(!showSettings)}
-								className="flex-grow sm:flex-grow-0"
+								className="flex-none"
 							>
 								⚙️
 							</Button>
 							<Button
 								onClick={() => chartInstance.current?.resetZoom()}
 								disabled={!chartInstance.current}
-								className="flex-grow sm:flex-grow-0"
+								className="flex-1 lg:flex-none min-w-[100px]"
 							>
 								Reset Zoom
 							</Button>
@@ -292,17 +293,19 @@ export function GeneExpressionTSNE() {
 
 					{/* Settings section */}
 					{showSettings && (
-						<div className="flex items-center space-x-2 mt-2 flex-wrap">
+						<div className="flex flex-col lg:flex-row items-start lg:items-center gap-2">
 							<span>Point Size:</span>
-							<Slider
-								value={[pointRadius]}
-								onValueChange={(value) => setPointRadius(value[0])}
-								min={1}
-								max={10}
-								step={1}
-								className="w-[100px]"
-							/>
-							<span>{pointRadius}</span>
+							<div className="flex items-center gap-2 w-full lg:w-auto">
+								<Slider
+									value={[pointRadius]}
+									onValueChange={(value) => setPointRadius(value[0])}
+									min={1}
+									max={10}
+									step={1}
+									className="w-full lg:w-[100px]"
+								/>
+								<span className="min-w-[20px] text-center">{pointRadius}</span>
+							</div>
 						</div>
 					)}
 				</div>
