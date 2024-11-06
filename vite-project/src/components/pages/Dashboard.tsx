@@ -1,6 +1,6 @@
 "use client";
 
-import { SeamlessHeader } from "@/components/charts/Header";
+import { SeamlessHeader } from "@/components/charts/SeamlessHeader";
 import { DeconvolutionChart } from "@/components/charts/deconvolution";
 import { TSNEChart } from "@/components/charts/tsne-chart";
 import { DrugResponseTSNE } from "@/components/charts/tsne-drugresponse";

@@ -1,5 +1,5 @@
 import Login from "@/components/Login";
-import SiteHeader from "@/components/charts/Header";
+import { SeamlessHeader } from "@/components/charts/SeamlessHeader";
 import { Navbar } from "@/components/header/Navbar";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
@@ -17,7 +17,7 @@ export function LoginPage({ user }: { user: FirebaseUser | null }) {
 	return (
 		<>
 			<Navbar />
-			<SiteHeader />
+			<SeamlessHeader />
 			{!user && (
 				<div className="h-[40rem] max-w-screen-3xl mx-auto flex justify-center items-center px-0">
 					<div className="text-2xl mx-auto font-normal text-neutral-600 dark:text-neutral-400">

@@ -334,7 +334,7 @@ export function KNNReport() {
 											<AccordionItem key={attr} value={attr}>
 												<AccordionTrigger
 													className={` text-left  ${
-														isPValueSignificant ? "text-green-600" : ""
+														isPValueSignificant ? "bg-green-100" : ""
 													}`}
 												>
 													{isContinuousVariable(typedData.breakdown) ? (

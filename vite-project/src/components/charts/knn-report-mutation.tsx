@@ -303,7 +303,11 @@ export function KNNReportMutation() {
 										] as EnrichedGenesData
 									).genes.map((gene) => (
 										<AccordionItem key={gene.gene} value={gene.gene}>
-											<AccordionTrigger className="hover:no-underline px-6">
+											<AccordionTrigger
+												className={`hover:no-underline px-6 ${
+													gene.probabilityScore < 0.05 ? "bg-green-100" : ""
+												}`}
+											>
 												{/* Mobile layout - stack vertically */}
 												<div className="grid md:hidden w-full text-sm">
 													<span className="text-left font-medium mb-2">

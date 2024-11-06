@@ -101,7 +101,7 @@ export function ClusterAssociationCard() {
 			<CardHeader>
 				<CardTitle>Drug Response List</CardTitle>
 			</CardHeader>
-			<CardContent className="flex-grow flex flex-col space-y-4">
+			<CardContent className="flex-grow flex flex-col space-y-4 min-h-[400px]">
 				{drugResponseData.length === 0 ? (
 					<div className="flex-grow flex items-center justify-center">
 						<p className="text-center text-gray-500">

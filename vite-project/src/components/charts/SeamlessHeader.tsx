@@ -22,18 +22,20 @@ export const SeamlessHeader = () => (
 					seAMLess Dashboard
 				</CardTitle>
 				<CardDescription>
-					Comprehensive AML molecular data analysis and visualization
+					Comprehensive Molecular Data Analysis and Visualization
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<p className="text-sm text-gray-600 mb-4">
-					The dashboard offers a comprehensive view of AML molecular data,
+					The dashboard offers a comprehensive view of RNA-sequencing data,
 					including t-SNE visualizations, deconvolution analysis, drug response
 					data, and mutation information.
 				</p>
 				<Accordion type="single" collapsible className="w-full">
 					<AccordionItem value="features" className="bg-transparent">
-						<AccordionTrigger className="bg-white hover:bg-transparent">Key Features</AccordionTrigger>
+						<AccordionTrigger className="bg-white hover:bg-transparent">
+							Key Features
+						</AccordionTrigger>
 						<AccordionContent className="bg-transparent">
 							<Table>
 								<TableBody className="text-left">
@@ -211,7 +213,9 @@ export const SeamlessHeader = () => (
 						</AccordionContent>
 					</AccordionItem>
 					<AccordionItem value="tips" className="bg-transparent">
-						<AccordionTrigger className="bg-white hover:bg-transparent">Tips & Tricks</AccordionTrigger>
+						<AccordionTrigger className="bg-white hover:bg-transparent">
+							Tips & Tricks
+						</AccordionTrigger>
 						<AccordionContent className="bg-transparent">
 							<Table>
 								<TableBody className="text-left">
