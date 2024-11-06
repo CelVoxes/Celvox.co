@@ -169,3 +169,24 @@ export function generateColorMap(uniqueValues: string[]) {
 		uniqueValues.map((value, index) => [value, colors[index % colors.length]])
 	);
 }
+
+// Calculate binomial coefficient without full factorials to avoid overflow
+const binomialCoefficient = (n: number, k: number) => {
+	if (k > n - k) k = n - k; // Take advantage of symmetry
+	let result = 1;
+	for (let i = 0; i < k; i++) {
+		result *= n - i;
+		result /= i + 1;
+	}
+	return result;
+};
+
+// Improved binomial probability function
+export const calculateBinomialProbability = (
+	n: number,
+	k: number,
+	p: number
+) => {
+	const coefficient = binomialCoefficient(n, k);
+	return coefficient * Math.pow(p, k) * Math.pow(1 - p, n - k);
+};

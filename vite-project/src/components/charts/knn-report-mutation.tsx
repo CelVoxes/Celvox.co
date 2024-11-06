@@ -35,7 +35,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { calculateHypergeometricPValue } from "@/utils/zzz";
+import { calculateBinomialProbability } from "@/utils/zzz";
 
 interface KNNDataItem {
 	sample_id: string;
@@ -63,42 +63,19 @@ interface MutationDataItem {
 	cluster: string;
 }
 
-interface BreakdownItem {
-	value: string;
-	count: number;
-	percentage: number;
-	pValue: string;
-	adjustedPValue: string;
-	totalInCategory: number;
-}
-
-interface AttributeData {
-	breakdown: BreakdownItem[];
-	// Add other properties if needed
-}
-
 interface EnrichedGenesData {
 	genes: {
 		gene: string;
 		count: number;
-		pValue: number;
-		adjustedPValue: number;
 		neighborFrequency: string;
 		databaseFrequency: string;
+		enrichmentRatio: number;
+		probabilityScore: number;
 	}[];
 	mutations: MutationDataItem[];
 }
 
-interface EnrichedGene {
-	gene: string;
-	count: number;
-	pValue: number;
-	adjustedPValue: number;
-	neighborFrequency: string;
-	databaseFrequency: string;
-}
-
-type ReportData = AttributeData | EnrichedGenesData;
+type ReportData = EnrichedGenesData;
 
 export function KNNReportMutation() {
 	const [tsneData, setTsneData] = useState<TSNEDataItem[]>([]);
@@ -152,29 +129,6 @@ export function KNNReportMutation() {
 		);
 		const newReport: Record<string, Record<string, ReportData>> = {};
 
-		// Calculate overall frequencies for each metadata attribute
-		const overallGeneFrequencies: Record<
-			string,
-			Set<string>
-		> = mutationData.reduce((acc, sample) => {
-			const gene = sample.gene_id;
-			if (gene !== null && gene !== undefined && gene !== "NA") {
-				if (!acc[gene]) {
-					acc[gene] = new Set();
-				}
-				acc[gene].add(sample.sample_id);
-			}
-			return acc;
-		}, {} as Record<string, Set<string>>);
-
-		// Convert Sets to counts
-		const overallGeneSampleCounts = Object.fromEntries(
-			Object.entries(overallGeneFrequencies).map(([gene, sampleSet]) => [
-				gene,
-				sampleSet.size,
-			])
-		);
-
 		uploadedSamples.forEach((sample) => {
 			const knnItem = knnData.find(
 				(item) => item.sample_id === sample.sample_id
@@ -186,72 +140,67 @@ export function KNNReportMutation() {
 					.map((index) => tsneData[index - 1])
 					.filter(Boolean);
 
-				const sampleReport: Record<string, ReportData> = {};
-
-				// Process Mutation Data to Identify Enriched Genes
-				const neighborSampleIds = neighbors.map(
-					(neighbor) => neighbor.sample_id
-				);
+				// Get mutations for neighbors
 				const neighborMutations = mutationData.filter((mutation) =>
-					neighborSampleIds.includes(mutation.sample_id)
+					neighbors.some((n) => n.sample_id === mutation.sample_id)
 				);
 
-				// Calculate gene counts among neighbors (count samples, not mutations)
-				const geneCount = neighborMutations.reduce((acc, mutation) => {
-					const gene = mutation.gene_id;
-					if (gene !== null && gene !== undefined && gene !== "NA") {
-						if (!acc[gene]) {
-							acc[gene] = new Set();
-						}
-						acc[gene].add(mutation.sample_id);
+				// Group mutations by gene
+				const geneGroups = neighborMutations.reduce((acc, mutation) => {
+					if (!acc[mutation.gene_id]) {
+						acc[mutation.gene_id] = [];
 					}
+					acc[mutation.gene_id].push(mutation);
 					return acc;
-				}, {} as Record<string, Set<string>>);
+				}, {} as Record<string, MutationDataItem[]>);
 
-				// Convert Sets to counts
-				const geneSampleCounts = Object.fromEntries(
-					Object.entries(geneCount).map(([gene, sampleSet]) => [
-						gene,
-						sampleSet.size,
-					])
-				);
+				// Calculate enrichment for each gene
+				const enrichedGenes = Object.entries(geneGroups)
+					.map(([gene, mutations]) => {
+						const neighborCount = new Set(mutations.map((m) => m.sample_id))
+							.size;
+						const totalSamples = tsneData.length;
+						const databaseCount = mutationData.filter(
+							(m) => m.gene_id === gene
+						).length;
 
-				// Identify enriched genes using hypergeometric test
-				const enrichedGenes: EnrichedGene[] = Object.entries(geneSampleCounts)
-					.map(([gene, count]) => {
-						const K = overallGeneSampleCounts[gene] || 0;
-						const N = mutationData.length;
-						const n = k; // Number of neighbors
-						const pValue = calculateHypergeometricPValue(count, n, K, N);
+						// Skip genes with fewer than 5 cases in the database
+						if (databaseCount < 5 || neighborCount < 2) {
+							return null;
+						}
+
+						// Calculate frequencies and enrichment ratio
+						const neighborFreq = neighborCount / k;
+						const databaseFreq = databaseCount / totalSamples;
+						const logEnrichmentRatio = Math.log(neighborFreq / databaseFreq);
+
+						// Calculate probability based on database frequency
+						const p = databaseCount / totalSamples;
+						const probabilityScore = calculateBinomialProbability(
+							k,
+							neighborCount,
+							p
+						);
+
 						return {
 							gene,
-							count,
-							pValue,
-							adjustedPValue: 0, // Initialize with 0
-							neighborFrequency: `${count}/${n}`,
-							databaseFrequency: `${K}/${N}`,
+							count: mutations.length,
+							neighborFrequency: `${neighborCount}/${k}`,
+							databaseFrequency: `${databaseCount}/${totalSamples}`,
+							enrichmentRatio: Number(logEnrichmentRatio.toFixed(2)),
+							probabilityScore,
 						};
 					})
-					.filter((gene) => gene.pValue < 0.05)
-					.sort((a, b) => a.pValue - b.pValue);
+					.filter((gene): gene is NonNullable<typeof gene> => gene !== null)
+					.sort((a, b) => b.enrichmentRatio - a.enrichmentRatio); // Higher enrichment ratio first
 
-				// Apply Benjamini-Hochberg correction
-				const m = enrichedGenes.length;
-				enrichedGenes.forEach((gene, i) => {
-					gene.adjustedPValue = Math.min(1, (gene.pValue * m) / (i + 1));
-				});
-
-				// Attach enriched genes to the report
-				sampleReport["enriched_genes"] = {
-					genes: enrichedGenes.map((gene) => ({
-						...gene,
-						adjustedPValue: Number(gene.adjustedPValue.toExponential(2)),
-						neighborFrequency: gene.neighborFrequency,
-						databaseFrequency: gene.databaseFrequency,
-					})),
-					mutations: neighborMutations.filter((mutation) =>
-						enrichedGenes.some((gene) => gene.gene === mutation.gene_id)
-					),
+				const sampleReport = {
+					enriched_genes: {
+						genes: enrichedGenes.sort(
+							(a, b) => a.probabilityScore - b.probabilityScore
+						),
+						mutations: neighborMutations,
+					},
 				};
 
 				newReport[sample.sample_id] = sampleReport;
@@ -264,16 +213,14 @@ export function KNNReportMutation() {
 	return (
 		<Card className="w-full ">
 			<CardHeader>
-				<CardTitle>
-					KNN Mutation Report for Uploaded Samples
-					<p className="mt-1 text-sm text-blue-600">(Developmental)</p>
-				</CardTitle>
+				<CardTitle>KNN Mutation Report for Uploaded Samples</CardTitle>
 				<CardDescription className="text-sm ">
-					This section displays a detailed KNN (K-Nearest Neighbors) report for
-					the selected sample based on mutation data. It shows the most probable
-					enriched genes based on the K nearest neighbors, along with their
-					probabilities, p-values, and a breakdown of the neighbor values and
-					actual mutation variants.
+					This analysis identifies enriched mutations in neighboring samples
+					using KNN. For each uploaded sample, it analyzes mutations present in
+					its K nearest neighbors, calculating enrichment ratios and statistical
+					significance compared to the overall database frequency. Genes are
+					ranked by their enrichment scores and binomial probability, with
+					detailed variant information available for each gene.
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -297,17 +244,26 @@ export function KNNReportMutation() {
 							onValueChange={setSelectedSample}
 							value={selectedSample || undefined}
 						>
-							<SelectTrigger className="w-full">
-								<SelectValue placeholder="Select a sample" />
+							<SelectTrigger className="w-full max-w-[200px] sm:max-w-full">
+								<SelectValue
+									placeholder="Select a sample"
+									className="truncate"
+								/>
 							</SelectTrigger>
-							<SelectContent>
-								{tsneData
-									.filter((d) => d.data_source === "uploaded")
-									.map((sample) => (
-										<SelectItem key={sample.sample_id} value={sample.sample_id}>
-											{sample.sample_id}
-										</SelectItem>
-									))}
+							<SelectContent className="max-h-[300px]">
+								<div className="overflow-y-auto max-h-[300px]">
+									{tsneData
+										.filter((d) => d.data_source === "uploaded")
+										.map((sample) => (
+											<SelectItem
+												key={sample.sample_id}
+												value={sample.sample_id}
+												className="truncate pr-6"
+											>
+												{sample.sample_id}
+											</SelectItem>
+										))}
+								</div>
 							</SelectContent>
 						</Select>
 					</div>
@@ -326,17 +282,20 @@ export function KNNReportMutation() {
 				{selectedSample && report[selectedSample] && (
 					<Card className="mb-4">
 						<CardHeader>
-							<CardTitle>Sample ID: {selectedSample}</CardTitle>
+							<CardTitle className="truncate">
+								Sample ID: {selectedSample}
+							</CardTitle>
 						</CardHeader>
-						<CardContent>
+						<CardContent className="p-0">
 							{report[selectedSample]["enriched_genes"] && (
 								<Accordion type="single" collapsible className="w-full">
-									<div className="grid grid-cols-5 gap-4 w-full py-2 font-medium text-sm">
-										<div className="text-left">Gene</div>
-										<div className="text-left">Neighbor Count</div>
-										<div className="text-left">Database Count</div>
-										<div className="text-left">P-Value</div>
-										<div className="text-left">Adjusted P-Value</div>
+									{/* Header row - hidden on mobile, shown on larger screens */}
+									<div className="hidden md:flex w-full py-2 px-6 font-medium text-sm border-b">
+										<div className="w-1/5">Gene</div>
+										<div className="w-1/5">Neighbor Count</div>
+										<div className="w-1/5">Database Count</div>
+										<div className="w-1/5">Log Enrichment Ratio</div>
+										<div className="w-1/5">Binomial Probability</div>
 									</div>
 									{(
 										report[selectedSample][
@@ -344,20 +303,67 @@ export function KNNReportMutation() {
 										] as EnrichedGenesData
 									).genes.map((gene) => (
 										<AccordionItem key={gene.gene} value={gene.gene}>
-											<AccordionTrigger className="hover:no-underline">
-												<div className="grid grid-cols-5 gap-4 w-full text-sm items-center">
-													<span className="text-left">{gene.gene}</span>
-													<span className="text-left">
+											<AccordionTrigger className="hover:no-underline px-6">
+												{/* Mobile layout - stack vertically */}
+												<div className="grid md:hidden w-full text-sm">
+													<span className="text-left font-medium mb-2">
+														{gene.gene}
+													</span>
+													<div className="grid grid-cols-1 gap-1 text-xs">
+														<div className="flex justify-between">
+															<span className="text-muted-foreground">
+																Neighbors:
+															</span>
+															<span>{gene.neighborFrequency}</span>
+														</div>
+														<div className="flex justify-between">
+															<span className="text-muted-foreground">
+																Database:
+															</span>
+															<span>{gene.databaseFrequency}</span>
+														</div>
+														<div className="flex justify-between">
+															<span className="text-muted-foreground">
+																Enrichment:
+															</span>
+															<span className="flex items-center">
+																{gene.enrichmentRatio > 0 ? (
+																	<span className="text-green-500 mr-1">↑</span>
+																) : (
+																	<span className="text-red-500 mr-1">↓</span>
+																)}
+																{gene.enrichmentRatio}
+															</span>
+														</div>
+														<div className="flex justify-between">
+															<span className="text-muted-foreground">
+																P-value:
+															</span>
+															<span>
+																{Number(gene.probabilityScore.toExponential(2))}
+															</span>
+														</div>
+													</div>
+												</div>
+												{/* Desktop layout - fixed enrichment ratio alignment */}
+												<div className="hidden md:flex w-full text-sm items-center">
+													<span className="w-1/5">{gene.gene}</span>
+													<span className="w-1/5">
 														{gene.neighborFrequency}
 													</span>
-													<span className="text-left">
+													<span className="w-1/5">
 														{gene.databaseFrequency}
 													</span>
-													<span className="text-left">
-														{gene.pValue.toExponential(2)}
-													</span>
-													<span className="text-left">
-														{gene.adjustedPValue}
+													<div className="w-1/5">
+														{gene.enrichmentRatio > 0 ? (
+															<span className="text-green-500">↑ </span>
+														) : (
+															<span className="text-red-500">↓ </span>
+														)}
+														{gene.enrichmentRatio}
+													</div>
+													<span className="w-1/5">
+														{Number(gene.probabilityScore.toExponential(2))}
 													</span>
 												</div>
 											</AccordionTrigger>

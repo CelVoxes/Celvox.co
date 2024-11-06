@@ -31,7 +31,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { calculateHypergeometricPValue, adjustPValues } from "@/utils/zzz";
+import { calculateBinomialProbability } from "@/utils/zzz";
 import { PDFChart } from "@/components/charts/histogram-chart";
 
 interface KNNDataItem {
@@ -68,11 +68,10 @@ interface BreakdownItem {
 	pValue: string;
 	adjustedPValue: string;
 	totalInCategory: number;
-}
-
-interface AttributeData {
-	breakdown: BreakdownItem[];
-	// Add other properties if needed
+	neighborFrequency: string;
+	databaseFrequency: string;
+	enrichmentRatio: number;
+	probabilityScore: number;
 }
 
 const isContinuousVariable = (breakdown: BreakdownItem[]): boolean => {
@@ -188,42 +187,34 @@ export function KNNReport() {
 						const sortedValues = Object.entries(valueCount).sort(
 							(a, b) => b[1] - a[1]
 						);
-						const [mostProbableValue, mostProbableCount] = sortedValues[0];
 
-						const N = tsneData.length; // Total number of samples
+						const breakdown = sortedValues.map(([value, count]) => {
+							const totalInCategory = overallFrequencies[attr][value] || 0;
+							const p = totalInCategory / tsneData.length;
+							const binomialPValue = calculateBinomialProbability(k, count, p);
 
-						const pValues = sortedValues.map(([value, count]) => {
-							const K = overallFrequencies[attr][value] || 0;
-							let pValue = null;
-							if (K > 0 && N > 0) {
-								pValue = calculateHypergeometricPValue(count, k, K, N);
-							}
-							return { value, count, totalInCategory: K, pValue };
+							// Add safety check for enrichment ratio calculation
+							const enrichmentRatio =
+								totalInCategory === 0 || k === 0
+									? 0
+									: Math.log(count / k / (totalInCategory / tsneData.length));
+
+							return {
+								value,
+								count,
+								percentage: (count / k) * 100,
+								totalInCategory,
+								neighborFrequency: `${count}/${k}`,
+								databaseFrequency: `${totalInCategory}/${tsneData.length}`,
+								enrichmentRatio,
+								probabilityScore: binomialPValue,
+							};
 						});
 
-						// Adjust p-values only for non-null values
-						const validPValues = pValues.filter((item) => item.pValue !== null);
-						const adjustedPValues = adjustPValues(
-							validPValues.map((item) => item.pValue as number)
-						);
-
 						sampleReport[attr] = {
-							mostProbable: mostProbableValue,
-							probability: mostProbableCount / k,
-							breakdown: pValues.map((item) => ({
-								value: item.value,
-								count: item.count,
-								percentage: (item.count / k) * 100,
-								pValue:
-									item.pValue !== null ? item.pValue.toExponential(2) : "N/A",
-								adjustedPValue:
-									item.pValue !== null
-										? adjustedPValues[
-												validPValues.findIndex((vp) => vp.value === item.value)
-										  ].toExponential(2)
-										: "N/A",
-								totalInCategory: item.totalInCategory,
-							})),
+							breakdown: breakdown.sort(
+								(a, b) => a.probabilityScore - b.probabilityScore
+							),
 						};
 					}
 				});
@@ -247,11 +238,11 @@ export function KNNReport() {
 			<CardHeader>
 				<CardTitle>KNN Metadata Report for Uploaded Samples</CardTitle>
 				<CardDescription className="text-sm">
-					This section displays a detailed KNN (K-Nearest Neighbors) report for
-					the selected sample based on gene expression data. It shows the most
-					probable metadata values for various attributes based on the K nearest
-					neighbors, along with their probabilities and a breakdown of the
-					neighbor values.
+					This report analyzes your sample using K-Nearest Neighbors (KNN) to
+					find similar samples in our database. For each metadata attribute
+					(like diagnosis, tissue type, etc.), it shows the distribution of
+					values among the K most similar samples, highlighting statistically
+					significant patterns and enrichments.
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -275,7 +266,7 @@ export function KNNReport() {
 						<Select
 							onValueChange={setSelectedSample}
 							value={selectedSample || undefined}
-							>
+						>
 							<SelectTrigger className="w-full">
 								<SelectValue placeholder="Select a sample" />
 							</SelectTrigger>
@@ -283,8 +274,8 @@ export function KNNReport() {
 								{tsneData
 									.filter((d) => d.data_source === "uploaded")
 									.map((sample) => (
-										<SelectItem 
-											key={sample.sample_id} 
+										<SelectItem
+											key={sample.sample_id}
 											value={sample.sample_id}
 											className="break-all pr-6"
 										>
@@ -308,9 +299,11 @@ export function KNNReport() {
 				{selectedSample && report[selectedSample] && (
 					<Card className="mb-4">
 						<CardHeader>
-							<CardTitle className="break-all">Sample ID: {selectedSample}</CardTitle>
+							<CardTitle className="break-all">
+								Sample ID: {selectedSample}
+							</CardTitle>
 						</CardHeader>
-						<CardContent>
+						<CardContent className="p-0">
 							<Accordion type="single" collapsible className="w-full">
 								{Object.entries(report[selectedSample])
 									.sort(([, a], [, b]) => {
@@ -327,16 +320,14 @@ export function KNNReport() {
 										return pValueA - pValueB;
 									})
 									.map(([attr, data]) => {
-										const typedData = data as AttributeData;
+										const typedData = data as { breakdown: BreakdownItem[] };
 										const smallestPValueItem = typedData.breakdown.reduce(
 											(min, item) =>
-												parseFloat(item.pValue) < parseFloat(min.pValue)
+												item.probabilityScore < min.probabilityScore
 													? item
 													: min
 										);
-										const smallestPValue = parseFloat(
-											smallestPValueItem.pValue
-										);
+										const smallestPValue = smallestPValueItem.probabilityScore;
 										const isPValueSignificant = smallestPValue < 0.05;
 
 										return (
@@ -353,11 +344,7 @@ export function KNNReport() {
 															(median)
 														</>
 													) : (
-														<>
-															{formatAttribute(attr)}:{" "}
-															{smallestPValueItem.value} (p-value:{" "}
-															{smallestPValue.toExponential(2)})
-														</>
+														<>{formatAttribute(attr)}</>
 													)}
 												</AccordionTrigger>
 												<AccordionContent>
@@ -374,63 +361,67 @@ export function KNNReport() {
 															<Table className="block overflow-x-auto whitespace-nowrap sm:table">
 																<TableHeader>
 																	<TableRow>
-																		<TableHead className="min-w-[100px]">Value</TableHead>
-																		<TableHead className="min-w-[80px]">Count</TableHead>
-																		<TableHead className="min-w-[100px]">Percentage</TableHead>
-																		<TableHead className="min-w-[120px]">Total in Category</TableHead>
-																		<TableHead className="min-w-[100px]">P-value</TableHead>
-																		<TableHead className="min-w-[120px]">Adjusted P-value</TableHead>
+																		<TableHead className="min-w-[100px]">
+																			Value
+																		</TableHead>
+																		<TableHead className="min-w-[80px]">
+																			Neighbor Count
+																		</TableHead>
+																		<TableHead className="min-w-[100px]">
+																			Database Count
+																		</TableHead>
+																		<TableHead className="min-w-[120px]">
+																			Log Enrichment Ratio
+																		</TableHead>
+																		<TableHead className="min-w-[100px]">
+																			Binomial Probability
+																		</TableHead>
 																	</TableRow>
 																</TableHeader>
 																<TableBody>
-																	{typedData.breakdown
-																		.sort(
-																			(a, b) =>
-																				parseFloat(a.adjustedPValue) -
-																				parseFloat(b.adjustedPValue)
+																	{typedData.breakdown.map(
+																		({
+																			value,
+																			neighborFrequency,
+																			databaseFrequency,
+																			enrichmentRatio,
+																			probabilityScore,
+																		}) => (
+																			<TableRow
+																				key={value}
+																				className={
+																					probabilityScore < 0.05
+																						? "bg-green-100"
+																						: ""
+																				}
+																			>
+																				<TableCell className="text-left">
+																					{value}
+																				</TableCell>
+																				<TableCell className="text-left">
+																					{neighborFrequency}
+																				</TableCell>
+																				<TableCell className="text-left">
+																					{databaseFrequency}
+																				</TableCell>
+																				<TableCell className="text-left">
+																					{enrichmentRatio > 0 ? (
+																						<span className="text-green-500">
+																							↑{" "}
+																						</span>
+																					) : (
+																						<span className="text-red-500">
+																							↓{" "}
+																						</span>
+																					)}
+																					{enrichmentRatio.toFixed(2)}
+																				</TableCell>
+																				<TableCell className="text-left">
+																					{probabilityScore.toExponential(2)}
+																				</TableCell>
+																			</TableRow>
 																		)
-																		.map(
-																			({
-																				value,
-																				count,
-																				totalInCategory,
-																				percentage,
-																				pValue,
-																				adjustedPValue,
-																			}) => (
-																				<TableRow
-																					key={value}
-																					className={
-																						parseFloat(pValue) < 0.05
-																							? "bg-green-100"
-																							: ""
-																					}
-																				>
-																					<TableCell className="text-left">
-																						{value}
-																					</TableCell>
-																					<TableCell className="text-left">
-																						{count}/{kValue}
-																					</TableCell>
-																					<TableCell className="text-left">
-																						{percentage.toFixed(2)}%
-																					</TableCell>
-																					<TableCell className="text-left">
-																						{totalInCategory}/{tsneData.length}
-																					</TableCell>
-																					<TableCell
-																						className={`text-left ${pValue}`}
-																					>
-																						{pValue}
-																					</TableCell>
-																					<TableCell
-																						className={`text-left ${adjustedPValue}`}
-																					>
-																						{adjustedPValue}
-																					</TableCell>
-																				</TableRow>
-																			)
-																		)}
+																	)}
 																</TableBody>
 															</Table>
 														</>

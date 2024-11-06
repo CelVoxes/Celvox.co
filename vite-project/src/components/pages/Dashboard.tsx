@@ -44,38 +44,38 @@ export function Dashboard({ user }: { user: User | null }) {
 						className="w-full"
 					>
 						<TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 w-full gap-1 p-1">
-							<TabsTrigger 
-								value="qc" 
+							<TabsTrigger
+								value="qc"
 								className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
-							>	
+							>
 								QC Metrics
 							</TabsTrigger>
-							<TabsTrigger 
-								value="tsne" 
+							<TabsTrigger
+								value="tsne"
 								className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
 							>
 								t-SNE
 							</TabsTrigger>
-							<TabsTrigger 
-								value="knn" 
+							<TabsTrigger
+								value="knn"
 								className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
 							>
 								KNN Report
 							</TabsTrigger>
-							<TabsTrigger 
-								value="deconvolution" 
+							<TabsTrigger
+								value="deconvolution"
 								className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
 							>
 								Deconvolution
 							</TabsTrigger>
-							<TabsTrigger 
-								value="drug" 
-									className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
+							<TabsTrigger
+								value="drug"
+								className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
 							>
 								Drug Response
 							</TabsTrigger>
-							<TabsTrigger 
-								value="ask-ai" 
+							<TabsTrigger
+								value="ask-ai"
 								className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
 							>
 								Artificial Intelligence

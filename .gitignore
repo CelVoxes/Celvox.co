@@ -5,3 +5,8 @@ Old_diagnostic_samples.csv
 vite-project/.env
 vite-project/.firebaserc
 vite-project/firebase.json
+vite-project/src/assets/104735-001-098.summary.json
+vite-project/src/assets/output-schema.json
+
+# Hamlet charts for now
+vite-project/src/components/charts/hamlet-charts
