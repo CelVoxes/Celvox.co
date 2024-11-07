@@ -85,11 +85,9 @@ load_sample_data <- local({
 
 get_corrected_data <- local({
     function() {
-        corrected <- read_fst("cache/normalized_and_corrected_matrix.fst")
+        corrected <- read_fst("cache/harmonized_data.fst")
         rownames(corrected) <- corrected[, 1]
         corrected <- corrected[, -1, drop = FALSE]
-
-
 
         return(corrected)
     }
@@ -105,13 +103,24 @@ remove_low_expressed_genes <- function(data, threshold = 100) {
 #* @get /harmonize-data
 #* @serializer json
 harmonize_data <- local({
-    function() {
+    function(req) {
+        selected_samples <- req$args$samples
+
+        message("Selected samples:", paste(selected_samples, collapse = ", "))
+
         library(sva)
 
         uncorrected <- fread("data/counts/uncorrected_counts.csv", data.table = F)
         sample_data <- read_fst("cache/sample_data.fst")
         metadata <- fread("data/meta.csv", data.table = F)
 
+
+        # drop the samples that are not in the selected_samples and gene names which is the first column
+        # BE CAREFUL with match function; it will only match the first occurrence of each element
+        sample_data <- sample_data[, c(1, match(selected_samples, colnames(sample_data))), drop = FALSE]
+
+
+        message(length(match(selected_samples, colnames(sample_data))))
         # Function to check if IDs are Ensembl-like
         is_ensembl <- function(ids) {
             ensembl_count <- sum(grepl("^ENSG", ids))
@@ -229,6 +238,11 @@ harmonize_data <- local({
         uncorrected <- convert_to_symbols(uncorrected)
         sample_data <- convert_to_symbols(sample_data)
 
+        message("Dimensions of uncorrected data:")
+        print(dim(uncorrected))
+        message("Dimensions of sample data:")
+        print(dim(sample_data))
+
         # remove low expressed genes
         message("Removing genes with less than total 100 mRNA for all samples...")
         sample_data <- remove_low_expressed_genes(sample_data, threshold = 100)
@@ -282,10 +296,19 @@ harmonize_data <- local({
 
         message("Returning normalized and corrected data...")
         start_time <- Sys.time()
-        write_fst(corrected_matrix, "cache/normalized_and_corrected_matrix.fst")
+        write_fst(corrected_matrix, "cache/harmonized_data.fst")
         write_fst(corrected_matrix[, "gene_id", drop = FALSE], "cache/gene_ids.fst")
+
+        # remove cached t-SNE results
+        if (file.exists("cache/tsne_result.fst")) {
+            file.remove("cache/tsne_result.fst")
+        }
         end_time <- Sys.time()
         message("Time taken to write fst: ", difftime(end_time, start_time, units = "secs"))
+
+
+        message("Dimensions of harmonized data:")
+        print(dim(corrected_matrix))
 
         # Cleanup
         message("Cleaning up memory...")
@@ -320,7 +343,7 @@ run_tsne <- function() {
     } else {
         message("Reading corrected counts file...")
         # read the corrected counts file
-        corrected <- read_fst("cache/normalized_and_corrected_matrix.fst")
+        corrected <- read_fst("cache/harmonized_data.fst")
 
         rownames(corrected) <- corrected[, 1]
         corrected <- corrected[, -1, drop = FALSE]
@@ -567,7 +590,7 @@ gene_expression <- local({
         if (!gene %in% gene_ids$gene_id) {
             return(list(error = "Gene not found", available_genes = gene_ids$gene_id))
         }
-        corrected <- read_fst("cache/normalized_and_corrected_matrix.fst")
+        corrected <- read_fst("cache/harmonized_data.fst")
         rownames(corrected) <- corrected[, 1]
         corrected <- corrected[, -1, drop = FALSE]
 
@@ -601,6 +624,8 @@ function(req) {
                 # Set it in R's environment for future use
                 Sys.setenv(OPENAI_API_KEY = api_key)
             }
+
+            message(Sys.getenv("OPENAI_API_KEY"))
 
             patient_info <- req$args$patientInfo
             model <- req$args$model
@@ -656,7 +681,7 @@ function(req) {
 #* Get QC metrics for RNA-seq data
 #* @get /qc-metrics
 function() {
-    # Read the normalized and corrected counts
+    # Read the raw uploaded data
     sample_data <- read_fst("cache/sample_data.fst")
     rownames(sample_data) <- sample_data[, 1]
     sample_data <- sample_data[, -1, drop = FALSE]
@@ -693,4 +718,16 @@ function() {
         correlation_matrix = cor_matrix,
         expression_quantiles = expression_quantiles
     ))
+}
+
+#* @get /sample-data-names
+#* @serializer json
+sample_data_names <- function() {
+    return(colnames(read_fst("cache/sample_data.fst")))
+}
+
+#* @get /harmonized-data-names
+#* @serializer json
+harmonized_data_names <- function() {
+    return(colnames(read_fst("cache/harmonized_data.fst")))
 }

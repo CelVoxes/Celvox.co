@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const API_BASE_URL = window.location.hostname === "localhost" ? "http://localhost:5555" : "https://celvox.co/api";
+const API_BASE_URL =
+	window.location.hostname === "localhost"
+		? "http://localhost:5555"
+		: "https://celvox.co/api";
 
 export async function fetchTSNEData() {
 	try {
@@ -88,6 +91,16 @@ export async function uploadSampleData(file: File) {
 	}
 }
 
+export async function fetchSampleDataNames() {
+	const response = await axios.get(`${API_BASE_URL}/sample-data-names`);
+	return response.data;
+}
+
+export async function fetchHarmonizedDataNames() {
+	const response = await axios.get(`${API_BASE_URL}/harmonized-data-names`);
+	return response.data;
+}
+
 export async function fetchCacheFiles() {
 	try {
 		const response = await axios.get(`${API_BASE_URL}/cache-files`);
@@ -118,8 +131,10 @@ export async function fetchGeneExpressionData(gene: string) {
 	return response.data;
 }
 
-export async function fetchHarmonizedData() {
-	const response = await axios.get(`${API_BASE_URL}/harmonize-data`);
+export async function fetchHarmonizedData(samples: string[]) {
+	const response = await axios.get(`${API_BASE_URL}/harmonize-data`, {
+		params: { samples },
+	});
 	return response.data;
 }
 
