@@ -158,8 +158,13 @@ export function KNNReport() {
 			if (knnItem) {
 				const neighbors = knnItem.knn_indices
 					.slice(0, k)
-					.map((index) => tsneData[index - 1])
-					.filter(Boolean);
+					.map((index) => {
+						const neighborKNN = knnData[index - 1];
+						return neighborKNN
+							? tsneData.find((d) => d.sample_id === neighborKNN.sample_id)
+							: null;
+					})
+					.filter((n): n is TSNEDataItem => n !== null);
 
 				const sampleReport: Record<string, unknown> = {};
 

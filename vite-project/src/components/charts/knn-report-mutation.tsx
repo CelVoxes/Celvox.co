@@ -129,23 +129,48 @@ export function KNNReportMutation() {
 		);
 		const newReport: Record<string, Record<string, ReportData>> = {};
 
+		// Create a lookup map for knn data by sample_id for faster access
+		const knnMap = new Map(knnData.map((item) => [item.sample_id, item]));
+
 		uploadedSamples.forEach((sample) => {
-			const knnItem = knnData.find(
-				(item) => item.sample_id === sample.sample_id
-			);
+			const knnItem = knnMap.get(sample.sample_id);
 
 			if (knnItem) {
+				// Get the neighbors using the indices from knnItem
 				const neighbors = knnItem.knn_indices
 					.slice(0, k)
-					.map((index) => tsneData[index - 1])
-					.filter(Boolean);
+					.map((index) => {
+						// Find the sample_id that corresponds to this index in knnData
+						const neighborSampleId = knnData[index - 1]?.sample_id;
+						if (!neighborSampleId) {
+							console.warn(`No KNN data found for index ${index}`);
+							return null;
+						}
+						// Find the corresponding TSNE data point
+						const neighborTSNE = tsneData.find(
+							(d) => d.sample_id === neighborSampleId
+						);
+						if (!neighborTSNE) {
+							console.warn(`No TSNE data found for sample ${neighborSampleId}`);
+							return null;
+						}
+						return neighborTSNE;
+					})
+					.filter((n): n is TSNEDataItem => n !== null);
 
-				// Get mutations for neighbors
+				// Log for debugging
+				console.log(
+					`Sample ${sample.sample_id} has ${neighbors.length} neighbors`
+				);
+				console.log(
+					"Neighbor sample IDs:",
+					neighbors.map((n) => n.sample_id)
+				);
+
 				const neighborMutations = mutationData.filter((mutation) =>
 					neighbors.some((n) => n.sample_id === mutation.sample_id)
 				);
 
-				// Group mutations by gene
 				const geneGroups = neighborMutations.reduce((acc, mutation) => {
 					if (!acc[mutation.gene_id]) {
 						acc[mutation.gene_id] = [];
@@ -154,7 +179,6 @@ export function KNNReportMutation() {
 					return acc;
 				}, {} as Record<string, MutationDataItem[]>);
 
-				// Calculate enrichment for each gene
 				const enrichedGenes = Object.entries(geneGroups)
 					.map(([gene, mutations]) => {
 						const neighborCount = new Set(mutations.map((m) => m.sample_id))
@@ -164,17 +188,14 @@ export function KNNReportMutation() {
 							(m) => m.gene_id === gene
 						).length;
 
-						// Skip genes with fewer than 5 cases in the database
 						if (databaseCount < 5 || neighborCount < 2) {
 							return null;
 						}
 
-						// Calculate frequencies and enrichment ratio
 						const neighborFreq = neighborCount / k;
 						const databaseFreq = databaseCount / totalSamples;
 						const logEnrichmentRatio = Math.log(neighborFreq / databaseFreq);
 
-						// Calculate probability based on database frequency
 						const p = databaseCount / totalSamples;
 						const probabilityScore = calculateBinomialProbability(
 							k,
@@ -192,7 +213,7 @@ export function KNNReportMutation() {
 						};
 					})
 					.filter((gene): gene is NonNullable<typeof gene> => gene !== null)
-					.sort((a, b) => b.enrichmentRatio - a.enrichmentRatio); // Higher enrichment ratio first
+					.sort((a, b) => b.enrichmentRatio - a.enrichmentRatio);
 
 				const sampleReport = {
 					enriched_genes: {
