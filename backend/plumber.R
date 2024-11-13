@@ -731,3 +731,70 @@ sample_data_names <- function() {
 harmonized_data_names <- function() {
     return(colnames(read_fst("cache/harmonized_data.fst")))
 }
+
+# source the DEG.R file
+# starting to layer out the code
+# source("DEG.R")
+
+#* @get /knn-deg
+#* @serializer json
+function(req) {
+    library(limma)
+    library(data.table)
+
+    # Get parameters from request
+    k <- if (!is.null(req$args$k)) as.integer(req$args$k) else 20
+    sample_id <- req$args$sampleId
+
+    if (is.null(sample_id)) {
+        return(list(error = "Sample ID is required"))
+    }
+    # Get the harmonized data
+    corrected <- get_corrected_data()
+    # Get KNN results for the selected sample
+    knn_result <- FNN::get.knn(t(corrected), k = k)
+
+    # Find the index of the selected sample
+    sample_idx <- which(colnames(corrected) == sample_id)
+    if (length(sample_idx) == 0) {
+        return(list(error = "Sample not found"))
+    }
+
+    # Get the neighbors for the selected sample
+    neighbors <- knn_result$nn.index[sample_idx, ]
+
+    # Create contrast vector for limma
+    # Create a factor with the target sample and its neighbors vs background
+    group <- factor(ifelse(1:ncol(corrected) == sample_idx, "target",
+        ifelse(1:ncol(corrected) %in% neighbors, "neighbor", "background")
+    ))
+
+    # Create design matrix
+    design <- model.matrix(~ 0 + group)
+    colnames(design) <- levels(group)
+
+    # Define contrasts of interest
+    contrast.matrix <- makeContrasts(
+        target_vs_background = target - background,
+        neighbor_vs_background = neighbor - background,
+        target_vs_neighbor = target - neighbor,
+        levels = design
+    )
+
+    # Fit the model and calculate statistics
+    fit <- lmFit(corrected, design)
+    fit <- contrasts.fit(fit, contrast.matrix)
+    fit <- eBayes(fit, trend = TRUE)
+
+    # Get results for all contrasts
+    results <- list(
+        target_vs_background = topTable(fit, coef = 1, number = Inf),
+        neighbor_vs_background = topTable(fit, coef = 2, number = Inf),
+        target_vs_neighbor = topTable(fit, coef = 3, number = Inf)
+    )
+
+    # add a column for -log10(FDR)
+    results[["neighbor_vs_background"]]$logFDR <- -log10(results[["neighbor_vs_background"]]$adj.P.Val)
+
+    return(results[["neighbor_vs_background"]])
+}

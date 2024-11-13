@@ -20,6 +20,7 @@ import QCCharts from "@/components/charts/QCmetrics";
 import { Navbar } from "../header/Navbar";
 import { User } from "firebase/auth";
 import { Navigate } from "react-router-dom";
+import { KNNReportExpression } from "@/components/charts/knn-report-expression";
 export const description = "A collection of AML samples.";
 
 export function Dashboard({ user }: { user: User | null }) {
@@ -97,6 +98,7 @@ export function Dashboard({ user }: { user: User | null }) {
 						<div className="grid grid-cols-1 md:grid-cols-1 gap-4">
 							<KNNReport />
 							<KNNReportMutation />
+							<KNNReportExpression />
 						</div>
 					</div>
 
