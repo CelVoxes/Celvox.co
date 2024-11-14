@@ -15,14 +15,14 @@ import {
 	SelectValue,
 	SelectItem,
 } from "@/components/ui/select";
-// import {
-// 	Table,
-// 	TableBody,
-// 	TableCell,
-// 	TableHead,
-// 	TableHeader,
-// 	TableRow,
-// } from "@/components/ui/table";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 import { fetchKNNDEG, fetchSampleDataNames } from "@/utils/api";
 import {
 	Chart as ChartJS,
@@ -34,6 +34,7 @@ import {
 } from "chart.js";
 import { Scatter } from "react-chartjs-2";
 import zoomPlugin from "chartjs-plugin-zoom";
+import { ScrollArea } from "../ui/scroll-area";
 // import { ScrollArea } from "../ui/scroll-area";
 
 interface DEGResult {
@@ -64,6 +65,11 @@ ChartJS.register(
 	zoomPlugin
 );
 
+interface SortConfig {
+	key: keyof DEGResult;
+	direction: "asc" | "desc";
+}
+
 export function KNNReportExpression() {
 	const [kValue, setKValue] = useState(20);
 	const [selectedSample, setSelectedSample] = useState<string | null>(null);
@@ -71,6 +77,10 @@ export function KNNReportExpression() {
 	const [error, setError] = useState<string | null>(null);
 	const [degResults, setDegResults] = useState<DEGResult[] | null>(null);
 	const [samples, setSamples] = useState<string[]>([]);
+	const [sortConfig, setSortConfig] = useState<SortConfig>({
+		key: "logFDR",
+		direction: "desc",
+	});
 
 	useEffect(() => {
 		fetchSampleDataNames().then(setSamples).catch(console.error);
@@ -134,6 +144,25 @@ export function KNNReportExpression() {
 			setIsLoading(false);
 		}
 	};
+
+	const handleSort = (key: keyof DEGResult) => {
+		setSortConfig((current) => ({
+			key,
+			direction:
+				current.key === key && current.direction === "desc" ? "asc" : "desc",
+		}));
+	};
+
+	const sortedResults = useMemo(() => {
+		if (!degResults) return [];
+
+		return [...degResults].sort((a, b) => {
+			if (sortConfig.direction === "asc") {
+				return a[sortConfig.key] > b[sortConfig.key] ? 1 : -1;
+			}
+			return a[sortConfig.key] < b[sortConfig.key] ? 1 : -1;
+		});
+	}, [degResults, sortConfig]);
 
 	return (
 		<Card className="w-full">
@@ -237,45 +266,103 @@ export function KNNReportExpression() {
 						</div>
 
 						{/* DEG Results Table */}
-						{/* <Card>
+						<Card className="mb-6">
 							<CardHeader>
 								<CardTitle>Top Differential Genes</CardTitle>
 							</CardHeader>
 							<CardContent>
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead>Gene</TableHead>
-											<TableHead>Log2 FC</TableHead>
-											<TableHead>Avg Expression</TableHead>
-											<TableHead>FDR</TableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										<ScrollArea className="h-[400px]">
-											{degResults
-												.sort((a, b) => a["adj.P.Val"] - b["adj.P.Val"])
-												.slice(0, 100)
-												.map((result) => (
+								<ScrollArea className="h-[400px] w-full">
+									<div className="relative w-full min-w-[600px]">
+										<Table>
+											<TableHeader>
+												<TableRow>
+													<TableHead
+														onClick={() => handleSort("_row")}
+														className="cursor-pointer hover:bg-gray-100 w-[25%] sticky top-0 bg-white"
+													>
+														<div className="flex items-center justify-between">
+															<span>Gene</span>
+															{sortConfig.key === "_row" && (
+																<span>
+																	{sortConfig.direction === "desc" ? "↓" : "↑"}
+																</span>
+															)}
+														</div>
+													</TableHead>
+													<TableHead
+														onClick={() => handleSort("logFC")}
+														className="cursor-pointer hover:bg-gray-100 w-[25%] sticky top-0 bg-white"
+													>
+														<div className="flex items-center justify-between">
+															<span>Log2 FC</span>
+															{sortConfig.key === "logFC" && (
+																<span>
+																	{sortConfig.direction === "desc" ? "↓" : "↑"}
+																</span>
+															)}
+														</div>
+													</TableHead>
+													<TableHead
+														onClick={() => handleSort("AveExpr")}
+														className="cursor-pointer hover:bg-gray-100 w-[25%] sticky top-0 bg-white"
+													>
+														<div className="flex items-center justify-between">
+															<span>Avg Expression</span>
+															{sortConfig.key === "AveExpr" && (
+																<span>
+																	{sortConfig.direction === "desc" ? "↓" : "↑"}
+																</span>
+															)}
+														</div>
+													</TableHead>
+													<TableHead
+														onClick={() => handleSort("logFDR")}
+														className="cursor-pointer hover:bg-gray-100 w-[25%] sticky top-0 bg-white"
+													>
+														<div className="flex items-center justify-between">
+															<span>-log10(FDR)</span>
+															{sortConfig.key === "logFDR" && (
+																<span>
+																	{sortConfig.direction === "desc" ? "↓" : "↑"}
+																</span>
+															)}
+														</div>
+													</TableHead>
+												</TableRow>
+											</TableHeader>
+
+											<TableBody>
+												{sortedResults.slice(0, 100).map((result) => (
 													<TableRow
 														key={result._row}
 														className={
-															result["adj.P.Val"] < 0.05 ? "bg-green-50" : ""
+															result.logFDR > -Math.log10(0.05)
+																? result.logFC > 0
+																	? "bg-red-50"
+																	: "bg-blue-50"
+																: ""
 														}
 													>
-														<TableCell>{result._row}</TableCell>
-														<TableCell>{result.logFC.toFixed(2)}</TableCell>
-														<TableCell>{result.AveExpr.toFixed(2)}</TableCell>
-														<TableCell>
-															{result["adj.P.Val"].toExponential(2)}
+														<TableCell className="w-[25%]">
+															{result._row}
+														</TableCell>
+														<TableCell className="w-[25%]">
+															{result.logFC.toFixed(2)}
+														</TableCell>
+														<TableCell className="w-[25%]">
+															{result.AveExpr.toFixed(2)}
+														</TableCell>
+														<TableCell className="w-[25%]">
+															{result.logFDR.toFixed(2)}
 														</TableCell>
 													</TableRow>
 												))}
-										</ScrollArea>
-									</TableBody>
-								</Table>
+											</TableBody>
+										</Table>
+									</div>
+								</ScrollArea>
 							</CardContent>
-						</Card> */}
+						</Card>
 
 						{degResults && (
 							<Card className="mb-6">
@@ -358,7 +445,7 @@ export function KNNReportExpression() {
 											},
 											elements: {
 												point: {
-													radius: 2,
+													radius: 3,
 													hoverRadius: 4,
 												},
 											},
