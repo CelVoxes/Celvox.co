@@ -1,9 +1,15 @@
+import { auth } from "@/firebase";
 import axios from "axios";
 
 const API_BASE_URL =
 	window.location.hostname === "localhost"
-		? "http://localhost:5555"
-		: "https://celvox.co/api";
+		? "http://localhost:3001/v1"
+		: "https://celvox.co/api/v1";
+
+axios.interceptors.request.use(async (config) => {
+	config.headers['Authorization'] = `Bearer ${await auth.currentUser?.getIdToken()}`
+	return config
+})
 
 export async function fetchTSNEData() {
 	try {
@@ -26,11 +32,13 @@ export async function fetchDeconvolutionData() {
 }
 
 export async function fetchDrugResponseData() {
-	const response = await fetch(`${API_BASE_URL}/drug-response`);
-	if (!response.ok) {
-		throw new Error("Failed to fetch drug response data");
+	try {
+		const response = await axios.get(`${API_BASE_URL}/drug-response`);
+		return response.data;
+	} catch (error) {
+		console.error("Error fetching deconvolution data:", error);
+		throw error;
 	}
-	return response.json();
 }
 
 export async function fetchMutationTSNEData() {

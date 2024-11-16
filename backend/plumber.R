@@ -1,7 +1,7 @@
 library(fst)
 library(data.table)
 
-#* @post /load-sample-data
+#* @get /load-sample-data
 #* @serializer json
 load_sample_data <- local({
     function(req) {
@@ -16,23 +16,9 @@ load_sample_data <- local({
 
 
                 message("within file:")
-                print(str(req$body$file))
-                # Check if file was uploaded
-                if (is.null(req$body)) {
-                    message("No multipart form data found in the request body.")
-                    return(list(error = "No file data received"))
-                }
-
-                # Extract the file content from the multipart form data
-                file_content <- req$body$file$parsed
-
-                if (is.null(file_content)) {
-                    message("File content is NULL")
-                    return(list(error = "File content is empty or could not be read"))
-                }
+                print(str(req$args$file))
                 # Create a temporary file to store the content
-                temp_file <- tempfile(fileext = ".csv")
-                writeLines(file_content, temp_file)
+                temp_file <- req$args$file
 
                 message(paste("Temporary file created:", temp_file))
 

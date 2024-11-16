@@ -2,6 +2,14 @@
 */.ipynb_checkpoints/*
 Old_diagnostic_samples.csv
 
+dist
+data
+cache
+
+.RData
+.Rhistory
+node_modules
+
 vite-project/.env
 vite-project/.firebaserc
 vite-project/firebase.json
