@@ -25,6 +25,10 @@ export function requireAuthentication(firebase: FirebaseModule): RequestHandler 
     try {
       const decodedIdToken = await firebase.verifyIdToken(idToken)
       req.auth = decodedIdToken;
+
+      if (!decodedIdToken.email) {
+        throw new Error("an email address is not registered with your account")
+      }
     } catch (error) {
       resp.status(StatusCodes.FORBIDDEN).send()
       return

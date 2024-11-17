@@ -20,6 +20,8 @@ load_sample_data <- local({
                 # Create a temporary file to store the content
                 temp_file <- req$args$file
 
+                cache_dir <- req$args$cachedir
+
                 message(paste("Temporary file created:", temp_file))
 
                 # Check if the file exists and has content
@@ -41,17 +43,13 @@ load_sample_data <- local({
 
                 print(head(sample_data))
 
-                if (!dir.exists("cache")) {
-                    dir.create("cache", recursive = TRUE)
-                }
-
                 # Save the sample data to cache
                 message("Saving sample data to cache...")
-                if (!dir.exists("cache")) {
-                    dir.create("cache", recursive = TRUE)
-                    message("Created 'cache' directory.")
+                if (!dir.exists(cache_dir)) {
+                    dir.create(cache_dir, recursive = TRUE)
+                    message(paste("Created '", cache_dir, "' directory."))
                 }
-                write_fst(sample_data, "cache/sample_data.fst")
+                write_fst(sample_data, file.path(cache_dir, "sample_data.fst"))
 
                 # Return success response
                 message("File uploaded and processed successfully.")
@@ -70,8 +68,8 @@ load_sample_data <- local({
 })
 
 get_corrected_data <- local({
-    function() {
-        corrected <- read_fst("cache/harmonized_data.fst")
+    function(cache_dir) {
+        corrected <- read_fst(file.path(cache_dir, "harmonized_data.fst"))
         rownames(corrected) <- corrected[, 1]
         corrected <- corrected[, -1, drop = FALSE]
 
@@ -91,13 +89,14 @@ remove_low_expressed_genes <- function(data, threshold = 100) {
 harmonize_data <- local({
     function(req) {
         selected_samples <- req$args$samples
+        cache_dir <- req$args$cachedir
 
         message("Selected samples:", paste(selected_samples, collapse = ", "))
 
         library(sva)
 
         uncorrected <- fread("data/counts/uncorrected_counts.csv", data.table = F)
-        sample_data <- read_fst("cache/sample_data.fst")
+        sample_data <- read_fst(file.path(cache_dir, "sample_data.fst"))
         metadata <- fread("data/meta.csv", data.table = F)
 
 
@@ -282,12 +281,12 @@ harmonize_data <- local({
 
         message("Returning normalized and corrected data...")
         start_time <- Sys.time()
-        write_fst(corrected_matrix, "cache/harmonized_data.fst")
-        write_fst(corrected_matrix[, "gene_id", drop = FALSE], "cache/gene_ids.fst")
+        write_fst(corrected_matrix, file.path(cache_dir, "harmonized_data.fst"))
+        write_fst(corrected_matrix[, "gene_id", drop = FALSE], file.path(cache_dir, "gene_ids.fst"))
 
         # remove cached t-SNE results
-        if (file.exists("cache/tsne_result.fst")) {
-            file.remove("cache/tsne_result.fst")
+        if (file.exists(file.path(cache_dir, "tsne_result.fst"))) {
+            file.remove(file.path(cache_dir, "tsne_result.fst"))
         }
         end_time <- Sys.time()
         message("Time taken to write fst: ", difftime(end_time, start_time, units = "secs"))
@@ -318,18 +317,18 @@ harmonize_data <- local({
 
 # this function runs t-SNE and saves the results to cache
 # TO DO: There should be two modes: discovery and diagnosis
-run_tsne <- function() {
+run_tsne <- function(cache_dir) {
     library(Rtsne)
-    if (file.exists("cache/tsne_result.fst")) {
+    if (file.exists(file.path(cache_dir, "tsne_result.fst"))) {
         message("Loaded t-SNE results from cache...")
 
-        tsne_df <- read_fst("cache/tsne_result.fst")
+        tsne_df <- read_fst(file.path(cache_dir, "tsne_result.fst"))
         rownames(tsne_df) <- tsne_df[, 1]
         tsne_df <- tsne_df[, -1, drop = FALSE]
     } else {
         message("Reading corrected counts file...")
         # read the corrected counts file
-        corrected <- read_fst("cache/harmonized_data.fst")
+        corrected <- read_fst(file.path(cache_dir, "harmonized_data.fst"))
 
         rownames(corrected) <- corrected[, 1]
         corrected <- corrected[, -1, drop = FALSE]
@@ -347,7 +346,7 @@ run_tsne <- function() {
         message("Saving t-SNE results to cache...")
         tsne_df <- cbind(rownames(tsne_df), tsne_df)
         colnames(tsne_df)[1] <- "sample_id"
-        write_fst(tsne_df, "cache/tsne_result.fst")
+        write_fst(tsne_df, file.path(cache_dir, "tsne_result.fst"))
 
         # Cleanup
         rm(corrected_2000, corrected)
@@ -364,8 +363,9 @@ load_metadata <- function() {
 #* @get /tsne
 #* @serializer json
 tsne <- local({
-    function() {
-        tsne_result <- run_tsne()
+    function(req) {
+        cache_dir <- req$args$cachedir
+        tsne_result <- run_tsne(cache_dir)
         metadata <- load_metadata()
 
         # Identify which rows in tsne_result correspond to the original data
@@ -392,6 +392,7 @@ tsne <- local({
 #* @get /knn
 #* @serializer json
 function(req) {
+    cache_dir <- req$args$cachedir
     # Check if FNN package is available, if not, try to install it
     if (!requireNamespace("FNN", quietly = TRUE)) {
         message("FNN package not found. Attempting to install...")
@@ -410,7 +411,7 @@ function(req) {
         library(FNN)
     }
 
-    corrected <- get_corrected_data()
+    corrected <- get_corrected_data(cache_dir)
     # selected most variable 2000 genes
     vars <- apply(corrected, 1, var)
     corrected_2000 <- corrected[names(vars[order(vars, decreasing = T)[1:2000]]), ]
@@ -436,11 +437,12 @@ function(req) {
 
 #* @get /deconvolution
 #* @serializer json
-function() {
+function(req) {
+    cache_dir <- req$args$cachedir
     # Load the exampleTCGA dataset
     library(seAMLess)
     library(Biobase) # for ExpressionSet
-    if (!file.exists("cache/sample_data.fst")) {
+    if (!file.exists(file.path(cache_dir, "sample_data.fst"))) {
         message("Sample data not found. Returning example data.")
         # Load example data from seAMLess package
         data(exampleTCGA)
@@ -450,7 +452,7 @@ function() {
             deconvolution = as.list(result$Deconvolution)
         ))
     }
-    sample_data <- read_fst("cache/sample_data.fst")
+    sample_data <- read_fst(file.path(cache_dir, "sample_data.fst"))
 
     # remove gene names with __no_feature or __ambiguous
     sample_data <- sample_data[!grepl("__no_feature|__ambiguous", sample_data[, 1]), ]
@@ -465,7 +467,8 @@ function() {
 
 #* @get /drug-response
 #* @serializer json
-drug_response_tsne <- function() {
+drug_response_tsne <- function(req) {
+    cache_dir <- req$args$cachedir
     # Load drug response data
     drug_response <- fread("data/drug_response/ex_vivo_drug_response.csv")
 
@@ -476,7 +479,7 @@ drug_response_tsne <- function() {
     drug_response <- merge(drug_response, drug_families, by.x = "inhibitor", by.y = "drug", all.x = TRUE)
 
     # Perform t-SNE on the drug response data
-    tsne_result <- tsne()
+    tsne_result <- tsne(req)
 
     # Merge t-SNE results with drug response data
     result <- merge(drug_response, tsne_result[, !colnames(tsne_result) %in% "clusters"], by = "sample_id", all.y = TRUE)
@@ -490,12 +493,13 @@ drug_response_tsne <- function() {
 # mutation tsne
 #* @get /mutation-tsne
 #* @serializer json
-mutation_tsne <- function() {
+mutation_tsne <- function(req) {
+    cache_dir <- req$args$cachedir
     # Load mutation data
     mutation_data <- fread("data/aberrations/mutations.csv")
 
     # Load t-SNE results
-    tsne_result <- run_tsne()
+    tsne_result <- run_tsne(cache_dir)
     tsne_result$sample_id <- rownames(tsne_result)
     message("Merging mutation data with t-SNE results...")
 
@@ -507,8 +511,8 @@ mutation_tsne <- function() {
 
 #* @get /cache-files
 #* @serializer json
-function() {
-    cache_dir <- "cache"
+function(req) {
+    cache_dir <- req$args$cachedir
     if (!dir.exists(cache_dir)) {
         return(list(error = "Cache directory does not exist"))
     }
@@ -529,7 +533,7 @@ function() {
 #* @serializer json
 delete_cache_file <- function(req) {
     file_name <- req$body$fileName
-    cache_dir <- "cache"
+    cache_dir <- req$args$cachedir
     if (!dir.exists(cache_dir)) {
         return(list(error = "Cache directory does not exist"))
     }
@@ -543,8 +547,8 @@ delete_cache_file <- function(req) {
 }
 
 
-get_gene_ids <- function() {
-    return(read_fst("cache/gene_ids.fst"))
+get_gene_ids <- function(cache_dir) {
+    return(read_fst(file.path(cache_dir, "gene_ids.fst")))
 }
 
 # Add a filter to include CORS headers
@@ -565,18 +569,19 @@ cors <- function(req, res) {
 #* @serializer json
 gene_expression <- local({
     function(req) {
+        cache_dir <- req$args$cachedir
         gene <- req$args$gene
-        tsne_result <- run_tsne()
+        tsne_result <- run_tsne(cache_dir)
 
         message("gene:")
         print(gene)
 
         message(paste("Fetching gene expression data for:", gene))
-        gene_ids <- get_gene_ids()
+        gene_ids <- get_gene_ids(cache_dir)
         if (!gene %in% gene_ids$gene_id) {
             return(list(error = "Gene not found", available_genes = gene_ids$gene_id))
         }
-        corrected <- read_fst("cache/harmonized_data.fst")
+        corrected <- read_fst(file.path(cache_dir, "harmonized_data.fst"))
         rownames(corrected) <- corrected[, 1]
         corrected <- corrected[, -1, drop = FALSE]
 
@@ -666,9 +671,10 @@ function(req) {
 
 #* Get QC metrics for RNA-seq data
 #* @get /qc-metrics
-function() {
+function(req) {
+    cache_dir <- req$args$cachedir
     # Read the raw uploaded data
-    sample_data <- read_fst("cache/sample_data.fst")
+    sample_data <- read_fst(file.path(cache_dir, "sample_data.fst"))
     rownames(sample_data) <- sample_data[, 1]
     sample_data <- sample_data[, -1, drop = FALSE]
 
@@ -708,14 +714,16 @@ function() {
 
 #* @get /sample-data-names
 #* @serializer json
-sample_data_names <- function() {
-    return(colnames(read_fst("cache/sample_data.fst")))
+sample_data_names <- function(req) {
+    cache_dir <- req$args$cachedir
+    return(colnames(read_fst(file.path(cache_dir, "sample_data.fst"))))
 }
 
 #* @get /harmonized-data-names
 #* @serializer json
-harmonized_data_names <- function() {
-    return(colnames(read_fst("cache/harmonized_data.fst")))
+harmonized_data_names <- function(req) {
+    cache_dir <- req$args$cachedir
+    return(colnames(read_fst(file.path(cache_dir, "harmonized_data.fst"))))
 }
 
 # source the DEG.R file
@@ -725,6 +733,7 @@ harmonized_data_names <- function() {
 #* @get /knn-deg
 #* @serializer json
 function(req) {
+    cache_dir <- req$args$cachedir
     library(limma)
     library(data.table)
 
@@ -736,7 +745,7 @@ function(req) {
         return(list(error = "Sample ID is required"))
     }
     # Get the harmonized data
-    corrected <- get_corrected_data()
+    corrected <- get_corrected_data(cache_dir)
     # Get KNN results for the selected sample
     knn_result <- FNN::get.knn(t(corrected), k = k)
 

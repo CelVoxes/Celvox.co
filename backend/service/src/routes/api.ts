@@ -18,9 +18,12 @@ export function apiRoute(props: {config: AppConfig, firebase: FirebaseModule}) {
 
   route.post('/load-sample-data', upload.single('file'), async (req, resp) => {
     console.log(req.file, path.resolve( req.file?.path!))
+    const uid = req.auth?.email!
+
     const reponse = await axios.get(`${compuateBackendUrl}/load-sample-data`, {
       params: {
-        file: path.resolve(req.file?.path!)
+        file: path.resolve(req.file?.path!),
+        cachedir: `cache/${uid}` 
       }
     })
     console.log(reponse.data)
@@ -29,8 +32,14 @@ export function apiRoute(props: {config: AppConfig, firebase: FirebaseModule}) {
 
   route.get('/:api', async (req, resp) => {
     console.log('routing to local R plumbler ', req.params.api)
+    const uid = req.auth?.email!
+
+
     const r = await axios.get(`${compuateBackendUrl}/${req.params.api}`, {
-      params: req.query
+      params: {
+        ...req.query,
+        cachedir: `cache/${uid}` 
+      }
     });
     resp.json(r.data)
   })
