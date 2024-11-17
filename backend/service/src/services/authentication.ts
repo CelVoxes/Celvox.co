@@ -1,13 +1,21 @@
 import { StatusCodes } from "http-status-codes"
-import express from 'express'
-
-import { FirebaseModule } from "@/firebase"
-import { RequestContext } from "@/request-context"
-
-type AppRequestHandler = (req: express.Request & Partial<RequestContext>, res: express.Response, next: any) => Promise<any>
+import { RequestHandler } from 'express'
+import { DecodedIdToken } from "firebase-admin/auth";
+import { FirebaseModule } from "#root/services/firebase"
 
 
-export function requireAuthentication(firebase: FirebaseModule): AppRequestHandler {
+export interface RequestAuthentication {
+  auth: DecodedIdToken
+}
+
+declare global {
+  namespace Express {
+      interface Request extends Partial<RequestAuthentication> {
+      }
+  }
+}
+
+export function requireAuthentication(firebase: FirebaseModule): RequestHandler {
   return async (req, resp, next) => {
     const idToken = req.header('Authorization')?.split('Bearer ',2)[1]
     if (!idToken) {
@@ -16,7 +24,6 @@ export function requireAuthentication(firebase: FirebaseModule): AppRequestHandl
     }
     try {
       const decodedIdToken = await firebase.verifyIdToken(idToken)
-      console.log("valid uid:", decodedIdToken);
       req.auth = decodedIdToken;
     } catch (error) {
       resp.status(StatusCodes.FORBIDDEN).send()

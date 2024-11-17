@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "bin": "dist/server.js",
+  "imports": {
+    "#root/*": "./dist/*.js"
+  },
   "scripts": {
     "build": "tsc",
     "start": "tsc && node --enable-source-maps dist/server.js debug.config.json",

@@ -10,6 +10,7 @@ In the R console, you can then install the R packages using:
 ```R
 install.packages("fst")
 
+#install.packages("devtools")
 devtools::install_github("eonurk/seAMLess")
 devtools::install_github("eonurk/seAMLessData")
 
