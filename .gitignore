@@ -18,3 +18,4 @@ vite-project/src/assets/output-schema.json
 
 # Hamlet charts for now
 vite-project/src/components/charts/hamlet-charts
+debug.Rmd

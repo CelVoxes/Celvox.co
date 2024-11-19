@@ -283,8 +283,14 @@ export function DataUpload() {
 		<Card className="w-full">
 			<CardHeader>
 				<CardTitle>Upload Data</CardTitle>
-				<CardDescription>
-					Upload a CSV file with genes as rownames and samples as columns.
+				<CardDescription className="space-y-4">
+					<p>
+						Upload a CSV file with genes as rownames and samples as columns.
+						<br />
+						<a href="/example-TCGA.csv" className=" text-xs hover:underline">
+							[Download example file]
+						</a>
+					</p>
 				</CardDescription>
 			</CardHeader>
 			<CardContent>

@@ -151,71 +151,70 @@ harmonize_data <- local({
                 id_in_column <- id_info$id_in_column
             } else {
                 message("Unable to determine gene ID location. Please check your data format.")
-                return(NULL) # or handle this case as appropriate for your workflow
+                return(NULL)
             }
 
+            # Calculate variance for each gene
+            gene_vars <- tryCatch(
+                {
+                    if (id_in_column) {
+                        message("Calculating variance for data with gene IDs in the first column")
+                        numeric_data <- as.matrix(data[, -1, drop = FALSE])
+                        if (!is.numeric(numeric_data)) {
+                            message("Warning: Non-numeric data detected. Attempting to convert to numeric.")
+                            numeric_data <- apply(numeric_data, 2, as.numeric)
+                        }
+                        apply(numeric_data, 1, var, na.rm = TRUE)
+                    } else {
+                        message("Calculating variance for data with gene IDs as rownames")
+                        numeric_data <- as.matrix(data)
+                        if (!is.numeric(numeric_data)) {
+                            message("Warning: Non-numeric data detected. Attempting to convert to numeric.")
+                            numeric_data <- apply(numeric_data, 2, as.numeric)
+                        }
+                        apply(numeric_data, 1, var, na.rm = TRUE)
+                    }
+                },
+                error = function(e) {
+                    message("Error in variance calculation: ", e$message)
+                    message("First few rows of data:")
+                    print(head(data))
+                    message("Data structure:")
+                    str(data)
+                    return(rep(NA, nrow(data)))
+                }
+            )
+
+            # Convert Ensembl IDs to gene symbols if applicable
+            new_gene_ids <- gene_ids
             if (is_ensembl(gene_ids)) {
                 message("Converting Ensembl IDs to gene symbols...")
                 stripped_gene_ids <- strip_ensembl_version(gene_ids)
                 new_gene_ids <- seAMLess::grch38$symbol[match(stripped_gene_ids, seAMLess::grch38$ensgene)]
-
                 # Replace NA values with original IDs
                 new_gene_ids[is.na(new_gene_ids)] <- gene_ids[is.na(new_gene_ids)]
-
-                # Calculate variance for each gene
-                gene_vars <- tryCatch(
-                    {
-                        if (id_in_column) {
-                            message("Calculating variance for data with gene IDs in the first column")
-                            numeric_data <- as.matrix(data[, -1, drop = FALSE])
-                            if (!is.numeric(numeric_data)) {
-                                message("Warning: Non-numeric data detected. Attempting to convert to numeric.")
-                                numeric_data <- apply(numeric_data, 2, as.numeric)
-                            }
-                            apply(numeric_data, 1, var, na.rm = TRUE)
-                        } else {
-                            message("Calculating variance for data with gene IDs as rownames")
-                            numeric_data <- as.matrix(data)
-                            if (!is.numeric(numeric_data)) {
-                                message("Warning: Non-numeric data detected. Attempting to convert to numeric.")
-                                numeric_data <- apply(numeric_data, 2, as.numeric)
-                            }
-                            apply(numeric_data, 1, var, na.rm = TRUE)
-                        }
-                    },
-                    error = function(e) {
-                        message("Error in variance calculation: ", e$message)
-                        message("First few rows of data:")
-                        print(head(data))
-                        message("Data structure:")
-                        str(data)
-                        return(rep(NA, nrow(data)))
-                    }
-                )
-
-                # Check for NA values in gene_vars
-                na_count <- sum(is.na(gene_vars))
-                if (na_count > 0) {
-                    message(paste("Warning:", na_count, "out of", length(gene_vars), "gene variances are NA"))
-                }
-
-                # Create a data frame with new IDs and variances
-                id_var_df <- data.frame(new_gene_ids = new_gene_ids, gene_ids = gene_ids, variance = gene_vars)
-
-
-                # Sort by variance (descending) and keep only the first occurrence of each gene symbol
-                id_var_df <- id_var_df[order(id_var_df$variance, decreasing = TRUE), ]
-                id_var_df <- id_var_df[!duplicated(id_var_df$new_gene_ids), ]
-
-                # Update the data with sorted and deduplicated gene symbols
-                if (id_in_column) {
-                    data <- data[match(id_var_df$gene_ids, gene_ids), ]
-                    data <- data[, -1, drop = FALSE]
-                } else {
-                    data <- data[match(id_var_df$gene_ids, gene_ids), ]
-                }
-                rownames(data) <- id_var_df$new_gene_ids
             }
+
+            # Create a data frame with IDs and variances
+            id_var_df <- data.frame(
+                new_gene_ids = new_gene_ids,
+                gene_ids = gene_ids,
+                variance = gene_vars
+            )
+
+            # Sort by variance (descending) and keep only the first occurrence of each gene symbol
+            id_var_df <- id_var_df[order(id_var_df$variance, decreasing = TRUE), ]
+            id_var_df <- id_var_df[!duplicated(id_var_df$new_gene_ids), ]
+
+            # Update the data with sorted and deduplicated gene symbols
+            if (id_in_column) {
+                data <- data[match(id_var_df$gene_ids, gene_ids), ]
+                data <- data[, -1, drop = FALSE]
+            } else {
+                data <- data[match(id_var_df$gene_ids, gene_ids), ]
+            }
+            rownames(data) <- id_var_df$new_gene_ids
+
             return(data)
         }
 
@@ -310,6 +309,7 @@ harmonize_data <- local({
         gc()
         gc()
 
+        message("Done!")
         return(list(message = "Normalized and corrected data saved to cache"))
     }
 })
