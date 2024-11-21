@@ -80,7 +80,7 @@ get_corrected_data <- local({
 
 remove_low_expressed_genes <- function(data, threshold = 100) {
     # 100 mRNA threshold
-    data <- data[rowSums(data) >= threshold, -1, drop = FALSE]
+    data <- data[rowSums(data) >= threshold, , drop = FALSE]
     return(data)
 }
 
@@ -230,7 +230,10 @@ harmonize_data <- local({
         # remove low expressed genes
         message("Removing genes with less than total 100 mRNA for all samples...")
         sample_data <- remove_low_expressed_genes(sample_data, threshold = 100)
-
+       
+        message("Dimensions of sample data after filtering:")
+        print(dim(sample_data))
+        print(colnames(sample_data))
 
         message("Getting common genes...")
         common_genes <- intersect(rownames(uncorrected), rownames(sample_data))
