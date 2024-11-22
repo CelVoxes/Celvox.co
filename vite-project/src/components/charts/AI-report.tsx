@@ -147,7 +147,7 @@ export const AIAMLReport = () => {
 			tsneData,
 			knnData,
 			k
-		) as MetadataReportItem[]>;
+		) as unknown as Record<string, MetadataReportItem>;
 
 		console.log("META DATA REPORT");
 		console.log(generatedKNNMeta);
@@ -175,7 +175,7 @@ export const AIAMLReport = () => {
 	};
 
 	const processMetaReport = (
-		metaData: Record<string, BreakdownItem[]>,
+		metaData: BreakdownItem,
 		selectedSample: string
 	): Record<string, MetadataReportItem> => {
 		if (!metaData || !metaData[selectedSample]) {
@@ -185,12 +185,23 @@ export const AIAMLReport = () => {
 		const selectedSampleMeta = metaData[selectedSample];
 		const processedReport: Record<string, MetadataReportItem> = {};
 
-		for (const [key, values] of Object.entries(selectedSampleMeta)) {
-			if (values && Array.isArray(values)) {
+		for (const [key, value] of Object.entries(selectedSampleMeta)) {
+			if (value && value.breakdown) {
 				processedReport[key] = {
-					breakdown: values
-						.map((item: BreakdownItem) => item)
-						.filter((item): item is BreakdownItem => item.count > 0),
+					breakdown: value.breakdown
+						.map((item) => ({
+							value: item.value,
+							count: item.count,
+							percentage: item.percentage,
+							totalInCategory: item.totalInCategory,
+							databaseFrequency: item.databaseFrequency,
+							neighborFrequency: item.neighborFrequency,
+							enrichmentRatio: item.enrichmentRatio,
+							probabilityScore: item.probabilityScore,
+						}))
+						.filter((item) => item.count > 0),
+					totalSamples: value.totalSamples || 0,
+					significance: value.significance || null,
 				};
 			}
 		}
