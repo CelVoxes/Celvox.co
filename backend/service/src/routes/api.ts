@@ -30,6 +30,19 @@ export function apiRoute(props: {config: AppConfig, firebase: FirebaseModule}) {
     resp.json(reponse.data)
   })
 
+  route.delete('/:api', async (req, resp) => {
+    console.log('routing to local R plumbler ', req.params.api)
+    const uid = req.auth?.email!
+
+    const r = await axios.delete(`${compuateBackendUrl}/${req.params.api}`, {
+      params: {
+        ...req.query,
+        cachedir: `cache/${uid}`
+      },
+    });
+    resp.json(r.data)
+  })
+
   route.get('/:api', async (req, resp) => {
     console.log('routing to local R plumbler ', req.params.api)
     const uid = req.auth?.email!
@@ -38,11 +51,12 @@ export function apiRoute(props: {config: AppConfig, firebase: FirebaseModule}) {
     const r = await axios.get(`${compuateBackendUrl}/${req.params.api}`, {
       params: {
         ...req.query,
-        cachedir: `cache/${uid}` 
+        cachedir: `cache/${uid}`
       }
     });
     resp.json(r.data)
   })
+
 
   return route;
 }

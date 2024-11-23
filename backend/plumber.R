@@ -513,7 +513,7 @@ mutation_tsne <- function(req) {
 }
 
 #* @get /cache-files
-#* @serializer json
+#* @serializer unboxedJSON
 function(req) {
     cache_dir <- req$args$cachedir
     if (!dir.exists(cache_dir)) {
@@ -535,7 +535,7 @@ function(req) {
 #* @delete /delete-cache-file
 #* @serializer json
 delete_cache_file <- function(req) {
-    file_name <- req$body$fileName
+    file_name <- req$args$fileName
     cache_dir <- req$args$cachedir
     if (!dir.exists(cache_dir)) {
         return(list(error = "Cache directory does not exist"))

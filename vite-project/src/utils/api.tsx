@@ -122,7 +122,7 @@ export async function fetchCacheFiles() {
 export async function deleteCacheFile(fileName: string) {
 	try {
 		const response = await axios.delete(`${API_BASE_URL}/delete-cache-file`, {
-			data: { fileName },
+			params: { fileName },
 		});
 		console.log("Response from deleteCacheFile:", response.data);
 		return response.data;
