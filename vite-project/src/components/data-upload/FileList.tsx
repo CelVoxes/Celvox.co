@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from "react";
+import { useState } from "react";
 
 import {
 	deleteCacheFile,
-	fetchCacheFiles,
 	CacheFile,
 } from "@/utils/api";
 import { Button } from "@/components/ui/button";

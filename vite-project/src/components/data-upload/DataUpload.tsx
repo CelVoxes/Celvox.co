@@ -7,15 +7,7 @@ import {
 	CardContent,
 	CardDescription,
 } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import {
-	Table,
-	TableHeader,
-	TableRow,
-	TableCell,
-	TableBody,
-} from "@/components/ui/table";
 import {
 	CacheFile,
 	fetchCacheFiles,
@@ -23,6 +15,8 @@ import {
 } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
 import { FileList } from "./FileList";
+import { FilePreview } from "./FilePreview";
+import { CollapsibleCard, CollapsibleCardContent, CollapsibleCardTrigger } from "../ui/collapsible-card";
 
 export function DataUpload() {
 	const { toast } = useToast();
@@ -108,7 +102,7 @@ export function DataUpload() {
 		refreshCacheFiles();
 	}, [toast]); // Add toast to the dependency array
 
-	return (
+	return cacheFiles?.length == 0 ? (
 		<Card className="w-full">
 			<CardHeader>
 				<CardTitle>Upload Data</CardTitle>
@@ -139,63 +133,59 @@ export function DataUpload() {
 				</div>
 
 				{selectedFile && (
-					<>
-						<p className="text-sm text-muted-foreground mb-4">
-							Selected file: {selectedFile.name}
-						</p>
-
-						{filePreview.length > 0 && (
-							<Card className="mb-6">
-								<CardHeader>
-									<CardTitle className="text-sm">File Preview</CardTitle>
-									<CardDescription>
-										Showing first 4 rows of data
-									</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<ScrollArea className="h-[200px] w-full">
-										{fileHeaders.length === 0 ? (
-											<p className="text-sm text-red-500">
-												Warning: File appears to be empty or in incorrect format
-											</p>
-										) : (
-											<Table>
-												<TableHeader>
-													<TableRow>
-														{fileHeaders.map((header, i) => (
-															<TableCell
-																key={i}
-																className="font-medium bg-muted/50"
-															>
-																{header}
-															</TableCell>
-														))}
-													</TableRow>
-												</TableHeader>
-												<TableBody>
-													{filePreview.map((row, i) => (
-														<TableRow key={i}>
-															{row.map((cell, j) => (
-																<TableCell key={j} className="p-2">
-																	{cell}
-																</TableCell>
-															))}
-														</TableRow>
-													))}
-												</TableBody>
-											</Table>
-										)}
-									</ScrollArea>
-								</CardContent>
-							</Card>
-						)}
-					</>
+					<FilePreview 
+						fileName={selectedFile.name} 
+						fileHeaders={fileHeaders} 
+						filePreview={filePreview}/>
 				)}
 
 				<FileList cacheFiles={cacheFiles} onRefresh={() => refreshCacheFiles()} />
 			</CardContent>
 		</Card>
+	) : (
+		<CollapsibleCard className="w-full">
+			<CollapsibleCardTrigger>
+					<CardTitle>Upload Data</CardTitle>
+			</CollapsibleCardTrigger>
+			<CollapsibleCardContent>
+				<CardHeader>
+					<CardDescription className="space-y-4">
+						<p>
+							Upload a CSV file with genes as rownames and samples as columns.
+							<br />
+							<a href="/example-TCGA.csv" className=" text-xs hover:underline">
+								[Download example file]
+							</a>
+						</p>
+					</CardDescription>
+				</CardHeader>
+				<div className="flex flex-col sm:flex-row gap-4 mb-6">
+					<Input
+						type="file"
+						onChange={handleFileChange}
+						accept=".csv"
+						className="flex-1"
+					/>
+					<Button
+						onClick={handleUpload}
+						disabled={!selectedFile || isUploading}
+					>
+						{isUploading ? "Uploading..." : "Upload"}
+					</Button>
+				</div>
+
+				{selectedFile && (
+					<FilePreview 
+						fileName={selectedFile.name} 
+						fileHeaders={fileHeaders} 
+						filePreview={filePreview}/>
+				)}
+
+				<FileList cacheFiles={cacheFiles} onRefresh={() => refreshCacheFiles()} />
+			</CollapsibleCardContent>
+		</CollapsibleCard>
 	);
 }
+
 
 export default DataUpload;
