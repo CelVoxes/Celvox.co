@@ -109,7 +109,14 @@ export async function fetchHarmonizedDataNames() {
 	return response.data;
 }
 
-export async function fetchCacheFiles() {
+export interface CacheFile {
+	name: string; 
+	size: number; 
+	modified: string; 
+	isUserUploaded: boolean
+}
+
+export async function fetchCacheFiles(): Promise<CacheFile[]> {
 	try {
 		const response = await axios.get(`${API_BASE_URL}/cache-files`);
 		return response.data;

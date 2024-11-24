@@ -20,6 +20,7 @@ import {
 	uploadSampleData,
 	deleteCacheFile,
 	fetchCacheFiles,
+	CacheFile,
 } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -34,9 +35,7 @@ export function DataUpload() {
 	const { toast } = useToast();
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [isUploading, setIsUploading] = useState(false);
-	const [cacheFiles, setCacheFiles] = useState<
-		{ name: string; size: number; modified: string; isUserUploaded: boolean }[]
-	>([]);
+	const [cacheFiles, setCacheFiles] = useState<CacheFile[]>([]);
 	const [fileToDelete, setFileToDelete] = useState<string | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [filePreview, setFilePreview] = useState<string[][]>([]);
