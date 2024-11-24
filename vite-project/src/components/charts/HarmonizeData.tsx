@@ -9,15 +9,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-	Card,
 	CardHeader,
 	CardTitle,
-	CardContent,
 	CardDescription,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { CollapsibleCard, CollapsibleCardContent, CollapsibleCardTrigger } from "../ui/collapsible-card";
-import { Icons } from "../icons";
 import { Spinner } from "../ui/spinner";
 
 export function HarmonizeData() {
