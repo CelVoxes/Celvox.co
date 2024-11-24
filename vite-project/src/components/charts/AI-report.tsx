@@ -18,8 +18,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Slider } from "@/components/ui/slider";
-import ReactMarkdown from "react-markdown";
 import {
 	fetchKNNData,
 	fetchDrugResponseData,
@@ -27,31 +25,93 @@ import {
 	fetchMutationTSNEData,
 	fetchAIReport,
 } from "@/utils/api";
-import { calculateTTest, calculateBinomialProbability } from "@/utils/zzz";
-import { generateKNNReport } from "@/utils/reportUtils";
 import {
-	TSNEDataItem,
-	KNNDataItem,
-	DrugResponse,
-	ProcessedData,
-	MetadataReportItem,
-	DrugData,
-	DrugReport,
-	DrugComparison,
-	MutationReport,
-	BreakdownItem,
-} from "@/utils/interfaces";
+	adjustPValues,
+	calculateHypergeometricPValue,
+	calculateTTest,
+} from "@/utils/zzz";
+import { Slider } from "@/components/ui/slider";
+import ReactMarkdown from "react-markdown";
+
+interface DrugData {
+	drug: string;
+	averageAUC: number;
+	count: number;
+	aucs: number[];
+	totalSamples: number; // Add this line
+}
+
+interface DrugComparison {
+	drug: string;
+	neighborAvg: number;
+	allSamplesAvg: number;
+	pValue: number;
+	significant: boolean;
+	totalSamples?: number; // Add this optional property
+}
+
+interface DrugReport {
+	allSamples?: DrugData[];
+	neighborSamples?: DrugData[];
+	comparisons?: (DrugComparison | null)[];
+}
+
+interface MetadataReportItem {
+	mostProbable: string;
+	probability: number;
+	breakdown: Array<{
+		value: string | number;
+		count: number;
+		percentage: number;
+		pValue: string;
+		adjustedPValue: string;
+		totalInCategory: number;
+	}>;
+}
+
+interface DrugResponse {
+	sample_id: string; // Add this line
+	inhibitor: string;
+	auc: number;
+}
+
+interface ProcessedData {
+	sample: {
+		sample_id: string;
+		[key: string]: unknown;
+	};
+	metadataReport: Record<string, MetadataReportItem>;
+	mutationReport: Array<{
+		gene: string;
+		count: number;
+		pValue: number;
+		neighborFrequency: string;
+		databaseFrequency: string;
+	}>;
+	drugReport: {
+		allSamples?: DrugData[];
+		neighborSamples?: DrugData[];
+		comparisons?: (DrugComparison | null)[]; // Allow null values in the array
+	};
+}
+
+// Update this interface
+interface TSNEDataItem {
+	sample_id: string;
+	data_source: string;
+	[key: string]: unknown;
+}
 
 export const AIAMLReport = () => {
 	const [report, setReport] = useState<string>("");
 	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const [visibleChars, setVisibleChars] = useState(0);
 	const [progress, setProgress] = useState(0);
+	const { toast } = useToast();
 	const [selectedSample, setSelectedSample] = useState<string | null>(null);
 	const [tsneData, setTsneData] = useState<TSNEDataItem[]>([]);
 	const [kValue, setKValue] = useState(20);
 	const [selectedModel, setSelectedModel] = useState<string>("gpt-4o-mini");
-	const { toast } = useToast();
 
 	useEffect(() => {
 		fetchTSNEData().then(setTsneData).catch(console.error);
@@ -64,7 +124,7 @@ export const AIAMLReport = () => {
 				if (charIndex < report.length) {
 					setVisibleChars(charIndex + 2);
 					setProgress(((charIndex + 2) / report.length) * 100);
-					charIndex += 3;
+					charIndex += 2;
 				} else {
 					clearInterval(intervalId);
 					setProgress(100);
@@ -118,17 +178,14 @@ export const AIAMLReport = () => {
 
 	const processData = (
 		selectedSample: string,
-		knnData: KNNDataItem[],
-		drugResponseData: DrugResponse,
+		knnData: { sample_id: string; knn_indices: number[] }[],
+		drugResponseData: { sample_id: string; inhibitor: string; auc: number }[],
 		mutationData: { sample_id: string; gene_id: string }[],
 		tsneData: TSNEDataItem[],
 		k: number
-	): ProcessedData | null => {
+	) => {
 		const sample = tsneData.find((d) => d.sample_id === selectedSample);
 		const knnItem = knnData.find((item) => item.sample_id === selectedSample);
-
-		console.log("Selected Sample:", selectedSample);
-		console.log("KNN Item:", knnItem);
 
 		if (!sample || !knnItem) {
 			return null;
@@ -143,23 +200,16 @@ export const AIAMLReport = () => {
 			(neighbor: { sample_id: string }) => neighbor.sample_id
 		);
 
-		const generatedKNNMeta = generateKNNReport(
-			tsneData,
-			knnData,
-			k
-		) as MetadataReportItem[]>;
-
-		console.log("META DATA REPORT");
-		console.log(generatedKNNMeta);
-
-		const metadataReport = processMetaReport(generatedKNNMeta, selectedSample);
-
+		// Process metadata
+		const metadataReport = processMetadata(neighbors, tsneData, k);
+		// Process mutations
 		const mutationReport = processMutations(
 			mutationData,
 			neighborSampleIds,
 			k,
 			mutationData.length
-		)[0];
+		);
+		// Process drug response
 		const drugReport = processDrugResponse(
 			drugResponseData,
 			neighborSampleIds,
@@ -174,28 +224,108 @@ export const AIAMLReport = () => {
 		};
 	};
 
-	const processMetaReport = (
-		metaData: Record<string, BreakdownItem[]>,
-		selectedSample: string
-	): Record<string, MetadataReportItem> => {
-		if (!metaData || !metaData[selectedSample]) {
-			return {};
-		}
+	const processMetadata = (
+		neighbors: { sample_id: string }[],
+		tsneData: TSNEDataItem[],
+		k: number
+	) => {
+		const METADATA_ATTRIBUTES = [
+			"sex",
+			"tissue",
+			"prim_rec",
+			"FAB",
+			"WHO_2022",
+			"ICC_2022",
+			"KMT2A_diagnosis",
+			"rare_diagnosis",
+			"clusters",
+			"blasts",
+		];
 
-		const selectedSampleMeta = metaData[selectedSample];
-		const processedReport: Record<string, MetadataReportItem> = {};
+		const report: Record<string, MetadataReportItem> = {};
 
-		for (const [key, values] of Object.entries(selectedSampleMeta)) {
-			if (values && Array.isArray(values)) {
-				processedReport[key] = {
-					breakdown: values
-						.map((item: BreakdownItem) => item)
-						.filter((item): item is BreakdownItem => item.count > 0),
+		// Calculate overall frequencies
+		const overallFrequencies: Record<
+			string,
+			Record<string | number, number>
+		> = {};
+		METADATA_ATTRIBUTES.forEach((attr) => {
+			overallFrequencies[attr] = tsneData.reduce(
+				(acc: Record<string | number, number>, sample) => {
+					const value = sample[attr as keyof typeof sample];
+					if (value !== null && value !== undefined && value !== "NA") {
+						acc[value as string | number] =
+							(acc[value as string | number] || 0) + 1;
+					}
+					return acc;
+				},
+				{}
+			);
+		});
+
+		METADATA_ATTRIBUTES.forEach((attr) => {
+			const values = neighbors
+				.map((neighbor) => neighbor[attr as keyof typeof neighbor])
+				.filter(
+					(value): value is string =>
+						value !== null && value !== undefined && value !== "NA"
+				);
+
+			if (values.length === 0) {
+				report[attr] = {
+					mostProbable: "No data available",
+					probability: 0,
+					breakdown: [],
+				};
+			} else {
+				const valueCount = values.reduce((acc, value) => {
+					acc[value] = (acc[value] || 0) + 1;
+					return acc;
+				}, {} as Record<string | number, number>);
+
+				const sortedValues = Object.entries(valueCount).sort(
+					(a, b) => b[1] - a[1]
+				);
+				const [mostProbableValue, mostProbableCount] = sortedValues[0];
+
+				const N = tsneData.length; // Total number of samples
+
+				const pValues = sortedValues.map(([value, count]) => {
+					const K = overallFrequencies[attr][value] || 0;
+					let pValue = null;
+					if (K > 0 && N > 0) {
+						pValue = calculateHypergeometricPValue(count, k, K, N);
+					}
+					return { value, count, totalInCategory: K, pValue };
+				});
+
+				// Adjust p-values only for non-null values
+				const validPValues = pValues.filter((item) => item.pValue !== null);
+				const adjustedPValues = adjustPValues(
+					validPValues.map((item) => item.pValue as number)
+				);
+
+				report[attr] = {
+					mostProbable: mostProbableValue,
+					probability: mostProbableCount / k,
+					breakdown: pValues.map((item) => ({
+						value: item.value,
+						count: item.count,
+						percentage: (item.count / k) * 100,
+						pValue: item.pValue !== null ? item.pValue.toExponential(2) : "N/A",
+						adjustedPValue:
+							item.pValue !== null
+								? adjustedPValues[
+										validPValues.findIndex((vp) => vp.value === item.value)
+								  ].toExponential(2)
+								: "N/A",
+						totalInCategory: item.totalInCategory,
+					})),
 				};
 			}
-		}
+		});
 
-		return processedReport;
+		return report;
 	};
 
 	const processMutations = (
@@ -203,82 +333,74 @@ export const AIAMLReport = () => {
 		neighborSampleIds: string[],
 		k: number,
 		totalSamples: number
-	): MutationReport[] => {
+	) => {
+		// Implementation similar to KNNReportMutation component
 		const neighborMutations = mutationData.filter((mutation) =>
 			neighborSampleIds.includes(mutation.sample_id)
 		);
 
-		const geneGroups = neighborMutations.reduce((acc, mutation) => {
-			if (!acc[mutation.gene_id]) {
-				acc[mutation.gene_id] = [];
-			}
-			acc[mutation.gene_id].push(mutation);
-			return acc;
-		}, {} as Record<string, { sample_id: string; gene_id: string }[]>);
-
-		const enrichedGenes = Object.entries(geneGroups)
-			.map(([gene, mutations]) => {
-				const neighborCount = new Set(mutations.map((m) => m.sample_id)).size;
-				const databaseCount = mutationData.filter(
-					(m) => m.gene_id === gene
-				).length;
-
-				if (databaseCount < 5 || neighborCount < 2) {
-					return null;
+		const geneCount = neighborMutations.reduce((acc, mutation) => {
+			const gene = mutation.gene_id;
+			if (gene !== null && gene !== undefined && gene !== "NA") {
+				if (!acc[gene]) {
+					acc[gene] = new Set();
 				}
+				acc[gene].add(mutation.sample_id);
+			}
+			return acc;
+		}, {} as Record<string, Set<string>>);
 
-				const neighborFreq = neighborCount / k;
-				const databaseFreq = databaseCount / totalSamples;
-				const logEnrichmentRatio = Math.log(neighborFreq / databaseFreq);
+		const geneSampleCounts = Object.fromEntries(
+			Object.entries(geneCount).map(([gene, sampleSet]) => [
+				gene,
+				sampleSet.size as number,
+			])
+		);
 
-				const p = databaseCount / totalSamples;
-				const probabilityScore = calculateBinomialProbability(
-					k,
-					neighborCount,
-					p
-				);
-
+		const enrichedGenes = Object.entries(geneSampleCounts)
+			.map(([gene, count]) => {
+				const K = mutationData.filter((m) => m.gene_id === gene).length;
+				const N = totalSamples;
+				const n = k;
+				const pValue = calculateHypergeometricPValue(count, n, K, N);
 				return {
 					gene,
-					count: mutations.length,
-					neighborFrequency: `${neighborCount}/${k}`,
-					databaseFrequency: `${databaseCount}/${totalSamples}`,
-					enrichmentRatio: Number(logEnrichmentRatio.toFixed(2)),
-					probabilityScore,
+					count,
+					pValue,
+					neighborFrequency: `${count}/${n}`,
+					databaseFrequency: `${K}/${N}`,
 				};
 			})
-			.filter((gene): gene is NonNullable<typeof gene> => gene !== null)
-			.sort((a, b) => a.probabilityScore - b.probabilityScore);
-
-		return enrichedGenes.map((gene) => ({
-			gene: gene.gene,
-			count: gene.count,
-			pValue: gene.probabilityScore,
-			neighborFrequency: gene.neighborFrequency,
-			databaseFrequency: gene.databaseFrequency,
-		}));
+			.filter((gene) => gene.pValue < 0.05)
+			.sort((a, b) => a.pValue - b.pValue);
+		return enrichedGenes;
 	};
 
 	const processDrugResponse = (
-		drugResponseData: DrugResponse,
+		drugResponseData: {
+			sample_id: string;
+			inhibitor: string;
+			auc: number;
+		}[],
 		neighborSampleIds: string[],
 		k: number
 	) => {
-		// Transform single drug response into array format
-		const transformedDrugResponses = [
-			{
-				sample_id: drugResponseData.sample_id,
-				inhibitor: drugResponseData.inhibitor,
-				auc: drugResponseData.auc,
-			},
-		];
+		if (!drugResponseData || !Array.isArray(drugResponseData)) {
+			console.error(
+				"Drug response data is not in the expected format:",
+				drugResponseData
+			);
+			return { allSamples: [], neighborSamples: [], comparisons: [] };
+		}
 
-		const filteredDrugResponses = transformedDrugResponses.map((item) => ({
+		// Create an array of objects from the drugResponseData
+		const drugResponses = drugResponseData.map((item) => ({
 			sample_id: item.sample_id,
 			inhibitor: item.inhibitor,
 			auc: item.auc,
 		}));
 
+		// Function to process drug responses
 		const processDrugSensitivity = (responses: DrugResponse[]) => {
 			const sensitivity = responses.reduce(
 				(
@@ -309,14 +431,15 @@ export const AIAMLReport = () => {
 					averageAUC: totalAUC / count,
 					count,
 					aucs,
-					totalSamples: count,
+					totalSamples: count, // Add this line
 				}))
 				.filter((item) => !isNaN(item.averageAUC))
 				.sort((a, b) => b.averageAUC - a.averageAUC);
 		};
 
+		// Process all samples
 		const allSamples = processDrugSensitivity(
-			filteredDrugResponses.filter(
+			drugResponses.filter(
 				(response) =>
 					response.inhibitor != null &&
 					response.auc != null &&
@@ -324,7 +447,8 @@ export const AIAMLReport = () => {
 			)
 		);
 
-		const neighborDrugResponses = filteredDrugResponses.filter(
+		// Process neighbor samples (limited to k closest neighbors)
+		const neighborDrugResponses = drugResponses.filter(
 			(response: DrugResponse) =>
 				neighborSampleIds.slice(0, k).includes(response.sample_id) &&
 				response.inhibitor != null &&
@@ -332,7 +456,7 @@ export const AIAMLReport = () => {
 				!isNaN(response.auc)
 		);
 		const neighborSamples = processDrugSensitivity(neighborDrugResponses);
-
+		// Compare neighbor samples to the rest
 		const comparisons = allSamples
 			.map((drug) => {
 				const neighborDrug = neighborSamples.find((n) => n.drug === drug.drug);
@@ -364,9 +488,8 @@ export const AIAMLReport = () => {
 			processedData;
 
 		const metadataSection = generateMetadataSection(metadataReport);
-		const mutationSection = generateMutationSection([mutationReport]);
+		const mutationSection = generateMutationSection(mutationReport);
 		const drugResponseSection = generateDrugResponseSection(drugReport);
-
 		const integratedAnalysis = await generateIntegratedAnalysis(
 			metadataReport,
 			mutationReport,
@@ -408,55 +531,45 @@ Please note that this AI-generated report is for research purposes only and shou
 		return Object.entries(metadataReport)
 			.map(([attr, data]: [string, MetadataReportItem]) => {
 				const breakdown = data.breakdown || [];
-				if (breakdown.length === 0) return null;
-
-				const breakdownWithBinomial = breakdown.map((item) => {
-					const totalInCategory = item.totalInCategory || 0;
-					const totalSamples = tsneData.length;
-					const p = totalInCategory / totalSamples;
-					const binomialPValue = calculateBinomialProbability(
-						kValue,
-						item.count,
-						p
-					);
-					return {
-						...item,
-						binomialPValue,
-					};
-				});
-
-				// Find the most significant category
-				const significantItem = breakdownWithBinomial.reduce(
-					(min, item) =>
-						item.binomialPValue < min.binomialPValue ? item : min,
-					breakdownWithBinomial[0]
+				const smallestPValueItem = breakdown.reduce(
+					(min: { pValue: string }, item: { pValue: string }) =>
+						parseFloat(item.pValue) < parseFloat(min.pValue) ? item : min,
+					{ pValue: "1" }
 				);
+				const smallestPValue = parseFloat(smallestPValueItem.pValue);
+				const isPValueSignificant = smallestPValue < 0.05;
 
-				// Only show if there's meaningful data
-				if (significantItem.count === 0) return null;
-
-				return `- ${attr}: ${significantItem.value} (${
-					significantItem.count
-				}/${kValue} samples, p=${significantItem.binomialPValue.toExponential(
-					2
-				)})${significantItem.binomialPValue < 0.05 ? " *" : ""}`;
+				return `- ${attr}: ${
+					data.mostProbable
+				} (p-value: ${smallestPValue.toExponential(2)})${
+					isPValueSignificant ? " (significant)" : ""
+				}`;
 			})
-			.filter(Boolean) // Remove null entries
 			.join("\n");
 	};
 
-	const generateMutationSection = (mutationReport: MutationReport[]) => {
+	const generateMutationSection = (
+		mutationReport: {
+			gene: string;
+			count: number;
+			pValue: number;
+			neighborFrequency: string;
+		}[]
+	) => {
 		return mutationReport
 			.slice(0, 5)
-			.map((gene: MutationReport) => {
-				if (!gene.neighborFrequency || !gene.databaseFrequency) {
-					return `- ${gene.gene}: Data missing for frequency calculations.`;
+			.map(
+				(gene: {
+					gene: string;
+					count: number;
+					pValue: number;
+					neighborFrequency: string;
+				}) => {
+					return `- ${gene.gene}: Found in ${
+						gene.neighborFrequency
+					} neighbors (p-value: ${gene.pValue.toExponential(2)})`;
 				}
-
-				return `- ${gene.gene}: Found in ${
-					gene.neighborFrequency
-				} neighbors (binomial p-value: ${gene.pValue.toExponential(2)})`;
-			})
+			)
 			.join("\n");
 	};
 
@@ -474,10 +587,12 @@ Please note that this AI-generated report is for research purposes only and shou
 			totalSamples: drug.count,
 		}));
 
+		// Filter drugs with at least 40 total samples
 		const validDrugs = drugCounts?.filter(
 			(drug: DrugData) => drug.totalSamples >= 40
 		);
 
+		// Filter comparisons to only include valid drugs
 		const validComparisons = drugReport.comparisons?.filter(
 			(comparison): comparison is DrugComparison =>
 				comparison !== null &&
@@ -485,6 +600,7 @@ Please note that this AI-generated report is for research purposes only and shou
 					true
 		);
 
+		// Add totalSamples to comparisons
 		validComparisons?.forEach((comparison: DrugComparison) => {
 			const drug = validDrugs?.find(
 				(d: DrugData) => d.drug === comparison.drug
@@ -547,11 +663,16 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 
 	const generateIntegratedAnalysis = async (
 		metadataReport: Record<string, MetadataReportItem>,
-		mutationReport: MutationReport,
+		mutationReport: {
+			gene: string;
+			count: number;
+			pValue: number;
+			neighborFrequency: string;
+		}[],
 		drugReport: DrugReport
 	) => {
 		const metadataSection = generateMetadataSection(metadataReport);
-		const mutationSection = generateMutationSection([mutationReport]);
+		const mutationSection = generateMutationSection(mutationReport);
 		const drugSection = generateDrugResponseSection(drugReport);
 
 		const patientInfo =
@@ -564,8 +685,10 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 			"\n" +
 			"Add relevant references to the data used to support the analysis. Make sure to use markdown formatting for the response.";
 
+		// Generate integrated analysis combining metadata, mutations, and drug response
 		const aiReport = await fetchAIReport(patientInfo, selectedModel);
 
+		// Check if aiReport.summary is an array and has at least one element
 		if (Array.isArray(aiReport.summary) && aiReport.summary.length > 0) {
 			console.log(aiReport.summary[0]);
 			return aiReport.summary[0];
