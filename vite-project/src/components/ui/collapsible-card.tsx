@@ -5,9 +5,13 @@ import React from "react";
 
 export const CollapsibleCard = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, children, ...props }, ref) => (
-  <div
+  React.HTMLAttributes<HTMLDivElement> & {disabled?: boolean}
+>(({ className, children, disabled, ...props }, ref) => {
+  const accordionProps: any = {}
+  if (disabled) {
+    accordionProps["value"] = "only";
+  }
+  return <div
     ref={ref}
     className={cn(
       "rounded-xl border bg-card text-card-foreground shadow",
@@ -15,13 +19,13 @@ export const CollapsibleCard = React.forwardRef<
     )}
     {...props}
   >
-    <AccordionPrimitive.Accordion type="single" collapsible>
+    <AccordionPrimitive.Accordion type="single" collapsible disabled={disabled} {...accordionProps} >
       <AccordionPrimitive.AccordionItem key="only" value="only">
         {children}
       </AccordionPrimitive.AccordionItem>
     </AccordionPrimitive.Accordion>
   </div>
-))
+})
 CollapsibleCard.displayName = "CollapsibleCard"
 
 
@@ -33,7 +37,7 @@ export const CollapsibleCardTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between py-4 text-sm font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
+        "flex flex-1 items-center justify-between py-4 text-sm font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180 [&[data-disabled=]>svg]:hidden  bg-white ",
         className
       )}
       {...props}
@@ -54,10 +58,10 @@ export const CollapsibleCardContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <AccordionPrimitive.Content
     ref={ref}
-    className="overflow-hidden text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+    className="overflow-hidden text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down "
     {...props}
   >
-    <div className={cn("pb-4 pt-0", className)}>{children}</div>
+    <div className={cn("p-6 pt-0 ", className)}>{children}</div>
   </AccordionPrimitive.Content>
 ))
 CollapsibleCardContent.displayName = "CollapsibleCardContent"

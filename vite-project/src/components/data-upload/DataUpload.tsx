@@ -181,7 +181,7 @@ export function DataUpload() {
 						filePreview={filePreview}/>
 				)}
 
-				<FileList cacheFiles={cacheFiles} onRefresh={() => refreshCacheFiles()} />
+				<FileList cacheFiles={cacheFiles} onRefresh={() => refreshCacheFiles()} />			
 			</CollapsibleCardContent>
 		</CollapsibleCard>
 	);

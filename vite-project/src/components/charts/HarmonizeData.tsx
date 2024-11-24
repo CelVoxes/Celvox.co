@@ -16,6 +16,9 @@ import {
 	CardDescription,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { CollapsibleCard, CollapsibleCardContent, CollapsibleCardTrigger } from "../ui/collapsible-card";
+import { Icons } from "../icons";
+import { Spinner } from "../ui/spinner";
 
 export function HarmonizeData() {
 	const [samples, setSamples] = useState<string[]>([]);
@@ -23,7 +26,7 @@ export function HarmonizeData() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const { toast } = useToast();
 	const [isHarmonizing, setIsHarmonizing] = useState(false);
-	const [harmonizedSamples, setHarmonizedSamples] = useState<string[]>([]);
+	const [harmonizedSamples, setHarmonizedSamples] = useState<string[] | null>(null);
 
 	useEffect(() => {
 		const loadSamples = async () => {
@@ -58,6 +61,13 @@ export function HarmonizeData() {
 
 		loadSamples();
 	}, []);
+	if (harmonizedSamples === null) {
+		return <CollapsibleCard disabled={true}>
+			<CollapsibleCardTrigger>
+				<CardTitle>Harmonize Data <Spinner/></CardTitle>
+			</CollapsibleCardTrigger>
+		</CollapsibleCard>
+	}
 
 	const filteredSamples = samples.filter((sample) =>
 		sample.toLowerCase().includes(searchTerm.toLowerCase())
@@ -114,9 +124,12 @@ export function HarmonizeData() {
 	};
 
 	return (
-		<Card>
+	<CollapsibleCard disabled={harmonizedSamples?.length == 0}>
+		<CollapsibleCardTrigger>
+			<CardTitle>Harmonize Data</CardTitle>
+		</CollapsibleCardTrigger>
+		<CollapsibleCardContent>
 			<CardHeader>
-				<CardTitle>Harmonize Data</CardTitle>
 				<CardDescription>
 					Select samples to be harmonized with the existing database.{" "}
 				</CardDescription>
@@ -145,64 +158,63 @@ export function HarmonizeData() {
 					</div>
 				</div>
 			</CardHeader>
-			<CardContent>
-				<div className="text-sm text-muted-foreground mb-2">
-					{selectedSamples.length} samples selected
-				</div>
-				<ScrollArea className="h-[400px] sm:h-[400px] w-full border rounded-md p-4">
-					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-						{filteredSamples.map((sample) => {
-							const isHarmonized = harmonizedSamples.includes(sample);
-							return (
-								<div key={sample} className="flex items-center space-x-2 py-2">
-									<Checkbox
-										id={sample}
-										checked={selectedSamples.includes(sample)}
-										onCheckedChange={(checked) => {
-											if (checked) {
-												setSelectedSamples([...selectedSamples, sample]);
-											} else {
-												setSelectedSamples(
-													selectedSamples.filter((s) => s !== sample)
-												);
-											}
-										}}
-									/>
-									<label
-										htmlFor={sample}
-										className={`text-xs cursor-pointer truncate ${
-											isHarmonized
-												? "text-muted-foreground line-through"
-												: "hover:text-blue-600"
-										}`}
-									>
-										{sample}
-										{isHarmonized && " (harmonized)"}
-									</label>
-								</div>
-							);
-						})}
-						{filteredSamples.length === 0 && (
-							<div className="text-center text-muted-foreground py-4">
-								No samples found matching "{searchTerm}"
+			<div className="text-sm text-muted-foreground mb-2">
+				{selectedSamples.length} samples selected
+			</div>
+			<ScrollArea className="h-[400px] sm:h-[400px] w-full border rounded-md p-4">
+				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+					{filteredSamples.map((sample) => {
+						const isHarmonized = harmonizedSamples.includes(sample);
+						return (
+							<div key={sample} className="flex items-center space-x-2 py-2">
+								<Checkbox
+									id={sample}
+									checked={selectedSamples.includes(sample)}
+									onCheckedChange={(checked) => {
+										if (checked) {
+											setSelectedSamples([...selectedSamples, sample]);
+										} else {
+											setSelectedSamples(
+												selectedSamples.filter((s) => s !== sample)
+											);
+										}
+									}}
+								/>
+								<label
+									htmlFor={sample}
+									className={`text-xs cursor-pointer truncate ${
+										isHarmonized
+											? "text-muted-foreground line-through"
+											: "hover:text-blue-600"
+									}`}
+								>
+									{sample}
+									{isHarmonized && " (harmonized)"}
+								</label>
 							</div>
-						)}
-					</div>
-				</ScrollArea>
-				<Button
-					onClick={handleHarmonize}
-					className="mt-4 w-full"
-					disabled={
-						selectedSamples.length === 0 ||
-						isHarmonizing ||
-						selectedSamples.some((sample) => harmonizedSamples.includes(sample))
-					}
-				>
-					{isHarmonizing
-						? "Harmonizing..."
-						: `Harmonize Data (${selectedSamples.length} samples)`}
-				</Button>
-			</CardContent>
-		</Card>
+						);
+					})}
+					{filteredSamples.length === 0 && (
+						<div className="text-center text-muted-foreground py-4">
+							No samples found matching "{searchTerm}"
+						</div>
+					)}
+				</div>
+			</ScrollArea>
+			<Button
+				onClick={handleHarmonize}
+				className="mt-4 w-full"
+				disabled={
+					selectedSamples.length === 0 ||
+					isHarmonizing ||
+					selectedSamples.some((sample) => harmonizedSamples.includes(sample))
+				}
+			>
+				{isHarmonizing
+					? "Harmonizing..."
+					: `Harmonize Data (${selectedSamples.length} samples)`}
+			</Button>
+		</CollapsibleCardContent>
+	</CollapsibleCard>
 	);
 }
