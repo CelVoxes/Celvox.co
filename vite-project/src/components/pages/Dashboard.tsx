@@ -5,7 +5,7 @@ import { DeconvolutionChart } from "@/components/charts/deconvolution";
 import { TSNEChart } from "@/components/charts/tsne-chart";
 import { DrugResponseTSNE } from "@/components/charts/tsne-drugresponse";
 import { MutationTSNE } from "@/components/charts/tsne-mutation";
-import { DataUpload } from "@/components/DataUpload";
+import { DataUpload } from "@/components/data-upload/DataUpload";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GeneExpressionTSNE } from "@/components/charts/tsne-expression";
 import { useState } from "react";

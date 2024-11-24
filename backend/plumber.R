@@ -525,7 +525,8 @@ function(req) {
         list(
             name = basename(file),
             size = file.size(file),
-            modified = file.info(file)$mtime
+            modified = file.info(file)$mtime,
+            isUserUploaded = (basename(file) == "sample_data.fst")
         )
     })
 
