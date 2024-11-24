@@ -37,12 +37,12 @@ export function DataUpload() {
 				const text = e.target?.result as string;
 				const lines = text.split("\n");
 
-				const headers = lines[0].split(",").map((header) => header.trim());
+				const headers = lines[0].split(/[,\t |;:]/).map((header) => header.trim());
 				setFileHeaders(headers);
 
 				const preview = lines
 					.slice(1, 5) // Show 4 rows of data (excluding header)
-					.map((line) => line.split(",").map((cell) => cell.trim()));
+					.map((line) => line.split(/[,\t |;:]/).map((cell) => cell.trim()));
 				setFilePreview(preview);
 			};
 			reader.readAsText(file);
