@@ -19,6 +19,7 @@ import Cellama from "@/components/pages/solutions/Cellama";
 import UserProfilePage from "@/components/pages/UserProfilePage";
 import ResetPassword from "@/components/pages/ResetPassword";
 import NotFoundPage from "@/components/pages/NotFoundPage";
+import SeAMLess from "./components/pages/solutions/seAMLess";
 
 function App() {
 	const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -41,6 +42,10 @@ function App() {
 					<Route path="/about" element={<About />} />
 					<Route path="/blog/*" element={<Blog />} />
 					<Route path="/solutions/cellama" element={<Cellama />} />
+					<Route
+						path="/solutions/seAMLess"
+						element={<SeAMLess user={user} />}
+					/>
 					<Route path="/dashboard" element={<Dashboard user={user} />} />
 					<Route path="/login" element={<LoginPage user={user} />} />
 					<Route path="/profile" element={<UserProfilePage />} />

@@ -39,7 +39,10 @@ const MobileNav: React.FC<MobileNavProps> = ({ isOpen, toggleMenu }) => {
 		<div className="fixed inset-0 z-50 bg-white text-black flex flex-col">
 			<div className="flex items-center justify-between p-4 bg-white">
 				<h2 className="text-xl font-bold">Menu</h2>
-				<button onClick={toggleMenu} className="focus:outline-none bg-transparent ">
+				<button
+					onClick={toggleMenu}
+					className="focus:outline-none bg-transparent "
+				>
 					<X size={24} />
 				</button>
 			</div>
@@ -73,7 +76,7 @@ const MobileNav: React.FC<MobileNavProps> = ({ isOpen, toggleMenu }) => {
 								<NavItem to="/solutions/cellama" onClick={toggleMenu} subItem>
 									ceLLama
 								</NavItem>
-								<NavItem to="/login" onClick={toggleMenu} subItem>
+								<NavItem to="/solutions/seAMLess" onClick={toggleMenu} subItem>
 									seAMLess
 								</NavItem>
 							</ul>

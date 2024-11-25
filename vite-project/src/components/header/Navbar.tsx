@@ -30,7 +30,7 @@ const components: { title: string; href: string; description: string }[] = [
 	},
 	{
 		title: "seAMLess",
-		href: "/login",
+		href: "/solutions/seAMLess",
 		description:
 			"An ML-integrated interactive visualization platform for RNA sequencing analysis.",
 	},

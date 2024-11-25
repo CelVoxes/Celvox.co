@@ -1,9 +1,10 @@
 import Login from "@/components/Login";
-import { SeamlessHeader } from "@/components/charts/SeamlessHeader";
 import { Navbar } from "@/components/header/Navbar";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { User as FirebaseUser } from "firebase/auth";
+
+import { SiteFooter } from "../Footer";
 
 export function LoginPage({ user }: { user: FirebaseUser | null }) {
 	const navigate = useNavigate();
@@ -15,17 +16,19 @@ export function LoginPage({ user }: { user: FirebaseUser | null }) {
 	}, [user, navigate]);
 
 	return (
-		<>
+		<div className="min-h-screen flex flex-col">
 			<Navbar />
-			<SeamlessHeader />
+
 			{!user && (
-				<div className="h-[40rem] max-w-screen-3xl mx-auto flex justify-center items-center px-0">
-					<div className="text-2xl mx-auto font-normal text-neutral-600 dark:text-neutral-400">
+				<main className="flex-1 flex items-center justify-center">
+					<div className="text-2xl font-normal text-neutral-600 dark:text-neutral-400">
 						<Login />
 					</div>
-				</div>
+				</main>
 			)}
-		</>
+
+			<SiteFooter />
+		</div>
 	);
 }
 

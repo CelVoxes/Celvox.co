@@ -15,7 +15,7 @@ import { TSNEKNNChart } from "@/components/charts/tsne-knn";
 import { KNNReport } from "@/components/charts/knn-report";
 import { KNNReportMutation } from "@/components/charts/knn-report-mutation";
 import { DrugEffectivenessReport } from "@/components/charts/drug-effectiveness-report";
-import { AIAMLReport } from "@/components/charts/AI-report";
+import { AIAMLReport } from "@/components/charts/AIReport/AI-report";
 import QCCharts from "@/components/charts/QCmetrics";
 import { Navbar } from "../header/Navbar";
 import { User } from "firebase/auth";
