@@ -7,9 +7,11 @@ const API_BASE_URL =
 		: "https://celvox.co/api/v1";
 
 axios.interceptors.request.use(async (config) => {
-	config.headers['Authorization'] = `Bearer ${await auth.currentUser?.getIdToken()}`
-	return config
-})
+	config.headers[
+		"Authorization"
+	] = `Bearer ${await auth.currentUser?.getIdToken()}`;
+	return config;
+});
 
 export async function fetchTSNEData() {
 	try {
@@ -110,10 +112,10 @@ export async function fetchHarmonizedDataNames() {
 }
 
 export interface CacheFile {
-	name: string; 
-	size: number; 
-	modified: string; 
-	isUserUploaded: boolean
+	name: string;
+	size: number;
+	modified: string;
+	isUserUploaded: boolean;
 }
 
 export async function fetchCacheFiles(): Promise<CacheFile[]> {

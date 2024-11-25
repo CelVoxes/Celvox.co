@@ -29,7 +29,7 @@ export const SeamlessHeader = () => (
 				<p className="text-sm text-gray-600 mb-4">
 					The dashboard offers a comprehensive view of RNA-sequencing data,
 					including t-SNE visualizations, deconvolution analysis, drug response
-					data, and mutation information.
+					data, and mutation information for molecular profiling studies.
 				</p>
 				<Accordion type="single" collapsible className="w-full">
 					<AccordionItem value="features" className="bg-transparent">
@@ -43,16 +43,15 @@ export const SeamlessHeader = () => (
 										<TableCell>
 											<h4 className="font-bold">Upload and analyze samples</h4>
 											<p className="text-sm mt-2">
-												Upload your own AML samples for analysis. This feature
-												enables you to:
+												Upload your molecular data samples for analysis. This
+												feature enables you to:
 												<ul className="list-disc list-inside mt-1">
 													<li>
-														Compare your samples with a comprehensive database
-														of existing AML samples
+														Compare your samples with a comprehensive reference
+														database
 													</li>
 													<li>
-														Gain insights into how your samples relate to known
-														AML subtypes
+														Gain insights into molecular subtypes and patterns
 													</li>
 													<li>
 														Identify potential characteristics and treatment
@@ -84,7 +83,7 @@ export const SeamlessHeader = () => (
 												<ul className="list-disc list-inside mt-1">
 													<li>
 														Identify similarities and differences between
-														various AML subtypes
+														various molecular subtypes
 													</li>
 													<li>
 														Visualize how your uploaded samples relate to known
@@ -92,7 +91,7 @@ export const SeamlessHeader = () => (
 													</li>
 													<li>
 														Discover potential new subtypes or unique
-														characteristics in your samples
+														characteristics
 													</li>
 												</ul>
 												<p className="mt-2">To access this feature:</p>
@@ -118,12 +117,12 @@ export const SeamlessHeader = () => (
 												Utilize deconvolution analysis to estimate cellular
 												composition:
 												<ul className="list-disc list-inside mt-1">
-													<li>Understand the heterogeneity of AML samples</li>
+													<li>Understand sample heterogeneity</li>
 													<li>
 														Identify predominant cell types in each sample
 													</li>
 													<li>
-														Compare cellular compositions across different AML
+														Compare cellular compositions across different
 														subtypes
 													</li>
 												</ul>
@@ -142,15 +141,12 @@ export const SeamlessHeader = () => (
 									</TableRow>
 									<TableRow>
 										<TableCell>
-											<h4 className="font-bold">
-												Investigate ex-vivo drug responses
-											</h4>
+											<h4 className="font-bold">Investigate drug responses</h4>
 											<p className="text-sm mt-2">
-												Explore ex-vivo drug responses to predict treatment
-												efficacy:
+												Explore drug responses to predict treatment efficacy:
 												<ul className="list-disc list-inside mt-1">
 													<li>
-														Analyze how different AML subtypes respond to
+														Analyze how different molecular subtypes respond to
 														various treatments
 													</li>
 													<li>
@@ -158,8 +154,7 @@ export const SeamlessHeader = () => (
 														samples
 													</li>
 													<li>
-														Identify patterns in drug responses across AML
-														subtypes
+														Identify patterns in drug responses across subtypes
 													</li>
 												</ul>
 												<p className="mt-2">To access this feature:</p>
@@ -181,16 +176,16 @@ export const SeamlessHeader = () => (
 										<TableCell>
 											<h4 className="font-bold">Analyze genetic mutations</h4>
 											<p className="text-sm mt-2">
-												Examine genetic mutations associated with AML:
+												Examine genetic mutations in your samples:
 												<ul className="list-disc list-inside mt-1">
-													<li>Identify key driver mutations in your samples</li>
+													<li>Identify key driver mutations</li>
 													<li>
 														Understand the potential impact of mutations on
-														disease progression
+														phenotype
 													</li>
 													<li>
 														Explore correlations between mutations and other
-														features (e.g., drug responses)
+														features
 													</li>
 												</ul>
 												<p className="mt-2">To use this feature:</p>
@@ -364,7 +359,7 @@ export const SeamlessHeader = () => (
 													</li>
 													<li>
 														Understand the landscape of drug responses across
-														AML subtypes
+														subtypes
 													</li>
 												</ul>
 												<p className="mt-2">Best practices:</p>
