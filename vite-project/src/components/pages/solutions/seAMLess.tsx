@@ -12,11 +12,11 @@ import {
 import { SiteFooter } from "@/components/Footer";
 import qcGenes from "@/assets/seamless/qc-genes.png";
 import qcReads from "@/assets/seamless/qc-reads.png";
-import tsneMetaVideo from "@/assets/seamless/tsne-meta.mov";
-import tsneKnnVideo from "@/assets/seamless/tsne-knn.mov";
+import tsneMetaVideo from "@/assets/seamless/tsne-meta.mp4";
+import tsneKnnVideo from "@/assets/seamless/tsne-knn.mp4";
 import fabKnnImage from "@/assets/seamless/FAB-knn.png";
-import aiSummaryVideo from "@/assets/seamless/ai-summary.mov";
-import harmonizeVideo from "@/assets/seamless/harmonize.mov";
+import aiSummaryVideo from "@/assets/seamless/ai-summary.mp4";
+import harmonizeVideo from "@/assets/seamless/harmonize.mp4";
 import celvoxLogo from "@/assets/logo-small.png";
 
 import { Button } from "@/components/ui/button";
