@@ -75,31 +75,25 @@ export function Navbar() {
 					<NavigationMenu>
 						<NavigationMenuList>
 							<NavigationMenuItem>
-								<NavigationMenuLink asChild>
-									<NavigationMenuLink className={navigationMenuTriggerStyle()}>
-										<Link className=" text-black" to="/">
-											Home
-										</Link>
-									</NavigationMenuLink>
+								<NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+									<Link className=" text-black" to="/">
+										Home
+									</Link>
 								</NavigationMenuLink>
 							</NavigationMenuItem>
 							<NavigationMenuItem>
-								<NavigationMenuLink asChild>
-									<NavigationMenuLink className={navigationMenuTriggerStyle()}>
-										<Link className=" text-black" to="/about">
-											About
-										</Link>
-									</NavigationMenuLink>
+								<NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+									<Link className=" text-black" to="/about">
+										About
+									</Link>
 								</NavigationMenuLink>
 							</NavigationMenuItem>
 
 							<NavigationMenuItem>
-								<NavigationMenuLink asChild>
-									<NavigationMenuLink className={navigationMenuTriggerStyle()}>
-										<Link className=" text-black" to="/blog">
-											Blog
-										</Link>
-									</NavigationMenuLink>
+								<NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+									<Link className=" text-black" to="/blog">
+										Blog
+									</Link>
 								</NavigationMenuLink>
 							</NavigationMenuItem>
 
@@ -121,12 +115,10 @@ export function Navbar() {
 							</NavigationMenuItem>
 
 							<NavigationMenuItem>
-								<NavigationMenuLink asChild>
-									<NavigationMenuLink className={navigationMenuTriggerStyle()}>
-										<Link className=" text-black" to="/contact">
-											Contact
-										</Link>
-									</NavigationMenuLink>
+								<NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+									<Link className=" text-black" to="/contact">
+										Contact
+									</Link>
 								</NavigationMenuLink>
 							</NavigationMenuItem>
 
@@ -189,7 +181,7 @@ const ListItem = React.forwardRef<
 	return (
 		<li>
 			<NavigationMenuLink asChild>
-				<a
+				<span
 					ref={ref}
 					className={cn(
 						"block select-none space-y-2 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
@@ -201,7 +193,7 @@ const ListItem = React.forwardRef<
 					<p className="line-clamp-3 text-sm leading-snug text-muted-foreground">
 						{children}
 					</p>
-				</a>
+				</span>
 			</NavigationMenuLink>
 		</li>
 	);
