@@ -17,10 +17,8 @@ import tsneKnnVideo from "@/assets/seamless/tsne-knn.mp4";
 import fabKnnImage from "@/assets/seamless/FAB-knn.png";
 import aiSummaryVideo from "@/assets/seamless/ai-summary.mp4";
 import harmonizeVideo from "@/assets/seamless/harmonize.mp4";
-import celvoxLogo from "@/assets/logo-small.png";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
 	Tooltip,
@@ -43,42 +41,35 @@ export function SeAMLess({ user }: { user: FirebaseUser | null }) {
 			<Navbar />
 
 			<div className="max-w-7xl mx-auto p-0 md:mx-0 mt-16">
-				<Card className="mx-auto mb-24 shadow-lg">
+				<Card className="mx-auto mb-24 shadow-lg bg-gradient-to-br  from-blue-900 via-slate-900 to-blue-900">
 					<CardContent>
 						<div className="flex flex-col items-center justify-center text-center mb-12 p-4 md:p-12">
-							<img
-								src={celvoxLogo}
-								alt="Celvox Logo"
-								className="w-24 md:w-32 h-24 md:h-32 mb-6 md:mb-8 "
-							/>
-							<h1 className="text-5xl md:text-6xl font-black tracking-tight mb-4 md:mb-6 max-w-2xl bg-gradient-to-r from-blue-950 to-blue-700 text-transparent bg-clip-text drop-shadow-lg">
+							<h1 className="text-5xl md:text-5xl text-center text-white tracking-tight font-black mb-4 md:mb-6 max-w-3xl mt-12 drop-shadow-lg">
 								seAMLess
 							</h1>
-							<p className="text-lg md:text-xl text-slate-700 max-w-2xl leading-relaxed px-2 md:px-0 drop-shadow-2xl">
-								Unlock molecular insights instantly with AI-powered analysis.
+
+							<p
+								className="text-xl md:text-2xl text-slate-50 max-w-2xl leading-relaxed font-semibold	
+								px-2 md:px-0 my-4"
+							>
+								Unlock molecular insights instantly with AI-powered analysis.{" "}
+								<br />
 								Your data, your control, revolutionary results.
 							</p>
-							<div className="flex flex-col md:flex-row gap-4 mt-8 md:mt-12 w-full md:w-auto px-4 md:px-0">
-								<Button
-									variant="secondary"
-									asChild
-									className="bg-slate-700 hover:bg-slate-800 p-6 md:p-8 drop-shadow-2xl text-white w-full md:w-auto"
-								>
-									<Link to="/login">
+							<div className="items-center flex flex-col sm:flex-row justify-center mt-8 gap-2">
+								<Link to="/login" className="w-auto ">
+									<Button className="w-full flex justify-center items-center px-12 py-6 rounded-full text-white bg-blue-700 hover:bg-blue-800">
 										Login
-										<ArrowRight className="w-5 h-5 ml-2" />
-									</Link>
-								</Button>
-								<Button
-									variant="secondary"
-									asChild
-									className="bg-blue-700 hover:bg-slate-800 p-6 md:p-8 drop-shadow-2xl text-white w-full md:w-auto"
-								>
-									<Link to="/contact">
-										Contact Us
-										<ArrowRight className="w-5 h-5 ml-2" />
-									</Link>
-								</Button>
+									</Button>
+								</Link>
+								<Link to="contact" className="w-auto">
+									<Button
+										variant="outline"
+										className="w-full flex justify-center items-center px-8  py-6 rounded-full text-black hover:bg-black hover:text-white"
+									>
+										Contact us
+									</Button>
+								</Link>
 							</div>
 						</div>
 					</CardContent>
@@ -281,7 +272,7 @@ export function SeAMLess({ user }: { user: FirebaseUser | null }) {
 					</CardContent>
 				</Card>
 
-				<Card className="hover:shadow-lg transition-shadow duration-300 bg-gradient-to-r from-blue-950 to-blue-800 text-center py-40 my-20 relative overflow-hidden">
+				<Card className="hover:shadow-lg transition-shadow duration-300 bg-gradient-to-r from-blue-900 via-slate-900 to-blue-900 text-center py-40 my-20 relative overflow-hidden">
 					<div className="absolute inset-0 z-0 w-full h-full scale-[1] transform opacity-0 lg:opacity-[50%] [mask-image:linear-gradient(#ffff,transparent,75%)] pointer-events-none select-none bg-[length:100%]" />
 					<CardHeader className="relative z-10">
 						<CardTitle className="text-4xl font-black text-white">
@@ -289,26 +280,21 @@ export function SeAMLess({ user }: { user: FirebaseUser | null }) {
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="flex gap-4 items-center justify-center relative z-10">
-						<Button
-							variant="secondary"
-							asChild
-							className="bg-slate-700 hover:bg-slate-800 p-6 text-white"
-						>
-							<Link to="/login">
-								Login
-								<ArrowRight className="w-5 h-5 ml-2" />
+						<div className="items-center flex flex-col sm:flex-row justify-center mt-8 gap-2">
+							<Link to="/login" className="w-auto ">
+								<Button className="w-full flex justify-center items-center px-12 py-6 rounded-full text-white bg-blue-700 hover:bg-blue-800">
+									Login
+								</Button>
 							</Link>
-						</Button>
-						<Button
-							variant="secondary"
-							asChild
-							className="bg-blue-700 hover:bg-slate-800 p-6 text-white"
-						>
-							<Link to="/contact">
-								Contact Us
-								<ArrowRight className="w-5 h-5 ml-2" />
+							<Link to="contact" className="w-auto">
+								<Button
+									variant="outline"
+									className="w-full flex justify-center items-center px-8  py-6 rounded-full text-black hover:bg-black hover:text-white"
+								>
+									Contact us
+								</Button>
 							</Link>
-						</Button>
+						</div>
 					</CardContent>
 				</Card>
 			</div>

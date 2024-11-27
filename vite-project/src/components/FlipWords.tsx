@@ -6,9 +6,9 @@ export function FlipWordsDemo() {
 	const words = [
 		"scientists",
 		"doctors",
-		"neurologists",
-		"teachers",
-		"students",
+		"researchers",
+		"professors",
+		"biologists",
 	];
 
 	return (
@@ -17,6 +17,11 @@ export function FlipWordsDemo() {
 				Celvox helps
 				<FlipWords words={words} /> <br />
 				to understand the language of cells
+				<p className="text-xl mt-8 max-w-2xl">
+					Our advanced AI-powered platforms transform complex cellular data into
+					actionable insights, enabling breakthrough discoveries in life
+					sciences.
+				</p>
 			</div>
 		</div>
 	);

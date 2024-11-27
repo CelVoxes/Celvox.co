@@ -19,22 +19,28 @@ export function Home() {
 			<div
 				className={`h-[40rem] max-w-4xl mx-auto flex justify-center items-center px-4`}
 			>
-				<div className="text-2xl mx-auto text-neutral-600 dark:text-neutral-400">
-					Introducing{" "}
-					<p className="inline-block underline-offset-4">
-						<b className="">seAMLess</b>
-					</p>{" "}
-					<br />
-					an AI-powered visualization tool for bulk molecular analysis.
-					<br />
-					<span className="text-sm text-blue-700 bg-slate-200 px-2 py-1 rounded-full">
+				<div className="text-center text-2xl mx-auto text-neutral-600 dark:text-neutral-400">
+					<span className="text-sm text-blue-700 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-full">
 						New
 					</span>
-					<br />
-					<div className="items-center flex justify-center mt-4">
-						<Link to="solutions/seAMLess">
-							<Button className="flex justify-center items-center px-16 py-6 mt-4">
+					<h2 className="mt-6 mb-4">
+						Introducing <b>seAMLess</b>,
+					</h2>
+					<p className="text-xl">
+						An AI-powered visualization tool for bulk molecular analysis.
+					</p>
+					<div className="items-center flex flex-col sm:flex-row justify-center mt-8 gap-2">
+						<Link to="solutions/seAMLess" className="w-auto">
+							<Button className="w-full flex justify-center items-center px-8 py-6 rounded-full">
 								Learn more
+							</Button>
+						</Link>
+						<Link to="contact" className="w-auto">
+							<Button
+								variant="outline"
+								className="w-full flex justify-center items-center px-8  py-6 rounded-full text-black hover:bg-black hover:text-white"
+							>
+								Contact us
 							</Button>
 						</Link>
 					</div>
@@ -44,11 +50,14 @@ export function Home() {
 
 			<div className="h-[40rem] max-w-4xl mx-auto flex justify-center items-center px-4">
 				<div className="text-2xl mx-auto text-neutral-600 dark:text-neutral-400">
-					Introducing <b>ceLLama</b>,
-					<br />
-					an automated cell type annotation pipeline using local Large Language
-					Models.
-					<br />
+					<h2 className="mt-6 mb-4">
+						Introducing <b>ceLLama</b>,
+					</h2>
+					<p className="text-xl">
+						An automated cell type annotation pipeline using local Large
+						Language Models.
+					</p>
+
 					<br />
 					<span className="text-sm">Featured on</span>
 					<a
@@ -60,10 +69,18 @@ export function Home() {
 							<img src={natureLogo} alt="Nature" />
 						</div>
 					</a>
-					<div className="items-center flex justify-center mt-4">
-						<Link to="solutions/cellama">
-							<Button className="flex justify-center items-center px-16 py-6 mt-4">
+					<div className="items-center flex flex-col sm:flex-row justify-center mt-8 gap-2">
+						<Link to="solutions/cellama" className="w-auto">
+							<Button className="w-full flex justify-center items-center px-8 py-6 rounded-full">
 								Learn more
+							</Button>
+						</Link>
+						<Link to="contact" className="w-auto">
+							<Button
+								variant="outline"
+								className="w-full flex justify-center items-center px-8  py-6 rounded-full text-black hover:bg-black hover:text-white"
+							>
+								Contact us
 							</Button>
 						</Link>
 					</div>

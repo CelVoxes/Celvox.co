@@ -57,13 +57,13 @@ function SubscribeForm() {
 	};
 
 	return (
-		<div className="text-2xl mx-auto font-normal justify-center items-center text-neutral-600 dark:text-neutral-600">
+		<div className="text-2xl mx-auto font-normal  text-neutral-600 dark:text-neutral-600">
 			Get the latest blog and product news
 			<form onSubmit={handleSubmit}>
 				<input
 					name="Email"
 					type="email"
-					className="flex w-full text-base px-2 py-2 mt-4 border-2 bg-white dark:bg-neutral-800"
+					className="flex w-full text-sm px-2 py-2 mt-4 border-2 bg-white dark:bg-neutral-800"
 					required
 					placeholder="Enter your email"
 				/>
@@ -74,7 +74,7 @@ function SubscribeForm() {
 				<Button
 					type="submit"
 					disabled={buttonDisable}
-					className="justify-center items-center px-16 py-6 mt-4 bg-neutral-600"
+					className=" px-12 py-6 mt-4 rounded-full w-1/3"
 				>
 					{buttonDisable && (
 						<ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
