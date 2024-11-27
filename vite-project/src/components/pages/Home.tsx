@@ -15,12 +15,39 @@ export function Home() {
 			<Navbar />
 			<FlipWordsDemo />
 			<Separator />
+
+			<div
+				className={`h-[40rem] max-w-4xl mx-auto flex justify-center items-center px-4`}
+			>
+				<div className="text-2xl mx-auto text-neutral-600 dark:text-neutral-400">
+					Introducing{" "}
+					<p className="inline-block underline-offset-4">
+						<b className="">seAMLess</b>
+					</p>{" "}
+					<br />
+					an AI-powered visualization tool for bulk molecular analysis.
+					<br />
+					<span className="text-sm text-blue-700 bg-slate-200 px-2 py-1 rounded-full">
+						New
+					</span>
+					<br />
+					<div className="items-center flex justify-center mt-4">
+						<Link to="solutions/seAMLess">
+							<Button className="flex justify-center items-center px-16 py-6 mt-4">
+								Learn more
+							</Button>
+						</Link>
+					</div>
+				</div>
+			</div>
+			<Separator />
+
 			<div className="h-[40rem] max-w-4xl mx-auto flex justify-center items-center px-4">
 				<div className="text-2xl mx-auto text-neutral-600 dark:text-neutral-400">
 					Introducing <b>ceLLama</b>,
 					<br />
 					an automated cell type annotation pipeline using local Large Language
-					Models (LLMs).
+					Models.
 					<br />
 					<br />
 					<span className="text-sm">Featured on</span>
@@ -36,7 +63,7 @@ export function Home() {
 					<div className="items-center flex justify-center mt-4">
 						<Link to="solutions/cellama">
 							<Button className="flex justify-center items-center px-16 py-6 mt-4">
-								Start here
+								Learn more
 							</Button>
 						</Link>
 					</div>

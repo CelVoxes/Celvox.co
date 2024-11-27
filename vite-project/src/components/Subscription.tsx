@@ -65,10 +65,10 @@ function SubscribeForm() {
 					type="email"
 					className="flex w-full text-base px-2 py-2 mt-4 border-2 bg-white dark:bg-neutral-800"
 					required
+					placeholder="Enter your email"
 				/>
 
 				<input name="Name" type="hidden" value="Email-update" />
-
 				<input name="Message" type="hidden" value="-" />
 
 				<Button
