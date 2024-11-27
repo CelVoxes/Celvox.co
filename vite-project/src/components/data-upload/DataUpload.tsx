@@ -35,13 +35,14 @@ export function DataUpload() {
 			const reader = new FileReader();
 			reader.onload = (e) => {
 				const text = e.target?.result as string;
-				const lines = text.split("\n");
+				const numLinesToShow = 5
+				const lines = text.split("\n", numLinesToShow + 1);
 
 				const headers = lines[0].split(/[,\t |;:]/).map((header) => header.trim());
 				setFileHeaders(headers);
 
 				const preview = lines
-					.slice(1, 5) // Show 4 rows of data (excluding header)
+					.slice(1, numLinesToShow)
 					.map((line) => line.split(/[,\t |;:]/).map((cell) => cell.trim()));
 				setFilePreview(preview);
 			};
@@ -107,13 +108,11 @@ export function DataUpload() {
 			<CardHeader>
 				<CardTitle>Upload Data</CardTitle>
 				<CardDescription className="space-y-4">
-					<p>
-						Upload a CSV file with genes as rownames and samples as columns.
-						<br />
-						<a href="/example-TCGA.csv" className=" text-xs hover:underline">
-							[Download example file]
-						</a>
-					</p>
+					Upload a CSV file with genes as rownames and samples as columns.
+					<br />
+					<a href="/example-TCGA.csv" className=" text-xs hover:underline">
+						[Download example file]
+					</a>
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -150,13 +149,11 @@ export function DataUpload() {
 			<CollapsibleCardContent>
 				<CardHeader>
 					<CardDescription className="space-y-4">
-						<p>
-							Upload a CSV file with genes as rownames and samples as columns.
-							<br />
-							<a href="/example-TCGA.csv" className=" text-xs hover:underline">
-								[Download example file]
-							</a>
-						</p>
+						Upload a CSV file with genes as rownames and samples as columns.
+						<br />
+						<a href="/example-TCGA.csv" className=" text-xs hover:underline">
+							[Download example file]
+						</a>
 					</CardDescription>
 				</CardHeader>
 				<div className="flex flex-col sm:flex-row gap-4 mb-6">

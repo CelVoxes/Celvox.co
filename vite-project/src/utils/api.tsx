@@ -1,6 +1,7 @@
 import { auth } from "@/firebase";
-import axios from "axios";
+import axiosLib, { isAxiosError } from "axios";
 
+const axios = axiosLib.create();
 const API_BASE_URL =
 	window.location.hostname === "localhost"
 		? "http://localhost:3001/v1"
@@ -93,7 +94,7 @@ export async function uploadSampleData(file: File) {
 		return response.data;
 	} catch (error) {
 		console.error("Error uploading sample data:", error);
-		if (axios.isAxiosError(error)) {
+		if (isAxiosError(error)) {
 			console.error("Axios error details:", error.response?.data);
 			console.error("Axios error status:", error.response?.status);
 		}
