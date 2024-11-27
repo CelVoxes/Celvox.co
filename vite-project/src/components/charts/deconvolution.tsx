@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Chart, ChartItem, ChartConfiguration } from "chart.js/auto";
 import { useToast } from "@/hooks/use-toast";
 import { interpolateRainbow } from "d3-scale-chromatic";
+import { DeconvolutionTable } from "@/components/charts/deconvolution-table";
 
 interface SampleData {
 	[cellType: string]: number | string;
@@ -167,9 +168,7 @@ export function DeconvolutionChart() {
 	return (
 		<Card className="w-full h-full">
 			<CardHeader className="space-y-1.5 p-4 sm:p-6">
-				<CardTitle>
-					Deconvolution Analysis
-				</CardTitle>
+				<CardTitle>Deconvolution Analysis</CardTitle>
 			</CardHeader>
 			<CardContent className="p-4 sm:p-6">
 				{error && <p className="text-red-500 mb-4">{error}</p>}
@@ -180,11 +179,14 @@ export function DeconvolutionChart() {
 					{!deconvolutionData && (
 						<div className="flex justify-center items-center h-full absolute inset-0">
 							<p className="text-muted-foreground text-sm sm:text-base">
-								Click "Run Deconvolution" to generate plot.
+								Click "Run Deconvolution" to generate plot and table.
 							</p>
 						</div>
 					)}
 					<canvas ref={chartRef} className="w-full"></canvas>
+				</div>
+				<div className="mt-4 overflow-x-auto">
+					<DeconvolutionTable data={deconvolutionData} />
 				</div>
 				<div className="mt-4 flex justify-center sm:justify-start">
 					<Button
