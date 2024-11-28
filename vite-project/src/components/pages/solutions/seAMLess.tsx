@@ -52,9 +52,10 @@ export function SeAMLess({ user }: { user: FirebaseUser | null }) {
 								className="text-xl md:text-2xl text-slate-50 max-w-2xl leading-relaxed font-semibold	
 								px-2 md:px-0 my-4"
 							>
-								Unlock molecular insights instantly with AI-powered analysis.{" "}
-								<br />
-								Your data, your control, revolutionary results.
+								Unlock molecular insights instantly with AI-powered analysis.
+							</p>
+							<p className="text-lg text-slate-200 max-w-2xl mb-4">
+								Analyze • Visualize • Interpret
 							</p>
 							<div className="items-center flex flex-col sm:flex-row justify-center mt-8 gap-2">
 								<Link to="/login" className="w-auto ">
@@ -62,10 +63,10 @@ export function SeAMLess({ user }: { user: FirebaseUser | null }) {
 										Login
 									</Button>
 								</Link>
-								<Link to="contact" className="w-auto">
+								<Link to="/contact" className="w-auto">
 									<Button
 										variant="outline"
-										className="w-full flex justify-center items-center px-8  py-6 rounded-full text-black hover:bg-black hover:text-white"
+										className="w-full flex justify-center items-center px-8  py-6 rounded-full text-black hover:bg-blue-700 hover:text-white"
 									>
 										Contact us
 									</Button>
@@ -286,10 +287,10 @@ export function SeAMLess({ user }: { user: FirebaseUser | null }) {
 									Login
 								</Button>
 							</Link>
-							<Link to="contact" className="w-auto">
+							<Link to="/contact" className="w-auto">
 								<Button
 									variant="outline"
-									className="w-full flex justify-center items-center px-8  py-6 rounded-full text-black hover:bg-black hover:text-white"
+									className="w-full flex justify-center items-center px-8  py-6 rounded-full text-black hover:bg-blue-700 hover:text-white"
 								>
 									Contact us
 								</Button>
