@@ -15,7 +15,7 @@ import qcReads from "@/assets/seamless/qc-reads.png";
 import tsneMetaVideo from "@/assets/seamless/tsne-meta.mp4";
 import tsneKnnVideo from "@/assets/seamless/tsne-knn.mp4";
 import fabKnnImage from "@/assets/seamless/FAB-knn.png";
-import aiSummaryVideo from "@/assets/seamless/ai-summary.mp4";
+import aiSummaryVideo from "@/assets/seamless/AI-summary.mp4";
 import harmonizeVideo from "@/assets/seamless/harmonize.mp4";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import SubscribeForm from "@/components/Subscription";
 
 export function SeAMLess({ user }: { user: FirebaseUser | null }) {
 	const navigate = useNavigate();
@@ -298,6 +299,10 @@ export function SeAMLess({ user }: { user: FirebaseUser | null }) {
 						</div>
 					</CardContent>
 				</Card>
+
+				<div className="h-[20rem] max-w-4xl mx-auto flex justify-center items-center px-4 bg-neutral-100">
+					<SubscribeForm />
+				</div>
 			</div>
 
 			<SiteFooter />
