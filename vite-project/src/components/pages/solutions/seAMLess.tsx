@@ -26,8 +26,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import SubscribeForm from "@/components/Subscription";
-
+import { SeAMLessInfo } from "@/components/charts/SeAMLessInfo";
 export function SeAMLess({ user }: { user: FirebaseUser | null }) {
 	const navigate = useNavigate();
 
@@ -274,6 +273,8 @@ export function SeAMLess({ user }: { user: FirebaseUser | null }) {
 					</CardContent>
 				</Card>
 
+				<SeAMLessInfo />
+
 				<Card className="hover:shadow-lg transition-shadow duration-300 bg-gradient-to-r from-blue-900 via-slate-900 to-blue-900 text-center py-40 my-20 relative overflow-hidden">
 					<div className="absolute inset-0 z-0 w-full h-full scale-[1] transform opacity-0 lg:opacity-[50%] [mask-image:linear-gradient(#ffff,transparent,75%)] pointer-events-none select-none bg-[length:100%]" />
 					<CardHeader className="relative z-10">
@@ -299,10 +300,6 @@ export function SeAMLess({ user }: { user: FirebaseUser | null }) {
 						</div>
 					</CardContent>
 				</Card>
-
-				<div className="h-[20rem] max-w-4xl mx-auto flex justify-center items-center px-4 bg-neutral-100">
-					<SubscribeForm />
-				</div>
 			</div>
 
 			<SiteFooter />

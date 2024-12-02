@@ -6,7 +6,6 @@ import { SiteFooter } from "@/components/Footer";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import SubscribeForm from "@/components/Subscription";
 import natureLogo from "@/assets/nature-logo.svg";
 
 export function Home() {
@@ -85,11 +84,6 @@ export function Home() {
 						</Link>
 					</div>
 				</div>
-			</div>
-
-			<Separator />
-			<div className="h-[20rem] max-w-4xl mx-auto flex justify-center items-center px-4 bg-neutral-100">
-				<SubscribeForm />
 			</div>
 
 			<SiteFooter />
