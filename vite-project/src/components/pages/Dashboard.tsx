@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { SeamlessHeader } from "@/components/charts/SeamlessHeader";
 import { DeconvolutionChart } from "@/components/charts/deconvolution";
 import { TSNEChart } from "@/components/charts/tsne-chart";
@@ -8,7 +9,6 @@ import { MutationTSNE } from "@/components/charts/tsne-mutation";
 import { DataUpload } from "@/components/data-upload/DataUpload";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GeneExpressionTSNE } from "@/components/charts/tsne-expression";
-import { useState } from "react";
 import { ClusterAssociationCard } from "@/components/charts/drugresponse-list";
 import { HarmonizeData } from "@/components/charts/HarmonizeData";
 import { TSNEKNNChart } from "@/components/charts/tsne-knn";
@@ -21,6 +21,7 @@ import { Navbar } from "../header/Navbar";
 import { User } from "firebase/auth";
 import { Navigate } from "react-router-dom";
 import { KNNReportExpression } from "@/components/charts/knn-report-expression";
+import { DrugResponseHeatmap } from "@/components/charts/drug-response-per-group";
 export const description = "A collection of AML samples.";
 
 export function Dashboard({ user }: { user: User | null }) {
@@ -106,9 +107,12 @@ export function Dashboard({ user }: { user: User | null }) {
 						<DeconvolutionChart />
 					</div>
 					<div className={activeTab === "drug" ? "" : "hidden"}>
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-							<DrugResponseTSNE />
-							<ClusterAssociationCard />
+						<div className="grid grid-cols-1 gap-4">
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<DrugResponseTSNE />
+								<ClusterAssociationCard />
+							</div>
+							<DrugResponseHeatmap />
 							<DrugEffectivenessReport />
 						</div>
 					</div>
