@@ -107,6 +107,11 @@ export function Dashboard({ user }: { user: User | null }) {
 						<DeconvolutionChart />
 					</div>
 					<div className={activeTab === "drug" ? "" : "hidden"}>
+						<p className="text-red-600 dark:text-red-500 font-medium text-center my-4 text-bold">
+							Please be aware that these are based on{" "}
+							<span className="italic">ex-vivo</span> drug responses and not
+							recommendations.
+						</p>
 						<div className="grid grid-cols-1 gap-4">
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<DrugResponseTSNE />
