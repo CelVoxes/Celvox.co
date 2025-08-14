@@ -271,6 +271,7 @@ harmonize_data <- local({
             # normalize library sizes
             uncorrected <- log2(edgeR::cpm(uncorrected) + 1)
             corrected_matrix <- limma::removeBatchEffect(uncorrected, batch = batch, )
+            gc()
         }
 
 
