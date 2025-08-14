@@ -12,7 +12,7 @@ export function FlipWordsDemo() {
 	];
 
 	return (
-		<div className="h-[40rem] w-full mx-auto flex justify-center items-center px-4">
+		<div className="h-[34rem] md:h-[40rem] w-full mx-auto flex justify-center items-center px-4 pt-4 md:pt-6">
 			<div className="text-4xl mx-auto font-normal text-neutral-600 dark:text-neutral-400">
 				Celvox helps
 				<FlipWords words={words} /> <br />

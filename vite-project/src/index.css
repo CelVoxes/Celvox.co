@@ -28,8 +28,7 @@ a:hover {
 
 body {
 	margin: 0;
-	display: flex;
-	place-items: center;
+	display: block;
 	min-width: 320px;
 	min-height: 100vh;
 }
@@ -133,5 +132,16 @@ button:focus-visible {
 	}
 	body {
 		@apply bg-background text-foreground;
+	}
+}
+
+/* Stabilize layout when content height changes cause vertical scrollbar to appear/disappear */
+html {
+	scrollbar-gutter: stable both-edges;
+}
+
+@supports not (scrollbar-gutter: stable) {
+	html {
+		overflow-y: scroll;
 	}
 }

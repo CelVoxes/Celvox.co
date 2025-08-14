@@ -1,10 +1,11 @@
-import { useState, ReactNode } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/firebase";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
+type SolutionNavItem = { title: string; href: string; description: string };
 
 interface MobileNavProps {
 	isOpen: boolean;
@@ -22,6 +23,18 @@ const MobileNav: React.FC<MobileNavProps> = ({ isOpen, toggleMenu }) => {
 	const [submenuOpen, setSubmenuOpen] = useState(false);
 	const [user] = useAuthState(auth);
 	const navigate = useNavigate();
+ 
+	const [solutions, setSolutions] = useState<SolutionNavItem[]>([]);
+	useEffect(() => {
+		let mounted = true;
+		fetch("/products.json", { cache: "no-cache" })
+			.then((res) => res.json())
+			.then((data) => mounted && setSolutions(data?.solutions ?? []))
+			.catch((e) => console.error("Failed to load solutions:", e));
+		return () => {
+			mounted = false;
+		};
+	}, []);
 
 	const handleLogout = async () => {
 		try {
@@ -71,16 +84,15 @@ const MobileNav: React.FC<MobileNavProps> = ({ isOpen, toggleMenu }) => {
 								<ChevronDown size={24} />
 							)}
 						</button>
-						{submenuOpen && (
-							<ul className="mt-2 space-y-2 rounded-md">
-								<NavItem to="/solutions/cellama" onClick={toggleMenu} subItem>
-									ceLLama
+					{submenuOpen && (
+						<ul className="mt-2 space-y-2 rounded-md">
+							{solutions.map((item) => (
+								<NavItem key={item.href} to={item.href} onClick={toggleMenu} subItem>
+									{item.title}
 								</NavItem>
-								<NavItem to="/solutions/seAMLess" onClick={toggleMenu} subItem>
-									seAMLess
-								</NavItem>
-							</ul>
-						)}
+							))}
+						</ul>
+					)}
 					</li>
 					<NavItem to="/contact" onClick={toggleMenu}>
 						Contact

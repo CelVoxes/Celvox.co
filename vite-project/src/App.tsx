@@ -19,7 +19,8 @@ import Cellama from "@/components/pages/solutions/Cellama";
 import UserProfilePage from "@/components/pages/UserProfilePage";
 import ResetPassword from "@/components/pages/ResetPassword";
 import NotFoundPage from "@/components/pages/NotFoundPage";
-import SeAMLess from "./components/pages/solutions/seAMLess";
+import Axon from "@/components/pages/solutions/Axon";
+import SeAMLess from "@/components/pages/solutions/seAMLess";
 
 function App() {
 	const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -46,6 +47,7 @@ function App() {
 						path="/solutions/seAMLess"
 						element={<SeAMLess user={user} />}
 					/>
+					<Route path="/solutions/axon" element={<Axon user={user} />} />
 					<Route path="/dashboard" element={<Dashboard user={user} />} />
 					<Route path="/login" element={<LoginPage user={user} />} />
 					<Route path="/profile" element={<UserProfilePage />} />

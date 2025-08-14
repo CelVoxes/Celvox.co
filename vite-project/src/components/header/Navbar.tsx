@@ -20,26 +20,34 @@ import { signOut } from "firebase/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { auth } from "@/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
+type SolutionNavItem = { title: string; href: string; description: string };
 
-const components: { title: string; href: string; description: string }[] = [
-	{
-		title: "ceLLama",
-		href: "/solutions/cellama",
-		description:
-			"An automated cell type annotation pipeline using local Large Language Models (LLMs).",
-	},
-	{
-		title: "seAMLess",
-		href: "/solutions/seAMLess",
-		description:
-			"An ML-integrated interactive visualization platform for RNA sequencing analysis.",
-	},
-];
+const fetchSolutions = async (): Promise<SolutionNavItem[]> => {
+	try {
+		const res = await fetch("/products.json", { cache: "no-cache" });
+		const data = await res.json();
+		return data?.solutions ?? [];
+	} catch (e) {
+		console.error("Failed to load solutions:", e);
+		return [];
+	}
+};
 
 export function Navbar() {
 	const [user] = useAuthState(auth);
 
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+	const [solutions, setSolutions] = useState<SolutionNavItem[]>([]);
+
+	React.useEffect(() => {
+		let isMounted = true;
+		fetchSolutions().then((items) => {
+			if (isMounted) setSolutions(items);
+		});
+		return () => {
+			isMounted = false;
+		};
+	}, []);
 	const toggleMobileMenu = () => {
 		setIsMobileMenuOpen(!isMobileMenuOpen);
 	};
@@ -57,7 +65,7 @@ export function Navbar() {
 
 	return (
 		<header className="sticky top-0 z-50 w-full border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ">
-			<div className="flex h-full max-w-screen-2xl items-center justify-between">
+			<div className="flex h-full w-full max-w-screen-2xl items-center justify-between mx-auto px-4">
 				<Link to="/">
 					<img
 						src={logo}
@@ -103,7 +111,7 @@ export function Navbar() {
 								</NavigationMenuTrigger>
 								<NavigationMenuContent>
 									<ul className="grid w-[200px] gap-3 p-4 md:w-[250px] md:grid-cols-1 lg:w-[300px] ">
-										{components.map((component) => (
+							{solutions.map((component) => (
 											<Link key={component.title} to={component.href}>
 												<ListItem title={component.title}>
 													{component.description}
