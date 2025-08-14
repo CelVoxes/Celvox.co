@@ -25,3 +25,37 @@ install.packages("MCMCpack")
 install.packages("nnls")
 install.packages("MuSiC", repos = "https://eonurk.github.io/drat/")
 ```
+
+## Frontend Deployment (celvox.co)
+
+Nginx serves the frontend from `/var/www/celvox` with SPA fallback to `index.html`. After pulling latest changes and building, deploy the contents of `vite-project/dist` to that web root.
+
+### One-liner redeploy
+
+```bash
+cd /root/celvox.co/vite-project \
+  && npm ci \
+  && npm run build \
+  && rsync -av --delete dist/ /var/www/celvox/ \
+  && chown -R www-data:www-data /var/www/celvox \
+  && find /var/www/celvox -type d -exec chmod 755 {} \; \
+  && find /var/www/celvox -type f -exec chmod 644 {} \; \
+  && nginx -t \
+  && systemctl reload nginx
+```
+
+### Optional: backup current site before syncing
+
+```bash
+ts=$(date +%Y%m%d_%H%M%S); tar -C /var/www -czf /var/www/celvox_${ts}.tgz celvox
+```
+
+### Quick check
+
+```bash
+curl -I https://celvox.co
+```
+
+Notes:
+- Update paths if project location or Nginx root changes.
+- API requests are proxied under `/api` to `http://127.0.0.1:3001/` per `/etc/nginx/sites-available/celvox.co`.
