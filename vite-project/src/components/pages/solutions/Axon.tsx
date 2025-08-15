@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ReloadIcon } from "@radix-ui/react-icons";
 
 import axonNoBackground from "@/assets/axon/axon-no-background.png";
+import axonMain from "@/assets/axon/axon-mainpage.png";
 
 export function Axon({ user }: { user: FirebaseUser | null }) {
 	const navigate = useNavigate();
@@ -106,11 +107,11 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 			<div className="max-w-7xl mx-auto px-4 md:px-0 md:mx-0 mt-10 md:mt-16">
 				<Card className="mx-auto mb-12 md:mb-24 shadow-lg bg-gradient-to-br from-slate-900 via-neutral-900 to-slate-900">
 					<CardContent>
-						<div className="flex flex-col items-center justify-center text-center mb-12 p-4 md:p-12">
+						<div className="flex flex-col items-center justify-center text-center mb-2 p-0 md:p-8">
 							<img
 								src={axonNoBackground}
 								alt="Axon"
-								className="w-32 h-32 md:w-48 md:h-48 lg:w-64 lg:h-64 mb-8 md:mb-12 mt-8 md:mt-12 object-contain"
+								className="w-32 h-32 md:w-48 md:h-48 lg:w-64 lg:h-64 mb-8 md:mb-12 mt-16 md:mt-16 object-contain"
 							/>
 							<h1 className="text-5xl md:text-5xl text-center text-white tracking-tight font-black mb-4 md:mb-6 max-w-3xl mt-12 drop-shadow-lg">
 								Axon
@@ -123,6 +124,13 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 								AI agent for bioinformatics — generate, run, and explain
 								analyses.
 							</p>
+						</div>
+						<div className="flex flex-col items-center justify-end text-center mb-0 md:p-4 rounded-lg h-full">
+							<img
+								src={axonMain}
+								alt="Axon"
+								className="w-4/5 h-auto object-contain"
+							/>
 						</div>
 					</CardContent>
 				</Card>

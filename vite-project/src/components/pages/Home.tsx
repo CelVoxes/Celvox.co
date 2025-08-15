@@ -23,7 +23,11 @@ export function Home() {
 						New
 					</span>
 					<h2 className="mt-6 mb-4">
-						Introducing <b>Axon</b>,
+						Introducing{" "}
+						<Link to="solutions/axon" className="w-auto">
+							<b>Axon</b>
+						</Link>
+						,
 					</h2>
 					<p className="text-xl">Cursor for Bioinformatics.</p>
 					<div className="items-center flex flex-col sm:flex-row justify-center mt-8 gap-2">
@@ -48,7 +52,11 @@ export function Home() {
 			<div className="h-[40rem] max-w-4xl mx-auto flex justify-center items-center px-4">
 				<div className="text-2xl mx-auto text-neutral-600 dark:text-neutral-400">
 					<h2 className="mt-6 mb-4">
-						Introducing <b>ceLLama</b>,
+						Introducing{" "}
+						<Link to="solutions/cellama" className="w-auto">
+							<b>ceLLama</b>
+						</Link>
+						,
 					</h2>
 					<p className="text-xl">
 						An automated cell type annotation pipeline using local Large
