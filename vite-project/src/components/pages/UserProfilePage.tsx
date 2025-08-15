@@ -86,7 +86,7 @@ const UserProfile: React.FC = () => {
 			setPlanStatus("Free Trial");
 			setNextRenewalDate(trialEndDate);
 		} else {
-			setPlanStatus("seAMLess Pro");
+			setPlanStatus("Pro");
 			const lastRenewalDate = new Date(
 				Math.floor(now.getTime() / (30 * 24 * 60 * 60 * 1000)) *
 					(30 * 24 * 60 * 60 * 1000)

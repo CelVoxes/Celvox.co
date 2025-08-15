@@ -45,35 +45,6 @@ export function Home() {
 			</div>
 			<Separator />
 
-			<div
-				className={`h-[40rem] max-w-4xl mx-auto flex justify-center items-center px-4`}
-			>
-				<div className="text-center text-2xl mx-auto text-neutral-600 dark:text-neutral-400">
-					<h2 className="mt-6 mb-4">
-						Introducing <b>seAMLess</b>,
-					</h2>
-					<p className="text-xl">
-						An AI-powered visualization tool for bulk molecular analysis.
-					</p>
-					<div className="items-center flex flex-col sm:flex-row justify-center mt-8 gap-2">
-						<Link to="solutions/seAMLess" className="w-auto">
-							<Button className="w-full flex justify-center items-center px-8 py-6 rounded-full">
-								Learn more
-							</Button>
-						</Link>
-						<Link to="contact" className="w-auto">
-							<Button
-								variant="outline"
-								className="w-full flex justify-center items-center px-8  py-6 rounded-full text-black hover:bg-black hover:text-white"
-							>
-								Contact us
-							</Button>
-						</Link>
-					</div>
-				</div>
-			</div>
-			<Separator />
-
 			<div className="h-[40rem] max-w-4xl mx-auto flex justify-center items-center px-4">
 				<div className="text-2xl mx-auto text-neutral-600 dark:text-neutral-400">
 					<h2 className="mt-6 mb-4">

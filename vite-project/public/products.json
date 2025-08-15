@@ -9,13 +9,7 @@
 			"title": "Axon",
 			"href": "/solutions/axon",
 			"description": "AI-powered biological analysis combining LLM-driven code generation and intelligent dataset discovery."
-		},
-		{
-			"title": "seAMLess",
-			"href": "/solutions/seAMLess",
-			"description": "An ML-integrated interactive visualization platform for RNA sequencing analysis."
 		}
-		
 	]
 }
 

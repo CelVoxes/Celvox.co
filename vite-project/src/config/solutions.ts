@@ -17,12 +17,6 @@ export const solutionsNavItems: SolutionNavItem[] = [
 		description:
 			"An automated cell type annotation pipeline using local Large Language Models (LLMs).",
 	},
-	{
-		title: "seAMLess",
-		href: "/solutions/seAMLess",
-		description:
-			"An ML-integrated interactive visualization platform for RNA sequencing analysis.",
-	},
 
 	// You can add more products here
 ];

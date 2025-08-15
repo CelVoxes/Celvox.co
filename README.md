@@ -2,7 +2,7 @@
 
 ```bash
 micromamba env create -f environment.yml
-micromamba activate seamless_env
+micromamba activate celvox_env
 ```
 
 In the R console, you can then install the R packages using:
@@ -57,5 +57,6 @@ curl -I https://celvox.co
 ```
 
 Notes:
+
 - Update paths if project location or Nginx root changes.
 - API requests are proxied under `/api` to `http://127.0.0.1:3001/` per `/etc/nginx/sites-available/celvox.co`.
