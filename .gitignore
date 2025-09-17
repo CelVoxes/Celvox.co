@@ -21,3 +21,6 @@ vite-project/src/components/charts/hamlet-charts
 debug.Rmd
 
 *.tsbuildinfo
+backend/logs
+backend/service/logs
+backend/data
