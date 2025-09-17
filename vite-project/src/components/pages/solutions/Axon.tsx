@@ -11,6 +11,48 @@ import { ReloadIcon } from "@radix-ui/react-icons";
 import axonNoBackground from "@/assets/axon/axon-no-background.png";
 import axonMain from "@/assets/axon/axon-mainpage.png";
 
+type YouTubePlaybackQuality =
+	| "default"
+	| "small"
+	| "medium"
+	| "large"
+	| "hd720"
+	| "hd1080"
+	| "highres";
+
+type YouTubePlayerTarget = {
+	setPlaybackQuality?: (quality: YouTubePlaybackQuality) => void;
+	playVideo?: () => void;
+	getIframe?: () => HTMLIFrameElement;
+};
+
+type YouTubePlayerEvent = {
+	target: YouTubePlayerTarget;
+	data?: number;
+};
+
+type YouTubeNamespace = {
+	Player: new (
+		elementId: string,
+		options: {
+			videoId?: string;
+			playerVars?: Record<string, string | number>;
+			events?: {
+				onReady?: (event: YouTubePlayerEvent) => void;
+				onStateChange?: (event: YouTubePlayerEvent) => void;
+			};
+		}
+	) => unknown;
+	PlayerState: { PLAYING: number };
+};
+
+declare global {
+	interface Window {
+		YT?: YouTubeNamespace;
+		onYouTubeIframeAPIReady?: () => void;
+	}
+}
+
 export function Axon({ user }: { user: FirebaseUser | null }) {
 	const navigate = useNavigate();
 	const [visibleVideos, setVisibleVideos] = useState<number[]>([]);
@@ -46,6 +88,70 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 		});
 
 		return () => observer.disconnect();
+	}, []);
+
+	// Force YouTube embeds to start in 720p using the IFrame API
+	useEffect(() => {
+		const ensureAPIAndInit = () => {
+			const w = window as Window & typeof globalThis;
+			const YT = w.YT;
+			if (YT && YT.Player) {
+				initPlayers();
+				return;
+			}
+			const tag = document.createElement("script");
+			tag.src = "https://www.youtube.com/iframe_api";
+			const firstScriptTag = document.getElementsByTagName("script")[0];
+			firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag);
+			w.onYouTubeIframeAPIReady = () => initPlayers();
+		};
+
+		const initPlayers = () => {
+			const ids = [
+				"yt-player-1", // Fix Error
+				"yt-player-2", // Add Cell
+				"yt-player-0", // Fix Code
+				"yt-player-3", // Create Project
+			];
+
+			ids.forEach((id) => {
+				const el = document.getElementById(id) as HTMLIFrameElement | null;
+				if (!el) return;
+				// Avoid double init
+				if (el.getAttribute("data-initialized") === "true") return;
+				el.setAttribute("data-initialized", "true");
+				try {
+					new (window as Window & typeof globalThis).YT!.Player(id, {
+						events: {
+							onReady: (event: YouTubePlayerEvent) => {
+								try {
+									event.target.setPlaybackQuality?.("hd720");
+									event.target.playVideo?.();
+								} catch {
+									/* noop */
+								}
+							},
+							onStateChange: (event: YouTubePlayerEvent) => {
+								if (
+									event.data ===
+									(window as Window & typeof globalThis).YT!.PlayerState.PLAYING
+								) {
+									try {
+										event.target.setPlaybackQuality?.("hd720");
+									} catch {
+										/* noop */
+									}
+								}
+							},
+						},
+					});
+				} catch {
+					/* noop */
+				}
+			});
+		};
+
+		ensureAPIAndInit();
 	}, []);
 
 	const handleAxonNewsSubmit = async (
@@ -104,7 +210,7 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 		<>
 			<Navbar />
 
-			<div className="max-w-7xl mx-auto px-4 md:px-0 md:mx-0 mt-10 md:mt-16">
+			<div className="max-w-7xl mx-auto px-0 md:px-0 md:mx-0 mt-10 md:mt-16">
 				<Card className="mx-auto mb-12 md:mb-24 shadow-lg bg-gradient-to-br from-slate-900 via-neutral-900 to-slate-900">
 					<CardContent>
 						<div className="flex flex-col items-center justify-center text-center mb-2 p-0 md:p-8">
@@ -137,40 +243,8 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 			</div>
 
 			{/* Videos Section */}
-			<div className="max-w-6xl mx-auto px-4 md:px-8 mb-32">
-				<div className="space-y-32">
-					{/* Video 2: Fixing error in the code */}
-					<div
-						ref={(el) => (videoRefs.current[1] = el)}
-						data-video-index="1"
-						className={`transform transition-all duration-1000 ease-out delay-300 ${
-							visibleVideos.includes(1)
-								? "translate-y-0 opacity-100"
-								: "translate-y-20 opacity-0"
-						}`}
-					>
-						<div className="text-center mb-8">
-							<h3 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
-								"Fix Error"
-							</h3>
-							<p className="text-xl text-gray-600 max-w-2xl mx-auto">
-								See how Axon intelligently resolves code errors with precision.
-							</p>
-						</div>
-						<div className="relative bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 p-1 rounded-3xl hover:shadow-3xl transition-all duration-500">
-							<div className="bg-black rounded-[22px] overflow-hidden">
-								<iframe
-									src="https://www.youtube.com/embed/0lQnM0B2wVc?autoplay=1&mute=1&loop=1&playlist=0lQnM0B2wVc"
-									title="Axon - Fixing error in the code"
-									className="w-full h-full aspect-[16/10] lg:aspect-[16/9]"
-									frameBorder="0"
-									allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-									allowFullScreen
-								/>
-							</div>
-						</div>
-					</div>
-
+			<div className="max-w-6xl mx-auto mb-48 mt-48">
+				<div className="space-y-48">
 					{/* Video 3: Adding a new cell to an existing Notebook */}
 					<div
 						ref={(el) => (videoRefs.current[2] = el)}
@@ -181,19 +255,19 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 								: "translate-y-20 opacity-0"
 						}`}
 					>
-						<div className="text-center mb-8">
-							<h3 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
-								"Add Cell"
+						<div className="text-center mb-12">
+							<h3 className="text-3xl md:text-4xl font-black leading-tight text-gray-700 mb-2">
+								💬 Just talk to your data
 							</h3>
-							<p className="text-xl text-gray-600 max-w-2xl mx-auto">
-								Discover how Axon seamlessly adds new cells to existing
-								notebooks, enhancing your analytical workflow
+							<p className="text-xl text-gray-500 max-w-2xl mx-auto font-semibold">
+								"Hey, can you show my data on a UMAP plot?"
 							</p>
 						</div>
-						<div className="relative bg-gradient-to-br from-green-400 via-teal-500 to-blue-500 p-1 rounded-3xl hover:shadow-3xl transition-all duration-500">
-							<div className="bg-black rounded-[22px] overflow-hidden">
+						<div className="relative bg-gradient-to-br  p-1 rounded-3xl hover:shadow-3xl transition-all duration-500">
+							<div className="bg-white rounded-[22px] overflow-hidden">
 								<iframe
-									src="https://www.youtube.com/embed/MblhDmxnvyA?autoplay=1&mute=1&loop=1&playlist=MblhDmxnvyA"
+									id="yt-player-2"
+									src="https://www.youtube.com/embed/MblhDmxnvyA?autoplay=1&mute=1&loop=1&playlist=MblhDmxnvyA&enablejsapi=1"
 									title="Axon - Adding a new cell to an existing Notebook"
 									className="w-full h-full aspect-[16/10] lg:aspect-[16/9]"
 									frameBorder="0"
@@ -203,6 +277,7 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 							</div>
 						</div>
 					</div>
+
 					{/* Video 1: Inline Code Fixing */}
 					<div
 						ref={(el) => (videoRefs.current[0] = el)}
@@ -213,19 +288,19 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 								: "translate-y-20 opacity-0"
 						}`}
 					>
-						<div className="text-center mb-8">
-							<h3 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
-								"Fix Code"
+						<div className="text-center mb-12">
+							<h3 className="text-3xl md:text-4xl font-black leading-tight text-gray-700 mb-2">
+								🔄 Change wherever you want
 							</h3>
-							<p className="text-xl text-gray-600 max-w-2xl mx-auto">
-								Watch Axon automatically detect and fix code issues in
-								real-time, streamlining your development process
+							<p className="text-xl text-gray-500 max-w-2xl mx-auto font-semibold">
+								"Hey, could you make these Ensembl IDs?"
 							</p>
 						</div>
-						<div className="relative bg-gradient-to-br from-orange-400 via-pink-500 to-red-500 p-1 rounded-3xl hover:shadow-3xl transition-all duration-500">
+						<div className="relative bg-gradient-to-br p-1 rounded-3xl hover:shadow-3xl transition-all duration-500">
 							<div className="bg-black rounded-[22px] overflow-hidden">
 								<iframe
-									src="https://www.youtube.com/embed/wAwm77MJ_eE?autoplay=1&mute=1&loop=1&playlist=wAwm77MJ_eE"
+									id="yt-player-0"
+									src="https://www.youtube.com/embed/wAwm77MJ_eE?autoplay=1&mute=1&loop=1&playlist=wAwm77MJ_eE&enablejsapi=1"
 									title="Axon - Inline Code Fixing"
 									className="w-full h-full aspect-[16/10] lg:aspect-[16/9]"
 									frameBorder="0"
@@ -235,6 +310,40 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 							</div>
 						</div>
 					</div>
+
+					{/* Video 2: Fixing error in the code */}
+					<div
+						ref={(el) => (videoRefs.current[1] = el)}
+						data-video-index="1"
+						className={`transform transition-all duration-1000 ease-out delay-300 ${
+							visibleVideos.includes(1)
+								? "translate-y-0 opacity-100"
+								: "translate-y-20 opacity-0"
+						}`}
+					>
+						<div className="text-center mb-12">
+							<h3 className="text-3xl md:text-4xl font-black leading-tight text-gray-700 mb-2">
+								🤔 There is a problem with the results
+							</h3>
+							<p className="text-xl text-gray-500 max-w-2xl mx-auto font-semibold">
+								"Hey, there is a problem with the results. Can you fix it?"
+							</p>
+						</div>
+						<div className="relative bg-gradient-to-br p-1 rounded-3xl hover:shadow-3xl transition-all duration-500">
+							<div className="bg-black rounded-[22px] overflow-hidden">
+								<iframe
+									id="yt-player-1"
+									src="https://www.youtube.com/embed/0lQnM0B2wVc?autoplay=1&mute=1&loop=1&playlist=0lQnM0B2wVc&enablejsapi=1"
+									title="Axon - Fixing error in the code"
+									className="w-full h-full aspect-[16/10] lg:aspect-[16/9]"
+									frameBorder="0"
+									allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+									allowFullScreen
+								/>
+							</div>
+						</div>
+					</div>
+
 					{/* Video 4: Creating a whole project */}
 					<div
 						ref={(el) => (videoRefs.current[3] = el)}
@@ -245,19 +354,19 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 								: "translate-y-20 opacity-0"
 						}`}
 					>
-						<div className="text-center mb-8">
-							<h3 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
-								"Create Project"
+						<div className="text-center mb-12">
+							<h3 className="text-3xl md:text-4xl font-black leading-tight text-gray-700 mb-2">
+								🎯 Just analyze the whole thing
 							</h3>
-							<p className="text-xl text-gray-600 max-w-2xl mx-auto">
-								Watch Axon generate complete bioinformatics projects from
-								scratch, transforming ideas into reality
+							<p className="text-xl text-gray-500 max-w-2xl mx-auto font-semibold">
+								"Hey, could you analyze this data?"
 							</p>
 						</div>
-						<div className="relative bg-gradient-to-br from-purple-400 via-yellow-400 to-orange-500 p-1 rounded-3xl hover:shadow-3xl transition-all duration-500">
+						<div className="relative bg-gradient-to-br p-1 rounded-3xl hover:shadow-3xl transition-all duration-500">
 							<div className="bg-black rounded-[22px] overflow-hidden">
 								<iframe
-									src="https://www.youtube.com/embed/r0mapZfYkT0?autoplay=1&mute=1&loop=1&playlist=r0mapZfYkT0"
+									id="yt-player-3"
+									src="https://www.youtube.com/embed/r0mapZfYkT0?autoplay=1&mute=1&loop=1&playlist=r0mapZfYkT0&enablejsapi=1"
 									title="Axon - Creating a whole project"
 									className="w-full h-full aspect-[16/10] lg:aspect-[16/9]"
 									frameBorder="0"
@@ -271,15 +380,15 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 			</div>
 
 			{/* Axon News CTA Section */}
-			<div className="max-w-7xl mx-auto px-4 md:px-0 md:mx-0 mt-10 md:mt-16">
+			<div className="max-w-7xl mx-auto px-0 md:mx-0 mt-10 md:mt-16">
 				<Card className="mx-auto mb-12 md:mb-24 shadow-lg bg-gradient-to-br from-slate-900 via-neutral-900 to-slate-900">
 					<CardContent>
 						<div className="flex flex-col items-center justify-center text-center mb-12 p-4 md:p-12">
-							<h2 className="text-5xl md:text-5xl text-center text-white tracking-tight font-black mb-4 md:mb-6 max-w-3xl mt-12 drop-shadow-lg">
+							<h2 className="text-3xl md:text-5xl text-center text-white tracking-tight font-black mb-4 md:mb-6 max-w-3xl mt-12 drop-shadow-lg">
 								Stay in the Loop
 							</h2>
 
-							<p className="text-xl md:text-2xl text-slate-50 max-w-2xl leading-relaxed font-semibold px-2 md:px-0 my-4">
+							<p className="text-lg md:text-2xl text-slate-50 max-w-2xl leading-relaxed font-semibold px-2 md:px-0 my-4">
 								Get exclusive Axon updates and early access.
 							</p>
 
@@ -306,7 +415,7 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 									<Button
 										type="submit"
 										disabled={buttonDisable}
-										className="bg-gradient-to-r border-2 border-white text-white font-bold px-8 py-8 rounded-xl text-lg transition-all duration-300 transform hover:scale-105"
+										className="bg-gradient-to-r border-2 border-white text-white font-bold px-8 py-8 rounded-xl w-full text-md transition-all duration-300 transform hover:scale-105"
 									>
 										{buttonDisable && (
 											<ReloadIcon className="mr-2 h-5 w-5 animate-spin" />
