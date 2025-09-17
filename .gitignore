@@ -24,3 +24,5 @@ debug.Rmd
 backend/logs
 backend/service/logs
 backend/data
+backend/service/firebase-credentials.json
+backend/service/uploads
