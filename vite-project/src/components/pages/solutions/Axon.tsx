@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ReloadIcon } from "@radix-ui/react-icons";
+import Thinking from "@/components/ui/thinking";
 
 import axonNoBackground from "@/assets/axon/axon-no-background.png";
 import axonMain from "@/assets/axon/axon-mainpage.png";
@@ -269,6 +270,39 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 									id="yt-player-2"
 									src="https://www.youtube.com/embed/MblhDmxnvyA?autoplay=1&mute=1&loop=1&playlist=MblhDmxnvyA&enablejsapi=1"
 									title="Axon - Adding a new cell to an existing Notebook"
+									className="w-full h-full aspect-[16/10] lg:aspect-[16/9]"
+									frameBorder="0"
+									allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+									allowFullScreen
+								/>
+							</div>
+						</div>
+					</div>
+
+					{/* Video 3: Adding a new cell to an existing Notebook */}
+					<div
+						ref={(el) => (videoRefs.current[2] = el)}
+						data-video-index="2"
+						className={`transform transition-all duration-1000 ease-out delay-600 ${
+							visibleVideos.includes(2)
+								? "translate-y-0 opacity-100"
+								: "translate-y-20 opacity-0"
+						}`}
+					>
+						<div className="text-center mb-12">
+							<h3 className="text-3xl md:text-4xl font-black leading-tight text-gray-700 mb-2">
+								💡 Think before you answer
+							</h3>
+							<div className="mt-2">
+								<Thinking size="md" label="Thinking" />
+							</div>
+						</div>
+						<div className="relative bg-gradient-to-br  p-1 rounded-3xl hover:shadow-3xl transition-all duration-500">
+							<div className="bg-white rounded-[22px] overflow-hidden">
+								<iframe
+									id="yt-player-4"
+									src="https://www.youtube.com/embed/CzYnF0-77J8?autoplay=1&mute=1&loop=1&playlist=CzYnF0-77J8&enablejsapi=1"
+									title="Axon - Thinking before answering"
 									className="w-full h-full aspect-[16/10] lg:aspect-[16/9]"
 									frameBorder="0"
 									allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
