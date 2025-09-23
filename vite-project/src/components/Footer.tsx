@@ -7,7 +7,7 @@ export function SiteFooter() {
 	return (
 		<>
 			<Separator />
-			<div className="h-[20rem] w-full max-w-4xl mx-auto flex justify-center items-center px-4 bg-neutral-100 my-12">
+			<div className="h-[20rem] py-6 md:px-8 md:py-0 mx-auto flex justify-center items-center px-4 bg-neutral-100 ">
 				<SubscribeForm />
 			</div>
 			<footer className="py-6 md:px-8 md:py-0">

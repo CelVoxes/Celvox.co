@@ -81,7 +81,7 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 					}
 				});
 			},
-			{ threshold: 0.3 }
+			{ threshold: 0 }
 		);
 
 		videoRefs.current.forEach((ref) => {
@@ -244,13 +244,13 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 			</div>
 
 			{/* Videos Section */}
-			<div className="max-w-6xl mx-auto mb-48 mt-48">
+			<div className="max-w-6xl mx-auto mb-24 mt-24">
 				<div className="space-y-48">
 					{/* Video 3: Adding a new cell to an existing Notebook */}
 					<div
 						ref={(el) => (videoRefs.current[2] = el)}
 						data-video-index="2"
-						className={`transform transition-all duration-1000 ease-out delay-600 ${
+						className={`transform transition-all duration-1000 ease-out delay-100 ${
 							visibleVideos.includes(2)
 								? "translate-y-0 opacity-100"
 								: "translate-y-20 opacity-0"
@@ -414,15 +414,15 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 			</div>
 
 			{/* Axon News CTA Section */}
-			<div className="max-w-7xl mx-auto px-0 md:mx-0 mt-10 md:mt-16">
-				<Card className="mx-auto mb-12 md:mb-24 shadow-lg bg-gradient-to-br from-slate-900 via-neutral-900 to-slate-900">
+			<div className="max-w-7xl mx-auto px-0 md:mx-0 mt-48 md:mt-48">
+				<Card className="mx-auto mb-12 md:mb-24 bg-gradient-to-br from-slate-600 via-neutral-900 to-slate-900">
 					<CardContent>
 						<div className="flex flex-col items-center justify-center text-center mb-12 p-4 md:p-12">
-							<h2 className="text-3xl md:text-5xl text-center text-white tracking-tight font-black mb-4 md:mb-6 max-w-3xl mt-12 drop-shadow-lg">
+							<h2 className="text-3xl md:text-4xl text-center text-white tracking-tight font-black mb-4 md:mb-6 max-w-3xl mt-12 drop-shadow-lg">
 								Stay in the Loop
 							</h2>
 
-							<p className="text-lg md:text-2xl text-slate-50 max-w-2xl leading-relaxed font-semibold px-2 md:px-0 my-4">
+							<p className="text-lg md:text-xl text-slate-50 max-w-2xl leading-relaxed font-semibold px-2 md:px-0 my-4">
 								Get exclusive Axon updates and early access.
 							</p>
 
@@ -434,7 +434,7 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 									<input
 										name="Email"
 										type="email"
-										className="flex w-full text-lg px-6 py-4 rounded-xl border-2 border-slate-700 bg-slate-800 text-white placeholder:text-slate-400 focus:border-blue-500 focus:outline-none transition-colors"
+										className="flex w-full text-lg px-6 py-4 rounded-xl border-2 border-slate-700 bg-slate-800 text-white placeholder:text-slate-400 focus:border-slate-700 focus:outline-none transition-colors"
 										required
 										placeholder="Enter your email"
 									/>
@@ -449,11 +449,9 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 									<Button
 										type="submit"
 										disabled={buttonDisable}
-										className="bg-gradient-to-r border-2 border-white text-white font-bold px-8 py-8 rounded-xl w-full text-md transition-all duration-300 transform hover:scale-105"
+										className="relative overflow-hidden bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-500 border-2 border-yellow-600 text-slate-100 font-bold px-8 py-8 rounded-xl w-full text-md transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-yellow-400/60 before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] hover:before:translate-x-[100%] before:transition-transform before:duration-1000 before:ease-out hover:animate-none"
 									>
-										{buttonDisable && (
-											<ReloadIcon className="mr-2 h-5 w-5 animate-spin" />
-										)}
+										{buttonDisable && <ReloadIcon className="mr-2 h-5 w-5" />}
 										Get Axon News
 									</Button>
 								</div>
