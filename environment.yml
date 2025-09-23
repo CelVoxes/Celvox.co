@@ -1,12 +1,13 @@
 name: celvox_env
 channels:
   - conda-forge
-  - defaults
+  - bioconda
+channel_priority: strict
 dependencies:
   - r-base
-  - r-essentials
   - r-data.table
   - r-plumber
   - r-rtsne
+  - r-fst
   - r-devtools
-  - r-sva
+  - bioconductor-sva

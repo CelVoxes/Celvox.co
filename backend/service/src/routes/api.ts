@@ -14,7 +14,7 @@ export function apiRoute(props: {config: AppConfig, firebase: FirebaseModule}) {
 
   const upload = multer({ dest: props.config.uploadsFolder || '/tmp/seamless/uploads/' })
   
-  const compuateBackendUrl = props.config.computeBackendUrl || 'http://localhost:5555'
+  const compuateBackendUrl = props.config.computeBackendUrl || 'http://127.0.0.1:5555'
 
   route.post('/load-sample-data', upload.single('file'), async (req, resp) => {
     console.log(req.file, path.resolve( req.file?.path!))
