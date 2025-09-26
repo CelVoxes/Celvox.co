@@ -17,7 +17,6 @@ vite-project/src/assets/104735-001-098.summary.json
 vite-project/src/assets/output-schema.json
 
 # Hamlet charts for now
-vite-project/src/components/charts/hamlet-charts
 debug.Rmd
 
 *.tsbuildinfo
@@ -26,3 +25,4 @@ backend/service/logs
 backend/data
 backend/service/firebase-credentials.json
 backend/service/uploads
+environment.yml
