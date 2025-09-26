@@ -16,19 +16,19 @@ export function LoginPage({ user }: { user: FirebaseUser | null }) {
 	}, [user, navigate]);
 
 	return (
-		<div className="min-h-screen flex flex-col">
+		<>
 			<Navbar />
-
-			{!user && (
-				<main className="flex-1 flex items-center justify-center">
-					<div className="text-2xl font-normal text-neutral-600 dark:text-neutral-400">
-						<Login />
-					</div>
-				</main>
-			)}
-
+			<div className="min-h-screen flex flex-col">
+				{!user && (
+					<main className="flex-1 flex items-center justify-center">
+						<div className="text-2xl font-normal text-neutral-600 dark:text-neutral-400">
+							<Login />
+						</div>
+					</main>
+				)}
+			</div>
 			<SiteFooter />
-		</div>
+		</>
 	);
 }
 

@@ -202,7 +202,7 @@ const UserProfile: React.FC = () => {
 		switch (activeTab) {
 			case "profile":
 				return (
-					<Card className="w-full max-w-4xl mx-auto">
+					<Card className="w-full max-w-4xl mx-auto mt-10">
 						<div className="p-8">
 							<h2 className="text-2xl font-semibold mb-4">User Profile</h2>
 							<div className="mb-4">
@@ -321,47 +321,49 @@ const UserProfile: React.FC = () => {
 	};
 
 	return (
-		<div className="flex flex-col min-h-screen">
+		<>
 			<Navbar />
-			<div className="flex-1 w-full">
-				<div className="container mx-auto py-10 px-4">
-					<h1 className="text-3xl font-bold mb-8 text-center">
-						User Dashboard
-					</h1>
-					{isMobile ? (
-						<ScrollArea className="w-full rounded-md border p-4">
-							{tabs.map((tab) => (
-								<div
-									key={tab.id}
-									className={`p-4 cursor-pointer ${
-										activeTab === tab.id ? "bg-secondary" : ""
-									}`}
-									onClick={() => setActiveTab(tab.id)}
-								>
-									{tab.label}
-								</div>
-							))}
-						</ScrollArea>
-					) : (
-						<Tabs
-							value={activeTab}
-							onValueChange={setActiveTab}
-							className="w-full"
-						>
-							<TabsList className="grid grid-cols-3 gap-2 mb-4">
+			<div className="flex flex-col min-h-screen">
+				<div className="flex-1 w-full">
+					<div className="container mx-auto py-10 px-4">
+						<h1 className="text-3xl font-bold mb-8 text-center">
+							User Dashboard
+						</h1>
+						{isMobile ? (
+							<ScrollArea className="w-full rounded-md border p-4">
 								{tabs.map((tab) => (
-									<TabsTrigger key={tab.id} value={tab.id}>
+									<div
+										key={tab.id}
+										className={`p-4 cursor-pointer ${
+											activeTab === tab.id ? "bg-secondary" : ""
+										}`}
+										onClick={() => setActiveTab(tab.id)}
+									>
 										{tab.label}
-									</TabsTrigger>
+									</div>
 								))}
-							</TabsList>
-						</Tabs>
-					)}
-					<div className="mt-4">{renderTabContent()}</div>
+							</ScrollArea>
+						) : (
+							<Tabs
+								value={activeTab}
+								onValueChange={setActiveTab}
+								className="w-full"
+							>
+								<TabsList className="grid grid-cols-3 gap-2 mb-4">
+									{tabs.map((tab) => (
+										<TabsTrigger key={tab.id} value={tab.id}>
+											{tab.label}
+										</TabsTrigger>
+									))}
+								</TabsList>
+							</Tabs>
+						)}
+						<div className="mt-4">{renderTabContent()}</div>
+					</div>
 				</div>
 			</div>
 			<SiteFooter />
-		</div>
+		</>
 	);
 };
 

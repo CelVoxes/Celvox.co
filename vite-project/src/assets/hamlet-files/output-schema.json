@@ -31,22 +31,59 @@
     "modules": {
       "type": "object",
       "additionalProperties": false,
-      "minProperties": 3,
+      "minProperties": 4,
       "properties": {
         "fusion": { "$ref": "#/definitions/modules/fusion" },
         "itd": { "$ref": "#/definitions/modules/itd" },
-        "snv_indels": { "$ref": "#/definitions/modules/snv_indels" }
+        "snv_indels": { "$ref": "#/definitions/modules/snv_indels" },
+        "expression": { "$ref": "#/definitions/modules/expression" }
       },
       "fusion": {
-        "type": "array"
-      },
-      "itd": {
         "type": "object",
         "additionalProperties": false,
         "minProperties": 2,
         "properties": {
+          "events": {
+            "type": "array",
+            "item": { "$ref": "#definitions/modules/fusion/event"}
+          },
+          "metadata": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "properties": {
+              "sample_name": { "type": "string"}
+            }
+          }
+        },
+        "event": {
+          "type": "object",
+          "properties": {
+            "gene1": { "type": "string" },
+            "gene2": { "type": "string" },
+            "discordant_mates": { "type": "integer"},
+            "split_reads1": { "type": "integer" },
+            "split_reads2": { "type": "integer" },
+            "coverage1":  { "type": "integer" },
+            "coverage2":  { "type": "integer" }
+          }
+        }
+      },
+      "itd": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 3,
+        "properties": {
           "flt3": { "$ref": "#/definitions/modules/itd/result" },
-          "kmt2a": { "$ref": "#/definitions/modules/itd/result" }
+          "kmt2a": { "$ref": "#/definitions/modules/itd/result" },
+          "metadata": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "properties": {
+              "sample_name": { "type": "string"}
+            }
+          }
         },
         "result": {
           "type": "object",
@@ -87,7 +124,15 @@
         "minProperties": 2,
         "properties": {
           "genes": { "$ref": "#/definitions/modules/snv_indels/genes" },
-          "stats": { "$ref": "#/definitions/modules/snv_indels/stats" }
+          "stats": { "$ref": "#/definitions/modules/snv_indels/stats" },
+          "metadata": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "properties": {
+              "sample_name": { "type": "string"}
+            }
+          }
         },
         "genes": {
           "type": "object",
@@ -106,8 +151,7 @@
             "start": { "type": "integer" },
             "genotype": { "type": "string" },
             "transcript_consequences": { "type": "array", "minItems": 1},
-            "Existing_variation": { "type": "array", "items": { "type": "string" }},
-            "is_in_hotspot": { "type": "boolean" }
+            "Existing_variation": { "type": "array", "items": { "type": "string" }}
           }
         },
         "stats": {
@@ -271,6 +315,71 @@
                 "num_tolerated_variants": { "type": "integer" }
               }
             }
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "properties": {
+            "sample_name": { "type": "string"}
+          }
+        }
+      },
+      "expression": {
+        "description": "Top level object for the json output of the expression module",
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 2,
+        "properties": {
+          "metadata": { "$ref": "#/definitions/modules/expression/metadata" },
+          "gene-expression": { "$ref": "#/definitions/modules/expression/gene-expression" },
+          "subtype": { "$ref": "#/definitions/modules/expression/subtype" },
+          "cell-types": { "$ref": "#/definitions/modules/expression/cell-types" }
+        },
+        "metadata": {
+          "description": "Metadata entry for the expression module",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "sample_name": { "type": "string" }
+          }
+        },
+        "gene-expression": {
+          "description": "Gene expression values for the genes of interest",
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/modules/expression/single_gene"}
+        },
+        "cell-types": {
+          "description": "Cell composition of the sample",
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 2,
+          "properties": {
+            "data": {
+              "type": "object",
+              "items": { "$ref": "#/definitions/modules/expression/cell_type_data"}
+            },
+            "plot": {"type": "string"}
+          }
+        },
+        "cell_type_data": {
+          "description": "Cell type proportions from seAMLess",
+          "type": "object",
+          "additionalProperties": { "type": "number"}
+        },
+        "subtype": {
+          "descrition": "Predicted AML subtype of the sample",
+          "type": "object"
+        },
+        "single_gene": {
+          "description": "Gene expression object for a single gene",
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 2,
+          "properties": {
+            "normalized": {"type": ["number", "null"]},
+            "raw": {"type": "integer"}
           }
         }
       }

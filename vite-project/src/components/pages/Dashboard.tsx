@@ -22,6 +22,7 @@ import { User } from "firebase/auth";
 import { Navigate } from "react-router-dom";
 import { KNNReportExpression } from "@/components/charts/knn-report-expression";
 import { DrugResponseHeatmap } from "@/components/charts/drug-response-per-group";
+import { HamletDashboard } from "@/components/charts/HamletDashboard";
 export const description = "A collection of AML samples.";
 
 export function Dashboard({ user }: { user: User | null }) {
@@ -45,7 +46,7 @@ export function Dashboard({ user }: { user: User | null }) {
 						onValueChange={setActiveTab}
 						className="w-full"
 					>
-						<TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 w-full gap-1 p-1">
+						<TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 w-full gap-1 p-1">
 							<TabsTrigger
 								value="qc"
 								className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
@@ -75,6 +76,12 @@ export function Dashboard({ user }: { user: User | null }) {
 								className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
 							>
 								Drug Response
+							</TabsTrigger>
+							<TabsTrigger
+								value="hamlet"
+								className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
+							>
+								HAMLET
 							</TabsTrigger>
 							<TabsTrigger
 								value="ask-ai"
@@ -120,6 +127,9 @@ export function Dashboard({ user }: { user: User | null }) {
 							<DrugResponseHeatmap />
 							<DrugEffectivenessReport />
 						</div>
+					</div>
+					<div className={activeTab === "hamlet" ? "" : "hidden"}>
+						<HamletDashboard />
 					</div>
 					<div className={activeTab === "ask-ai" ? "" : "hidden"}>
 						<AIAMLReport />

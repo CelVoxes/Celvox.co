@@ -1,3 +1,6 @@
 data
 cache
 .ipynb_checkpoints
+
+.Rhistory
+.RData
