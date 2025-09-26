@@ -23,6 +23,10 @@ export function HamletDashboard() {
 			<div className="space-y-6">
 				<HamletUpload onDataLoaded={handleDataLoaded} />
 				<Card className="w-full">
+					<CardHeader>
+						<CardTitle>HAMLET Analysis Dashboard</CardTitle>
+						<p className="text-sm text-gray-600">Developmental</p>
+					</CardHeader>
 					<CardContent className="p-8 text-center">
 						<p className="text-lg text-gray-600">
 							Upload a HAMLET output file to begin exploring genomic analysis
