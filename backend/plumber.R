@@ -230,7 +230,7 @@ harmonize_data <- local({
         # remove low expressed genes
         message("Removing genes with less than total 100 mRNA for all samples...")
         sample_data <- remove_low_expressed_genes(sample_data, threshold = 100)
-       
+
         message("Dimensions of sample data after filtering:")
         print(dim(sample_data))
         print(colnames(sample_data))
@@ -513,6 +513,42 @@ mutation_tsne <- function(req) {
     return(result)
 }
 
+# aberrations tsne
+#* @get /aberrations-tsne
+#* @serializer json
+aberrations_tsne <- function(req) {
+    cache_dir <- req$args$cachedir
+    # Load aberrations data
+    aberrations_data <- fread("data/aberrations/aberrations_oh.csv")
+
+    # Find the column name that contains ZZEF1 and get the columns after it
+    ZZEF1_col <- grep("ZZEF1", colnames(aberrations_data))
+    if (length(ZZEF1_col) == 0) {
+        stop("ZZEF1 column not found in aberrations data")
+    }
+
+    # Subset to include first column and columns from ZZEF1 onwards
+    selected_cols <- c(1, ZZEF1_col:ncol(aberrations_data))
+    aberrations_data <- aberrations_data[, ..selected_cols]
+
+    # Rename the first column to sample_id
+    if (ncol(aberrations_data) >= 1) {
+        colnames(aberrations_data)[1] <- "sample_id"
+    } else {
+        stop("No columns remaining after subsetting")
+    }
+
+    # Load t-SNE results
+    tsne_result <- run_tsne(cache_dir)
+    tsne_result$sample_id <- rownames(tsne_result)
+    message("Merging aberrations data with t-SNE results...")
+
+    # Merge t-SNE results with aberrations data
+    result <- merge(aberrations_data, tsne_result, by = "sample_id", all.x = TRUE)
+
+    return(result)
+}
+
 #* @get /cache-files
 #* @serializer unboxedJSON
 function(req) {
@@ -598,6 +634,375 @@ gene_expression <- local({
         gc()
 
         return(list(expression = merged, available_genes = gene_ids$gene_id))
+    }
+})
+
+#* @get /genome-expression
+#* @serializer json
+genome_expression <- local({
+    function(req) {
+        cache_dir <- req$args$cachedir
+        samples <- if (!is.null(req$args$samples)) strsplit(req$args$samples, ",")[[1]] else NULL
+        bin_size <- if (!is.null(req$args$bin_size)) as.numeric(req$args$bin_size) else 100
+        use_uploaded_names <- if (!is.null(req$args$use_uploaded_names) && req$args$use_uploaded_names == "true") TRUE else FALSE
+
+        message("Fetching genome-wide expression data...")
+        corrected <- read_fst(file.path(cache_dir, "harmonized_data.fst"))
+        gene_ids <- corrected[, 1]
+        corrected <- corrected[, -1, drop = FALSE]
+
+        # Handle sample selection FIRST to identify samples to exclude from reference
+        selected_sample_data <- NULL
+        excluded_samples <- NULL
+        if (!is.null(samples)) {
+            if (use_uploaded_names) {
+                # If using uploaded sample names, map them to harmonized sample names
+                sample_data <- read_fst(file.path(cache_dir, "sample_data.fst"))
+                uploaded_sample_names <- colnames(sample_data)[-1] # Remove gene_id column
+
+                # Find which uploaded samples were selected
+                selected_indices <- match(samples, uploaded_sample_names)
+                selected_indices <- selected_indices[!is.na(selected_indices)]
+
+                if (length(selected_indices) == 0) {
+                    return(list(error = "No matching uploaded samples found"))
+                }
+
+                # Assume uploaded samples are at the end of harmonized data
+                # Get the last N samples where N = number of uploaded samples
+                n_uploaded <- length(uploaded_sample_names)
+                harmonized_uploaded_samples <- tail(colnames(corrected), n_uploaded)
+
+                # Select the corresponding harmonized samples
+                selected_harmonized <- harmonized_uploaded_samples[selected_indices]
+                selected_sample_data <- corrected[, selected_harmonized, drop = FALSE]
+                excluded_samples <- selected_harmonized
+
+                message("Selected uploaded samples:", paste(samples, collapse = ", "))
+                message("Mapped to harmonized samples:", paste(selected_harmonized, collapse = ", "))
+            } else {
+                # Use harmonized sample names directly
+                available_samples <- colnames(corrected)
+                samples <- intersect(samples, available_samples)
+                if (length(samples) == 0) {
+                    return(list(error = "No requested samples found in data"))
+                }
+                selected_sample_data <- corrected[, samples, drop = FALSE]
+                excluded_samples <- samples
+            }
+        } else {
+            # If no samples selected, use all samples for both reference and analysis
+            selected_sample_data <- corrected
+            excluded_samples <- NULL
+        }
+
+        # Compute reference medians from ALL samples EXCEPT the selected/uploaded samples
+        message("Computing reference medians excluding selected samples...")
+        if (!is.null(excluded_samples)) {
+            message("Total samples available: ", ncol(corrected))
+            message("Samples excluded from reference: ", length(excluded_samples))
+            message("Samples used for reference: ", ncol(corrected) - length(excluded_samples))
+            # Use all columns except the excluded ones
+            reference_data <- corrected[, !(colnames(corrected) %in% excluded_samples), drop = FALSE]
+        } else {
+            message("No samples excluded from reference (using all samples)")
+            message("Total samples available: ", ncol(corrected))
+            reference_data <- corrected
+        }
+        message("Total genes: ", nrow(reference_data))
+
+        reference_medians <- apply(reference_data, 1, function(x) {
+            valid_values <- x[!is.na(x) & is.finite(x)]
+            if (length(valid_values) > 0) {
+                result <- median(valid_values, na.rm = TRUE)
+                result
+            } else {
+                NA_real_
+            }
+        })
+
+        # Debug: Show some reference median examples
+        message("Reference median examples:")
+        valid_indices <- which(!is.na(reference_medians))
+        if (length(valid_indices) >= 5) {
+            for (i in 1:5) {
+                idx <- valid_indices[i]
+                message(sprintf("Gene %s: reference_median = %.3f", gene_ids[idx], reference_medians[idx]))
+            }
+        }
+
+        # Get sample count before cleanup
+        sample_count <- ncol(selected_sample_data)
+
+        # Use selected_sample_data for gene expression calculations
+        corrected <- selected_sample_data
+
+        # For individual sample analysis, use the expression values directly
+        # If only one sample is selected, use its expression values
+        if (ncol(corrected) == 1) {
+            gene_means <- corrected[, 1]
+        } else {
+            # Calculate mean expression across samples for each gene (fallback)
+            gene_means <- rowMeans(corrected, na.rm = TRUE)
+        }
+
+        gene_means[!is.finite(gene_means)] <- NA_real_
+
+        # For genes that have all NA values (no expression data), set mean to NA
+        all_na_rows <- apply(corrected, 1, function(row) all(is.na(row)))
+        gene_means[all_na_rows] <- NA_real_
+
+        # Load gene positions data
+        message("Loading gene positions...")
+        canonical_chromosomes <- c(as.character(1:22), "X", "Y", "MT")
+        gene_positions <- fread("data/gene_positions_hg38.csv", data.table = FALSE)
+        # The CSV has headers: "hgnc_symbol","chromosome_name","start_position","end_position"
+        # But some rows have empty gene symbols, so we need to handle that
+        gene_positions <- gene_positions[, c(1, 2, 3, 4)] # Extract the four columns we need
+        # Filter out rows with empty gene symbols
+        gene_positions <- gene_positions[gene_positions[[1]] != "" & !is.na(gene_positions[[1]]), ]
+        # Set proper column names
+        colnames(gene_positions) <- c("gene_id", "chromosome", "start_position", "end_position")
+
+        gene_positions <- as.data.frame(gene_positions, stringsAsFactors = FALSE)
+        gene_positions$gene_id <- trimws(gene_positions$gene_id)
+        gene_positions <- gene_positions[gene_positions$gene_id != "" & !is.na(gene_positions$gene_id), ]
+
+        gene_positions$chromosome <- toupper(trimws(gene_positions$chromosome))
+        gene_positions$chromosome <- sub("^CHR", "", gene_positions$chromosome)
+
+        to_numeric <- function(vec) {
+            suppressWarnings(as.numeric(vec))
+        }
+
+        gene_positions$start_position <- to_numeric(gene_positions$start_position)
+        gene_positions$end_position <- to_numeric(gene_positions$end_position)
+
+        gene_positions$chromosome_rank <- match(gene_positions$chromosome, canonical_chromosomes)
+        fallback_rank <- length(canonical_chromosomes) + 1
+        gene_positions$chromosome_rank[is.na(gene_positions$chromosome_rank)] <- fallback_rank
+
+        gene_positions <- gene_positions[order(
+            gene_positions$gene_id,
+            gene_positions$chromosome_rank,
+            gene_positions$start_position,
+            gene_positions$end_position,
+            na.last = TRUE
+        ), ]
+
+        gene_positions <- gene_positions[!duplicated(gene_positions$gene_id),
+            c("gene_id", "chromosome", "start_position", "end_position"),
+            drop = FALSE
+        ]
+
+        gene_positions <- gene_positions[
+            gene_positions$chromosome %in% canonical_chromosomes &
+                !is.na(gene_positions$start_position) &
+                !is.na(gene_positions$end_position),
+        ]
+
+        # Ensure gene_positions has correct data types
+        gene_positions$gene_id <- as.character(gene_positions$gene_id)
+        gene_positions$chromosome <- as.character(gene_positions$chromosome)
+        gene_positions$start_position <- as.numeric(gene_positions$start_position)
+        gene_positions$end_position <- as.numeric(gene_positions$end_position)
+
+        # Additional check: ensure no duplicates remain
+        if (any(duplicated(gene_positions$gene_id))) {
+            message("Warning: gene_positions still has duplicates after processing")
+            gene_positions <- gene_positions[!duplicated(gene_positions$gene_id), ]
+        }
+
+        # Create base result dataframe
+        log2_expression <- rep(NA_real_, length(gene_means))
+        zero_expression_flag <- rep(FALSE, length(gene_means))
+
+        # Handle genes with expression data
+        valid_indices <- which(!is.na(gene_means))
+        if (length(valid_indices)) {
+            # Handle 0 expression values more carefully
+            zero_mask <- gene_means[valid_indices] == 0
+            zero_expression_flag[valid_indices] <- zero_mask
+
+            # For non-zero values, use log2(expression + 1)
+            non_zero_mask <- !zero_mask
+            if (any(non_zero_mask)) {
+                log2_expression[valid_indices[non_zero_mask]] <- log2(gene_means[valid_indices[non_zero_mask]] + 1)
+            }
+
+            # For zero values, set to a value slightly below the minimum non-zero log expression
+            if (any(zero_mask)) {
+                min_non_zero_log <- min(log2_expression[valid_indices[non_zero_mask]], na.rm = TRUE)
+                if (is.finite(min_non_zero_log)) {
+                    log2_expression[valid_indices[zero_mask]] <- min_non_zero_log - 0.1
+                } else {
+                    # Fallback if all values are zero
+                    log2_expression[valid_indices[zero_mask]] <- -0.1
+                }
+            }
+        }
+
+        # Handle genes without expression data (NA means)
+        na_indices <- which(is.na(gene_means))
+        if (length(na_indices) > 0) {
+            log2_expression[na_indices] <- -1 # Very low value for no expression
+            zero_expression_flag[na_indices] <- TRUE # Mark as no expression
+        }
+
+        # Compute CNV scores for each gene using reference medians
+        epsilon <- 1e-6 # Small value to avoid division by zero and log(0)
+        message("Computing CNV scores with epsilon =", epsilon)
+        cnv_scores <- rep(NA_real_, length(gene_means))
+        cnv_z_scores <- rep(NA_real_, length(cnv_scores))
+        significant_cnv <- rep(FALSE, length(cnv_scores))
+        significant_amplifications <- rep(FALSE, length(cnv_scores))
+        significant_deletions <- rep(FALSE, length(cnv_scores))
+
+        valid_ref_indices <- which(!is.na(reference_medians) & !is.na(gene_means) &
+            reference_medians > 0 & gene_means > 0)
+        message("Valid genes for CNV calculation: ", length(valid_ref_indices))
+
+        if (length(valid_ref_indices) > 0) {
+            cnv_scores[valid_ref_indices] <- log2((gene_means[valid_ref_indices] + epsilon) /
+                (reference_medians[valid_ref_indices] + epsilon))
+
+            # Debug: Show some CNV score examples
+            message("CNV score examples:")
+            for (i in 1:min(5, length(valid_ref_indices))) {
+                idx <- valid_ref_indices[i]
+                sample_val <- gene_means[idx]
+                ref_val <- reference_medians[idx]
+                cnv_val <- cnv_scores[idx]
+                message(sprintf(
+                    "Gene %s: sample=%.3f, ref=%.3f, CNV=%.3f",
+                    gene_ids[idx], sample_val, ref_val, cnv_val
+                ))
+            }
+
+            # Compute CNV statistics for change detection
+            message("Computing CNV statistics for change detection...")
+
+            # Calculate z-scores for CNV values (assuming they're approximately normal)
+            cnv_mean <- mean(cnv_scores[valid_ref_indices], na.rm = TRUE)
+            cnv_sd <- sd(cnv_scores[valid_ref_indices], na.rm = TRUE)
+            cnv_z_scores <- rep(NA_real_, length(cnv_scores))
+            cnv_z_scores[valid_ref_indices] <- (cnv_scores[valid_ref_indices] - cnv_mean) / cnv_sd
+
+            # Identify significant CNV events (|z| > 2)
+            significant_cnv <- abs(cnv_z_scores) > 2 & !is.na(cnv_z_scores)
+            significant_amplifications <- cnv_z_scores > 2 & !is.na(cnv_z_scores)
+            significant_deletions <- cnv_z_scores < -2 & !is.na(cnv_z_scores)
+
+            message(sprintf("CNV Statistics: mean=%.4f, sd=%.4f", cnv_mean, cnv_sd))
+            message(sprintf(
+                "Significant CNV events: %d total (%.1f%%)",
+                sum(significant_cnv), 100 * sum(significant_cnv) / length(valid_ref_indices)
+            ))
+            message(sprintf(
+                "Amplifications (|z| > 2): %d (%.1f%%)",
+                sum(significant_amplifications), 100 * sum(significant_amplifications) / length(valid_ref_indices)
+            ))
+            message(sprintf(
+                "Deletions (|z| < -2): %d (%.1f%%)",
+                sum(significant_deletions), 100 * sum(significant_deletions) / length(valid_ref_indices)
+            ))
+
+            # Compute regional statistics (sliding window)
+            message("Computing regional CNV statistics (50-gene windows)...")
+            window_size <- 50
+
+            if (length(valid_ref_indices) >= window_size) {
+                message(sprintf("Analyzed %d genes for regional statistics", length(valid_ref_indices)))
+                # Simplified regional analysis - just count significant regions
+                n_significant_regions <- sum(abs(cnv_z_scores[valid_ref_indices]) > 2)
+                message(sprintf("Found %d significant CNV genes (|z| > 2)", n_significant_regions))
+            } else {
+                message("Insufficient data for regional analysis")
+            }
+        }
+
+        # Debug: Check variable existence before dataframe creation
+        message("Creating result dataframe...")
+        message(sprintf("gene_ids length: %d", length(gene_ids)))
+        message(sprintf("cnv_scores length: %d", length(cnv_scores)))
+        message(sprintf("cnv_z_scores length: %d", length(cnv_z_scores)))
+        message(sprintf("significant_cnv length: %d", length(significant_cnv)))
+
+        result <- data.frame(
+            gene_id = gene_ids,
+            mean_expression = gene_means,
+            log2_expression = log2_expression,
+            cnv_score = cnv_scores,
+            cnv_z_score = cnv_z_scores,
+            reference_median = reference_medians,
+            is_significant_cnv = significant_cnv,
+            is_amplification = significant_amplifications,
+            is_deletion = significant_deletions,
+            zero_expression = zero_expression_flag,
+            stringsAsFactors = FALSE
+        )
+
+        message("Result dataframe created successfully")
+        message(sprintf("Result has %d rows and %d columns", nrow(result), ncol(result)))
+
+        # Add gene position information using match() to avoid merge issues
+        message("Adding gene positions...")
+        # Create position lookup
+        pos_lookup <- gene_positions[, c("gene_id", "chromosome", "start_position", "end_position")]
+        rownames(pos_lookup) <- pos_lookup$gene_id
+
+        # Match genes to positions
+        matches <- match(result$gene_id, pos_lookup$gene_id)
+
+        # Add position columns (will be NA for unmatched genes)
+        result$chromosome <- pos_lookup$chromosome[matches]
+        result$start_position <- pos_lookup$start_position[matches]
+        result$end_position <- pos_lookup$end_position[matches]
+
+        # Normalize column types after position assignment
+        message("Converting column types after position assignment...")
+        result$chromosome <- as.character(result$chromosome)
+        result$start_position <- suppressWarnings(as.numeric(result$start_position))
+        result$end_position <- suppressWarnings(as.numeric(result$end_position))
+
+        # Replace any NaN or infinite values with NA
+        result$start_position[!is.finite(result$start_position)] <- NA_real_
+        result$end_position[!is.finite(result$end_position)] <- NA_real_
+
+        # Filter out rows without valid positions
+        result <- result[!is.na(result$start_position) & !is.na(result$end_position), ]
+
+
+        # Create a combined chromosomal position for sorting
+        # Convert chromosome names to sortable format
+        result$chr_sort <- sapply(result$chromosome, function(chr) {
+            if (chr == "X") {
+                return(23)
+            }
+            if (chr == "Y") {
+                return(24)
+            }
+            as.numeric(chr) # Numeric chromosomes 1-21
+        })
+
+        # Sort by chromosome and position within chromosome
+        result <- result[order(result$chr_sort, result$start_position), ]
+
+        # Create a continuous genomic position for plotting using actual genomic coordinates
+        # Use start_position as the primary genomic position
+        result$genomic_position <- result$start_position
+
+        # Cleanup
+        rm(corrected, gene_means, gene_positions)
+        gc()
+
+        return(list(
+            genome_expression = result,
+            sample_count = sample_count,
+            gene_count = nrow(result),
+            chromosomes = unique(result$chromosome[order(result$chr_sort)]),
+            bin_size = bin_size
+        ))
     }
 })
 

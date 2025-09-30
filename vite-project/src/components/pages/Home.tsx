@@ -29,7 +29,7 @@ export function Home() {
 						</Link>
 						,
 					</h2>
-					<p className="text-xl">Cursor for Bioinformatics.</p>
+					<p className="text-xl">AI Agent for Bioinformatics</p>
 					<div className="items-center flex flex-col sm:flex-row justify-center mt-8 gap-2">
 						<Link to="solutions/axon" className="w-auto">
 							<Button className="w-full flex justify-center items-center px-8 py-6 rounded-full">

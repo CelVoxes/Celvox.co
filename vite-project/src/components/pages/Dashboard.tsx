@@ -6,6 +6,7 @@ import { DeconvolutionChart } from "@/components/charts/deconvolution";
 import { TSNEChart } from "@/components/charts/tsne-chart";
 import { DrugResponseTSNE } from "@/components/charts/tsne-drugresponse";
 import { MutationTSNE } from "@/components/charts/tsne-mutation";
+import { AberrationsTSNE } from "@/components/charts/tsne-aberrations";
 import { DataUpload } from "@/components/data-upload/DataUpload";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GeneExpressionTSNE } from "@/components/charts/tsne-expression";
@@ -21,8 +22,10 @@ import { Navbar } from "../header/Navbar";
 import { User } from "firebase/auth";
 import { Navigate } from "react-router-dom";
 import { KNNReportExpression } from "@/components/charts/knn-report-expression";
+import { KNNReportAberrations } from "@/components/charts/knn-report-aberrations";
 import { DrugResponseHeatmap } from "@/components/charts/drug-response-per-group";
 import { HamletDashboard } from "@/components/charts/HamletDashboard";
+import { CNVChart } from "@/components/charts/cnv-chart";
 export const description = "A collection of AML samples.";
 
 export function Dashboard({ user }: { user: User | null }) {
@@ -46,7 +49,7 @@ export function Dashboard({ user }: { user: User | null }) {
 						onValueChange={setActiveTab}
 						className="w-full"
 					>
-						<TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 w-full gap-1 p-1">
+						<TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 w-full gap-1 p-1">
 							<TabsTrigger
 								value="qc"
 								className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
@@ -84,6 +87,12 @@ export function Dashboard({ user }: { user: User | null }) {
 								HAMLET
 							</TabsTrigger>
 							<TabsTrigger
+								value="cnv"
+								className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
+							>
+								CNV
+							</TabsTrigger>
+							<TabsTrigger
 								value="ask-ai"
 								className="w-full data-[state=inactive]:bg-transparent data-[state=inactive]:text-foreground"
 							>
@@ -99,12 +108,14 @@ export function Dashboard({ user }: { user: User | null }) {
 							<TSNEChart />
 							<MutationTSNE />
 							<GeneExpressionTSNE />
-							<TSNEKNNChart />
+							<AberrationsTSNE />
 						</div>
 					</div>
 					<div className={activeTab === "knn" ? "" : "hidden"}>
 						<div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+							<TSNEKNNChart />
 							<KNNReport />
+							<KNNReportAberrations />
 							<KNNReportMutation />
 							<KNNReportExpression />
 						</div>
@@ -130,6 +141,9 @@ export function Dashboard({ user }: { user: User | null }) {
 					</div>
 					<div className={activeTab === "hamlet" ? "" : "hidden"}>
 						<HamletDashboard />
+					</div>
+					<div className={activeTab === "cnv" ? "" : "hidden"}>
+						<CNVChart />
 					</div>
 					<div className={activeTab === "ask-ai" ? "" : "hidden"}>
 						<AIAMLReport />

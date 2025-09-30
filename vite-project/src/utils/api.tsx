@@ -54,6 +54,16 @@ export async function fetchMutationTSNEData() {
 	}
 }
 
+export async function fetchAberrationsTSNEData() {
+	try {
+		const response = await axios.get(`${API_BASE_URL}/aberrations-tsne`);
+		return response.data;
+	} catch (error) {
+		console.error("Error fetching aberrations t-SNE data:", error);
+		throw error;
+	}
+}
+
 export async function uploadSampleData(file: File) {
 	// Check if the file is a CSV
 	if (!file.name.endsWith(".csv")) {
@@ -178,6 +188,24 @@ export async function fetchQCMetrics() {
 export async function fetchKNNDEG(k: number, sampleId: string) {
 	const response = await axios.get(`${API_BASE_URL}/knn-deg`, {
 		params: { k, sampleId },
+	});
+	return response.data;
+}
+
+export async function fetchCNVData(
+	samples?: string[],
+	useUploadedNames?: boolean
+) {
+	const params: any = {};
+	if (samples && samples.length > 0) {
+		params.samples = samples.join(",");
+	}
+	if (useUploadedNames !== undefined) {
+		params.use_uploaded_names = useUploadedNames.toString();
+	}
+
+	const response = await axios.get(`${API_BASE_URL}/genome-expression`, {
+		params,
 	});
 	return response.data;
 }

@@ -238,12 +238,12 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 									onClick={() =>
 										window.open("https://x.com/celvoxofficial", "_blank")
 									}
-									className="group relative overflow-hidden bg-white hover:bg-gray-50 text-black font-bold px-8 rounded-2xl text-base transition-all duration-500 transform hover:scale-110 hover:-translate-y-1 hover:shadow-2xl hover:shadow-gray-400/50 flex items-center justify-center gap-3 border border-gray-200 hover:border-gray-300 before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-gray-900/10 before:to-transparent before:translate-x-[-100%] hover:before:translate-x-[100%] before:transition-transform before:duration-1000 before:ease-out py-6 min-w-[180px] "
+									className="group relative overflow-hidden bg-white hover:bg-gray-50 text-black font-bold px-6 md:px-8 rounded-2xl text-sm md:text-base transition-all duration-500 transform hover:scale-110 hover:-translate-y-1 hover:shadow-2xl hover:shadow-gray-400/50 flex items-center justify-center gap-2 md:gap-3 border border-gray-200 hover:border-gray-300 before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-gray-900/10 before:to-transparent before:translate-x-[-100%] hover:before:translate-x-[100%] before:transition-transform before:duration-1000 before:ease-out py-4 md:py-6 min-w-[160px] md:min-w-[180px]"
 								>
 									<div className="absolute inset-0 bg-gradient-to-r from-gray-100/50 to-gray-200/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
 									<svg
-										width="24"
-										height="24"
+										width="20"
+										height="20"
 										viewBox="0 0 24 24"
 										fill="black"
 										xmlns="http://www.w3.org/2000/svg"
@@ -261,14 +261,14 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 									onClick={() =>
 										window.open("https://discord.gg/Ar5SJMgWDN", "_blank")
 									}
-									className="group relative overflow-hidden bg-gradient-to-br from-[#5865F2] via-[#4752C4] to-[#5865F2] hover:from-[#4752C4] hover:via-[#3638A0] hover:to-[#4752C4] text-white font-bold px-8 rounded-2xl text-base transition-all duration-500 transform hover:scale-110 hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#5865F2]/60 flex items-center justify-center gap-3 border-2 border-[#5865F2]/60 hover:border-[#4752C4] before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] hover:before:translate-x-[100%] before:transition-transform before:duration-1000 before:ease-out py-6 min-w-[180px]"
+									className="group relative overflow-hidden bg-gradient-to-br from-[#5865F2] via-[#4752C4] to-[#5865F2] hover:from-[#4752C4] hover:via-[#3638A0] hover:to-[#4752C4] text-white font-bold px-6 md:px-8 rounded-2xl text-sm md:text-base transition-all duration-500 transform hover:scale-110 hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#5865F2]/60 flex items-center justify-center gap-2 md:gap-3 border-2 border-[#5865F2]/60 hover:border-[#4752C4] before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] hover:before:translate-x-[100%] before:transition-transform before:duration-1000 before:ease-out py-4 md:py-6 min-w-[160px] md:min-w-[180px]"
 								>
 									<div className="absolute inset-0 bg-gradient-to-br from-[#5865F2]/15 via-[#4752C4]/15 to-[#5865F2]/15 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
 									<div className="absolute inset-0 bg-gradient-to-t from-[#5865F2]/25 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-300 rounded-2xl"></div>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
-										width="24"
-										height="24"
+										width="20"
+										height="20"
 										viewBox="0 0 24 24"
 										fill="currentColor"
 										className="relative z-20 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 text-white group-hover:text-[#5865F2]"
