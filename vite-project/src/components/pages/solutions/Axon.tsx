@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import Thinking from "@/components/ui/thinking";
+import { User, Building, Briefcase, Mail } from "lucide-react";
 
 import axonNoBackground from "@/assets/axon/axon-no-background.png";
 import axonMain from "@/assets/axon/axon-mainpage.png";
+
+import { AxonFAQ } from "@/components/pages/AxonFAQ";
 
 type YouTubePlaybackQuality =
 	| "default"
@@ -60,6 +63,8 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 	const videoRefs = useRef<(HTMLDivElement | null)[]>([]);
 	const { toast } = useToast();
 	const [buttonDisable, setButtonDisable] = useState(false);
+
+	const [showMore, setShowMore] = useState(false);
 
 	useEffect(() => {
 		if (user) {
@@ -154,53 +159,65 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 
 		ensureAPIAndInit();
 	}, []);
-
+	// 🔽 Replace the old function with this
 	const handleAxonNewsSubmit = async (
 		event: React.FormEvent<HTMLFormElement>
 	) => {
 		event.preventDefault();
 		setButtonDisable(true);
 
-		const formData = new FormData(event.currentTarget);
-		const formDataEntries: Record<string, string> = {};
-		formData.forEach((value, key) => {
-			formDataEntries[key] = value.toString();
-		});
+		const formEl = event.currentTarget as HTMLFormElement;
+
+		const entries: Record<string, string> = {};
+		new FormData(event.currentTarget).forEach(
+			(v, k) => (entries[k] = String(v))
+		);
+
+		// Honeypot
+		if (entries.website) {
+			setButtonDisable(false);
+			return;
+		}
+
+		// Keep Email + Name separate, merge everything else into Message
+		const email = entries.Email ?? "";
+		const name = entries.Name ?? "Axon-Newsletter";
+
+		const mergedMessage = Object.entries(entries)
+			.filter(([k]) => !["Email", "Name", "website"].includes(k))
+			.map(([k, v]) => `${k}: ${v}`)
+			.join(" | ");
+
+		const payload = { Email: email, Name: name, Message: mergedMessage };
 
 		try {
-			const params = new URLSearchParams(formDataEntries).toString();
-			const response = await fetch(
-				`https://script.google.com/macros/s/AKfycbwneoM8x6g-Ehsd1J8j-pcYXy2CNXX4vJtX9rVKGe2GNAETgtJSdENRwhYzogIVrZk23g/exec?${params}`,
-				{
-					method: "GET",
-					redirect: "follow",
-				}
+			const qs = new URLSearchParams(payload).toString();
+			const res = await fetch(
+				`https://script.google.com/macros/s/AKfycbwneoM8x6g-Ehsd1J8j-pcYXy2CNXX4vJtX9rVKGe2GNAETgtJSdENRwhYzogIVrZk23g/exec?${qs}`,
+				{ method: "GET", redirect: "follow" }
 			);
 
-			const result = await response.json();
+			const result = await res.json();
 
 			if (result.result === "success") {
 				toast({
-					title: "Welcome to the Axon family! 🚀",
-					description:
-						"You'll be the first to know about Axon updates and features.",
+					title: "Welcome to Axon",
+					description: "You’ll be the first to know about updates.",
 				});
-				// Reset form
-				(event.target as HTMLFormElement).reset();
+				formEl.reset();
+				setShowMore(false);
 			} else {
 				toast({
-					title: "Oops! Something went wrong",
+					title: "Submission failed",
 					variant: "destructive",
 					description: "Please try again or contact support.",
 				});
 			}
-		} catch (error) {
+		} catch (err) {
 			toast({
-				title: "Connection Error",
+				title: "Connection error",
 				variant: "destructive",
-				description: `Please check your connection: ${
-					(error as Error).message
-				}`,
+				description: (err as Error).message,
 			});
 		} finally {
 			setButtonDisable(false);
@@ -472,45 +489,206 @@ export function Axon({ user }: { user: FirebaseUser | null }) {
 								Stay in the Loop
 							</h2>
 
-							<p className="text-lg md:text-xl text-slate-50 max-w-2xl leading-relaxed font-semibold px-2 md:px-0 my-4">
-								Get exclusive Axon updates and early access.
-							</p>
-
 							<form
 								onSubmit={handleAxonNewsSubmit}
-								className="max-w-md mx-auto mt-8"
+								className="max-w-xl mx-auto mt-12 "
 							>
-								<div className="flex flex-col gap-4">
-									<input
-										name="Email"
-										type="email"
-										className="flex w-full text-lg px-6 py-4 rounded-xl border-2 border-slate-700 bg-slate-800 text-white placeholder:text-slate-400 focus:border-slate-700 focus:outline-none transition-colors"
-										required
-										placeholder="Enter your email"
-									/>
+								<h2 className="text-xl font-semibold text-center text-white mb-6 tracking-tight">
+									Join Axon Early Access
+								</h2>
+								<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+									{/* Full Name */}
+									<div className="relative">
+										<User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+										<input
+											name="FullName"
+											type="text"
+											required
+											placeholder="Full name"
+											className="pl-12 w-full text-sm px-5 py-4 rounded-lg border border-slate-600 bg-slate-900/70 text-white placeholder:text-slate-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/40 transition-all"
+										/>
+									</div>
 
-									<input name="Name" type="hidden" value="Axon-Newsletter" />
-									<input
-										name="Message"
-										type="hidden"
-										value="Axon landing page signup"
-									/>
+									{/* Institute */}
+									<div className="relative">
+										<Building className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+										<input
+											name="Institute"
+											type="text"
+											required
+											placeholder="Institute / Organization"
+											className="pl-12 w-full text-sm px-5 py-4 rounded-lg border border-slate-600 bg-slate-900/70 text-white placeholder:text-slate-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/40 transition-all"
+										/>
+									</div>
 
-									<Button
-										type="submit"
-										disabled={buttonDisable}
-										className="relative overflow-hidden bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-500 border-2 border-yellow-600 text-slate-100 font-bold px-8 py-8 rounded-xl w-full text-md transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-yellow-400/60 before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] hover:before:translate-x-[100%] before:transition-transform before:duration-1000 before:ease-out hover:animate-none"
-									>
-										{buttonDisable && <ReloadIcon className="mr-2 h-5 w-5" />}
-										Get Axon News
-									</Button>
+									{/* Role */}
+									<div className="relative">
+										<Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+										<input
+											name="Role"
+											type="text"
+											required
+											placeholder="Role (PhD, PI, Data Scientist)"
+											className="pl-12 w-full text-sm px-5 py-4 rounded-lg border border-slate-600 bg-slate-900/70 text-white placeholder:text-slate-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/40 transition-all"
+										/>
+									</div>
+
+									{/* Email */}
+									<div className="relative">
+										<Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
+										<input
+											name="Email"
+											type="email"
+											required
+											placeholder="Email address"
+											className="pl-12 w-full text-sm px-5 py-4 rounded-lg border border-slate-600 bg-slate-900/70 text-white placeholder:text-slate-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/40 transition-all"
+										/>
+									</div>
 								</div>
+
+								{/* Hidden metadata */}
+								<input name="Name" type="hidden" value="Axon-Newsletter" />
+								<input
+									name="Message"
+									type="hidden"
+									value="Axon landing page signup"
+								/>
+
+								{/* Optional: progressive profiling (collapsed by default) */}
+								<div className="mt-4 border border-slate-700/60 rounded-lg">
+									<button
+										type="button"
+										onClick={() => setShowMore((v) => !v)}
+										aria-expanded={showMore}
+										className="w-full text-left px-4 py-3 text-sm text-slate-200 bg-slate-800/60 hover:bg-slate-800/60 rounded-lg"
+									>
+										{showMore
+											? "Hide additional details"
+											: "Add optional details (recommended)"}
+									</button>
+
+									{showMore && (
+										<div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+											{/* Research Area (datalist keeps it flexible) */}
+											<div>
+												<label htmlFor="ResearchArea" className="sr-only">
+													Research area
+												</label>
+												<input
+													id="ResearchArea"
+													name="ResearchArea"
+													list="areas"
+													placeholder="Research area (e.g., single-cell, AML, proteomics)"
+													className="w-full text-sm px-5 py-3 rounded-lg border border-slate-600 bg-slate-900/70 text-white placeholder:text-slate-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/30 transition-all"
+												/>
+												<datalist id="areas">
+													<option value="Single-cell" />
+													<option value="Bulk RNA-seq" />
+													<option value="Multi-omics" />
+													<option value="AML / Hematology" />
+													<option value="Immuno-oncology" />
+													<option value="Proteomics" />
+												</datalist>
+											</div>
+
+											{/* Country/Region */}
+											<div>
+												<label htmlFor="Country" className="sr-only">
+													Country
+												</label>
+												<input
+													id="Country"
+													name="Country"
+													placeholder="Country / Region"
+													autoComplete="country-name"
+													className="w-full text-sm px-5 py-3 rounded-lg border border-slate-600 bg-slate-900/70 text-white placeholder:text-slate-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/30 transition-all"
+												/>
+											</div>
+
+											{/* Experience */}
+											<div className="md:col-span-2">
+												<fieldset className="flex flex-wrap gap-4 items-center">
+													<legend className="text-xs text-slate-400 mb-1">
+														Experience level
+													</legend>
+													<label className="inline-flex items-center gap-2 text-sm text-slate-200">
+														<input
+															type="radio"
+															name="Experience"
+															value="Beginner"
+															className="accent-yellow-500"
+														/>{" "}
+														Beginner
+													</label>
+													<label className="inline-flex items-center gap-2 text-sm text-slate-200">
+														<input
+															type="radio"
+															name="Experience"
+															value="Intermediate"
+															className="accent-yellow-500"
+														/>{" "}
+														Intermediate
+													</label>
+													<label className="inline-flex items-center gap-2 text-sm text-slate-200">
+														<input
+															type="radio"
+															name="Experience"
+															value="Advanced"
+															className="accent-yellow-500"
+														/>{" "}
+														Advanced
+													</label>
+												</fieldset>
+											</div>
+
+											{/* Use Case */}
+											<div className="md:col-span-2">
+												<label htmlFor="UseCase" className="sr-only">
+													Primary use case
+												</label>
+												<textarea
+													id="UseCase"
+													name="UseCase"
+													rows={3}
+													placeholder="What would you like to do with Axon? (optional)"
+													className="w-full text-sm px-5 py-3 rounded-lg border border-slate-600 bg-slate-900/70 text-white placeholder:text-slate-400 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/30 transition-all"
+												/>
+											</div>
+										</div>
+									)}
+								</div>
+
+								<input name="Name" type="hidden" value="Axon-Newsletter" />
+								<input
+									name="Message"
+									type="hidden"
+									value="Axon landing page signup"
+								/>
+								{/* Honeypot: keep hidden from users but readable for bots */}
+								<input
+									type="text"
+									name="website"
+									tabIndex={-1}
+									autoComplete="off"
+									className="hidden"
+									aria-hidden="true"
+								/>
+
+								{/* Submit Button */}
+								<Button
+									type="submit"
+									disabled={buttonDisable}
+									className="mt-8 relative overflow-hidden bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500 border border-yellow-600 text-slate-900 font-semibold px-8 py-6 rounded-lg w-full  transition-transform duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-yellow-500/30"
+								>
+									{buttonDisable && <ReloadIcon className="mr-2 h-5 w-5" />}
+									Request Access
+								</Button>
 							</form>
 						</div>
 					</CardContent>
 				</Card>
 			</div>
-
+			<AxonFAQ className="my-24" />
 			<SiteFooter />
 		</>
 	);

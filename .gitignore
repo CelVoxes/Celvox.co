@@ -27,3 +27,4 @@ backend/service/firebase-credentials.json
 backend/service/uploads
 environment.yml
 firebase_do_not_delete.json
+backend/service/debug.config.json

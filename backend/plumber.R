@@ -646,6 +646,27 @@ genome_expression <- local({
         bin_size <- if (!is.null(req$args$bin_size)) as.numeric(req$args$bin_size) else 100
         use_uploaded_names <- if (!is.null(req$args$use_uploaded_names) && req$args$use_uploaded_names == "true") TRUE else FALSE
 
+        sample_sex <- NA
+        if (!is.null(samples) && length(samples) == 1) {
+            tryCatch({
+                metadata <- fread("data/meta.csv", data.table = FALSE)
+                sample_info <- metadata[metadata$sample_id == samples[1], ]
+                if (nrow(sample_info) > 0 && "sex" %in% colnames(sample_info)) {
+                    sex_val <- sample_info$sex[1]
+                    if (length(sex_val) == 1 && !is.na(sex_val) && sex_val != "") {
+                        sample_sex <- as.character(sex_val)
+                        message(paste("Found sex:", sample_sex, "for sample:", samples[1]))
+                    } else {
+                        message(paste("Sex is empty or NA for sample:", samples[1]))
+                    }
+                } else {
+                    message(paste("No metadata or sex column for sample:", samples[1]))
+                }
+            }, error = function(e) {
+                message("Could not load or process metadata: ", e$message)
+            })
+        }
+
         message("Fetching genome-wide expression data...")
         corrected <- read_fst(file.path(cache_dir, "harmonized_data.fst"))
         gene_ids <- corrected[, 1]
@@ -1001,7 +1022,8 @@ genome_expression <- local({
             sample_count = sample_count,
             gene_count = nrow(result),
             chromosomes = unique(result$chromosome[order(result$chr_sort)]),
-            bin_size = bin_size
+            bin_size = bin_size,
+            metadata = list(gender = sample_gender)
         ))
     }
 })
