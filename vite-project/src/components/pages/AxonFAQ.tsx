@@ -90,7 +90,7 @@ export function AxonFAQ({ className = "" }: { className?: string }) {
 				className="w-full max-w-3xl mx-auto text-left"
 			>
 				<AccordionItem value="why-no-download">
-					<AccordionTrigger className="text-left">
+					<AccordionTrigger className="text-left dark:text-white">
 						Why can’t everyone download Axon right now?
 					</AccordionTrigger>
 					<AccordionContent className="text-slate-700 px-4 mt-4">
@@ -103,7 +103,7 @@ export function AxonFAQ({ className = "" }: { className?: string }) {
 				</AccordionItem>
 
 				<AccordionItem value="internet-required">
-					<AccordionTrigger className="text-left">
+					<AccordionTrigger className="text-left dark:text-white">
 						Why is an internet connection required if Axon runs locally?
 					</AccordionTrigger>
 					<AccordionContent className="text-slate-700 px-4 mt-4">
@@ -114,7 +114,7 @@ export function AxonFAQ({ className = "" }: { className?: string }) {
 				</AccordionItem>
 
 				<AccordionItem value="access-scope">
-					<AccordionTrigger className="text-left">
+					<AccordionTrigger className="text-left dark:text-white">
 						Will Axon always be limited-access?
 					</AccordionTrigger>
 					<AccordionContent className="text-slate-700 px-4 mt-4">
@@ -125,7 +125,7 @@ export function AxonFAQ({ className = "" }: { className?: string }) {
 				</AccordionItem>
 
 				<AccordionItem value="data-privacy">
-					<AccordionTrigger className="text-left">
+					<AccordionTrigger className="text-left dark:text-white">
 						Is my data safe?
 					</AccordionTrigger>
 					<AccordionContent className="text-slate-700 px-4 mt-4">
@@ -136,7 +136,7 @@ export function AxonFAQ({ className = "" }: { className?: string }) {
 				</AccordionItem>
 
 				<AccordionItem value="llm-costs">
-					<AccordionTrigger className="text-left">
+					<AccordionTrigger className="text-left dark:text-white">
 						Why do LLMs cost money?
 					</AccordionTrigger>
 					<AccordionContent className="text-slate-700 px-4 mt-4">
@@ -147,7 +147,7 @@ export function AxonFAQ({ className = "" }: { className?: string }) {
 				</AccordionItem>
 
 				<AccordionItem value="prioritization">
-					<AccordionTrigger className="text-left">
+					<AccordionTrigger className="text-left dark:text-white">
 						Who is prioritized for early access?
 					</AccordionTrigger>
 					<AccordionContent className="text-slate-700 px-4 mt-4">
