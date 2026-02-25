@@ -15,7 +15,7 @@ MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-/root/micromamba}"
 R_ENV_PREFIX="${R_ENV_PREFIX:-$MAMBA_ROOT_PREFIX/envs/celvox_env}"
 R_BIN="${R_BIN:-$R_ENV_PREFIX/bin/Rscript}"
 R_CMD="${R_CMD:-$R_ENV_PREFIX/bin/R}"
-MICROMAMBA_BIN="${MICROMAMBA_BIN:-/opt/homebrew/bin/micromamba}"
+MICROMAMBA_BIN="${MICROMAMBA_BIN:-$(command -v micromamba 2>/dev/null || true)}"
 
 MOLECULAR_PYTHON="${MOLECULAR_PYTHON:-/root/.local/share/mamba/envs/molecular_diag_py310/bin/python}"
 FRONTEND_PUBLISH_DIR="${FRONTEND_PUBLISH_DIR:-}"
@@ -82,16 +82,25 @@ require_cmd git
 require_cmd npm
 require_cmd pm2
 require_cmd curl
-require_cmd rsync
+if [[ $SKIP_FRONTEND -eq 0 || -n "$FRONTEND_PUBLISH_DIR" ]]; then
+  require_cmd rsync
+fi
 require_path "$DEPLOY_ROOT"
 require_path "$BACKEND_DIR"
 require_path "$SERVICE_DIR"
-require_path "$FRONTEND_DIR"
+if [[ $SKIP_FRONTEND -eq 0 ]]; then
+  require_path "$FRONTEND_DIR"
+fi
 require_path "$ECOSYSTEM_FILE"
-require_path "$R_BIN"
-require_path "$R_CMD"
-require_path "$MICROMAMBA_BIN"
-require_path "$MOLECULAR_PYTHON"
+if [[ $SKIP_R_DEPS -eq 0 ]]; then
+  require_path "$R_BIN"
+  require_path "$R_CMD"
+  [[ -n "$MICROMAMBA_BIN" ]] || die "MICROMAMBA_BIN is not set and micromamba is not on PATH"
+  require_path "$MICROMAMBA_BIN"
+fi
+if [[ $SKIP_PY_EDITABLE -eq 0 ]]; then
+  require_path "$MOLECULAR_PYTHON"
+fi
 
 log "Checking required molecular tool folders"
 require_path "$BACKEND_DIR/tools/AMLmapR" # AMLmapR still runs from package source assets
