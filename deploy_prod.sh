@@ -77,6 +77,41 @@ require_path() {
   [[ -e "$1" ]] || die "Missing required path: $1"
 }
 
+patch_molecular_tool_python_pins() {
+  log "Relaxing ALLSorts/TALLSorts dependency pins for shared Python stack"
+  "$MOLECULAR_PYTHON" - "$BACKEND_DIR/tools/ALLSorts/setup.py" "$BACKEND_DIR/tools/TALLSorts/setup.py" <<'PY'
+from pathlib import Path
+import sys
+
+replacements = {
+    '"joblib==0.15.1"': '"joblib>=1.2.0"',
+    '"matplotlib==3.2.1"': '"matplotlib>=3.6.2"',
+    '"scikit-learn==0.22.1"': '"scikit-learn>=1.1.3"',
+    '"umap-learn==0.4.4"': '"umap-learn>=0.5.3"',
+    '"plotly==4.14.3"': '"plotly>=5.11.0"',
+    '"kaleido==0.1.0"': '"kaleido>=0.2.1"',
+    '"joblib==1.2.0"': '"joblib>=1.2.0"',
+    '"matplotlib==3.6.2"': '"matplotlib>=3.6.2"',
+    '"scikit-learn==1.1.3"': '"scikit-learn>=1.1.3"',
+    '"umap-learn==0.5.3"': '"umap-learn>=0.5.3"',
+    '"plotly==5.11.0"': '"plotly>=5.11.0"',
+    '"kaleido==0.2.1"': '"kaleido>=0.2.1"',
+}
+
+for raw_path in sys.argv[1:]:
+    path = Path(raw_path)
+    text = path.read_text()
+    updated = text
+    for old, new in replacements.items():
+        updated = updated.replace(old, new)
+    if updated != text:
+        path.write_text(updated)
+        print(f"patched {path}")
+    else:
+        print(f"no changes {path}")
+PY
+}
+
 log "Checking prerequisites"
 require_cmd git
 require_cmd npm
@@ -140,6 +175,7 @@ fi
 
 if [[ $SKIP_PY_EDITABLE -eq 0 ]]; then
   log "Reinstalling ALLSorts/TALLSorts editable packages in molecular Python env"
+  patch_molecular_tool_python_pins
   "$MOLECULAR_PYTHON" -m pip install --no-deps -e "$BACKEND_DIR/tools/ALLSorts" -e "$BACKEND_DIR/tools/TALLSorts"
 fi
 
