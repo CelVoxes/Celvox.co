@@ -6,6 +6,100 @@ const API_BASE_URL =
 	window.location.hostname === "localhost"
 		? "http://localhost:3001/v1"
 		: "https://celvox.co/api/v1";
+export const DASHBOARD_DISEASE_STORAGE_KEY = "seamless-dashboard-disease";
+
+export type DiseaseId = "aml" | "ball" | "tall" | "pan_leukemia";
+export type ReferenceDiseaseId = "aml" | "ball" | "tall";
+export type MolecularToolId =
+	| "bridge"
+	| "amlmapr"
+	| "allcatchr"
+	| "allsorts"
+	| "tallsorts";
+export type MolecularToolAvailability = {
+	available?: boolean;
+	runtime_ready?: boolean;
+	catalog_only?: boolean;
+	missing?: string[];
+	artifact_source?: string;
+};
+export type MolecularToolCatalogEntry = {
+	id: string;
+	label: string;
+	short_label?: string;
+	family?: string;
+	integrated?: boolean;
+	endpoint?: string;
+	disease_scope?: DiseaseId | ReferenceDiseaseId;
+	supported_diseases?: Array<DiseaseId | ReferenceDiseaseId>;
+	applicable_for_request?: boolean;
+	input_modality?: string;
+	gene_identifier?: string;
+	output_kind?: string;
+	confidence_semantics?: string;
+	repo_url?: string;
+	docs_url?: string;
+	notes?: string;
+	availability?: MolecularToolAvailability;
+};
+
+function normalizeReferenceDiseases(
+	values?: string[] | null,
+): ReferenceDiseaseId[] {
+	const allowed: ReferenceDiseaseId[] = ["aml", "ball", "tall"];
+	const set = new Set<ReferenceDiseaseId>();
+	for (const value of values ?? []) {
+		if (value === "aml" || value === "ball" || value === "tall") {
+			set.add(value);
+		}
+		if (value === "pan_leukemia") {
+			allowed.forEach((d) => set.add(d));
+		}
+	}
+	const normalized = allowed.filter((d) => set.has(d));
+	return normalized.length > 0 ? normalized : ["aml"];
+}
+
+export function getSelectedReferenceDiseases(): ReferenceDiseaseId[] {
+	if (typeof window === "undefined") return ["aml"];
+	const raw = window.localStorage.getItem(DASHBOARD_DISEASE_STORAGE_KEY);
+	if (!raw) return ["aml"];
+	try {
+		const parsed = JSON.parse(raw);
+		if (Array.isArray(parsed)) {
+			return normalizeReferenceDiseases(parsed.map(String));
+		}
+	} catch {
+		// Backward compatibility with legacy single-value storage.
+	}
+	return normalizeReferenceDiseases([raw]);
+}
+
+export function getSelectedDiseaseContext(): DiseaseId {
+	return deriveDiseaseParam(getSelectedReferenceDiseases());
+}
+
+function deriveDiseaseParam(diseases: ReferenceDiseaseId[]): DiseaseId {
+	if (diseases.length > 1) return "pan_leukemia";
+	return diseases[0] ?? "aml";
+}
+
+function withDiseaseParam<T extends Record<string, unknown>>(
+	params?: T,
+	disease?: DiseaseId | ReferenceDiseaseId[],
+) {
+	const selectedDiseases = Array.isArray(disease)
+		? normalizeReferenceDiseases(disease)
+		: normalizeReferenceDiseases(
+				disease ? [disease] : getSelectedReferenceDiseases(),
+		  );
+
+	return {
+		...(params ?? {}),
+		disease: deriveDiseaseParam(selectedDiseases),
+		diseases: selectedDiseases.join(","),
+	};
+}
 
 axios.interceptors.request.use(async (config) => {
 	config.headers[
@@ -14,9 +108,11 @@ axios.interceptors.request.use(async (config) => {
 	return config;
 });
 
-export async function fetchTSNEData() {
+export async function fetchTSNEData(disease?: DiseaseId | ReferenceDiseaseId[]) {
 	try {
-		const response = await axios.get(`${API_BASE_URL}/tsne`);
+		const response = await axios.get(`${API_BASE_URL}/tsne`, {
+			params: withDiseaseParam(undefined, disease),
+		});
 		return response.data;
 	} catch (error) {
 		console.error("Error fetching TSNE data:", error);
@@ -64,14 +160,27 @@ export async function fetchAberrationsTSNEData() {
 	}
 }
 
-export async function uploadSampleData(file: File) {
-	// Check if the file is a CSV
-	if (!file.name.endsWith(".csv")) {
-		throw new Error("Please upload a CSV file");
+export async function uploadSampleData(files: File[]) {
+	if (files.length === 0) {
+		throw new Error("Please select a file to upload");
+	}
+
+	const isCsvUpload =
+		files.length === 1 && files[0].name.toLowerCase().endsWith(".csv");
+	const isReadsPerGeneUpload = files.every((file) =>
+		file.name.toLowerCase().endsWith("readspergene.out.tab")
+	);
+
+	if (!isCsvUpload && !isReadsPerGeneUpload) {
+		throw new Error(
+			"Please upload a single CSV or one or more ReadsPerGene.out.tab files"
+		);
 	}
 
 	const formData = new FormData();
-	formData.append("file", file, file.name);
+	files.forEach((file) => {
+		formData.append("files", file, file.name);
+	});
 
 	// Improved logging for FormData
 	for (const pair of formData.entries()) {
@@ -122,6 +231,63 @@ export async function fetchHarmonizedDataNames() {
 	return response.data;
 }
 
+export async function fetchHarmonizationManifest() {
+	const response = await axios.get(`${API_BASE_URL}/harmonization-manifest`);
+	return response.data;
+}
+
+export async function fetchBridgePrediction(sample: string) {
+	const response = await axios.get(`${API_BASE_URL}/bridge-predict`, {
+		params: withDiseaseParam({ sample }),
+	});
+	return response.data;
+}
+
+export async function fetchMolecularPrediction(
+	tool: MolecularToolId,
+	sample: string,
+	disease?: DiseaseId | ReferenceDiseaseId[],
+) {
+	const response = await axios.get(`${API_BASE_URL}/molecular-predict`, {
+		params: withDiseaseParam({ tool, sample }, disease),
+	});
+	return response.data;
+}
+
+export async function fetchMolecularTools(
+	disease?: DiseaseId | ReferenceDiseaseId[],
+): Promise<{
+	request_disease?: DiseaseId;
+	request_diseases?: ReferenceDiseaseId[];
+	tools?: MolecularToolCatalogEntry[];
+}> {
+	const response = await axios.get(`${API_BASE_URL}/molecular-tools`, {
+		params: withDiseaseParam(undefined, disease),
+	});
+	return response.data;
+}
+
+export async function fetchAMLmaprPrediction(sample: string) {
+	const response = await axios.get(`${API_BASE_URL}/amlmapr-predict`, {
+		params: withDiseaseParam({ sample }),
+	});
+	return response.data;
+}
+
+export async function fetchALLSortsPrediction(sample: string) {
+	const response = await axios.get(`${API_BASE_URL}/allsorts-predict`, {
+		params: withDiseaseParam({ sample }),
+	});
+	return response.data;
+}
+
+export async function fetchTALLSortsPrediction(sample: string) {
+	const response = await axios.get(`${API_BASE_URL}/tallsorts-predict`, {
+		params: withDiseaseParam({ sample }),
+	});
+	return response.data;
+}
+
 export interface CacheFile {
 	name: string;
 	size: number;
@@ -159,9 +325,12 @@ export async function fetchGeneExpressionData(gene: string) {
 	return response.data;
 }
 
-export async function fetchHarmonizedData(samples: string[]) {
+export async function fetchHarmonizedData(
+	samples: string[],
+	disease?: DiseaseId | ReferenceDiseaseId[],
+) {
 	const response = await axios.get(`${API_BASE_URL}/harmonize-data`, {
-		params: { samples },
+		params: withDiseaseParam({ samples }, disease),
 	});
 	return response.data;
 }

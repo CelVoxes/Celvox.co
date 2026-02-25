@@ -1,5 +1,45 @@
 library(fst)
 library(data.table)
+source("data_registry.R")
+source("tools_registry.R")
+source("metadata_alignment_registry.R")
+
+normalize_arg_vector <- function(x) {
+    if (is.null(x)) return(NULL)
+    if (is.list(x)) return(unlist(x, use.names = FALSE))
+    return(as.character(x))
+}
+
+read_readspergene_files <- function(file_paths, file_names = NULL) {
+    sample_names <- if (!is.null(file_names) && length(file_names) == length(file_paths)) {
+        basename(file_names)
+    } else {
+        basename(file_paths)
+    }
+
+    dfs <- lapply(seq_along(file_paths), function(i) {
+        df <- fread(
+            file_paths[i],
+            sep = "\t",
+            header = FALSE,
+            data.table = FALSE
+        )
+
+        if (ncol(df) < 4) {
+            stop("ReadsPerGene.out.tab files must have at least 4 columns.")
+        }
+
+        colnames(df)[1:4] <- c("gene", "unstranded", "strand_fwd", "strand_rev")
+        df <- df[!startsWith(df$gene, "N_"), c("gene", "unstranded")]
+
+        sample_name <- sub("\\.ReadsPerGene\\.out\\.tab$", "", sample_names[i], ignore.case = TRUE)
+        colnames(df)[2] <- sample_name
+        return(df)
+    })
+
+    count_matrix <- Reduce(function(x, y) merge(x, y, by = "gene", all = FALSE), dfs)
+    return(count_matrix)
+}
 
 #* @get /load-sample-data
 #* @serializer json
@@ -17,29 +57,74 @@ load_sample_data <- local({
 
                 message("within file:")
                 print(str(req$args$file))
-                # Create a temporary file to store the content
-                temp_file <- req$args$file
+                temp_files <- normalize_arg_vector(req$args$file)
+                if (is.null(temp_files)) {
+                    temp_files <- normalize_arg_vector(req$args[["file[]"]])
+                }
+
+                file_names <- normalize_arg_vector(req$args$filename)
+                if (is.null(file_names)) {
+                    file_names <- normalize_arg_vector(req$args[["filename[]"]])
+                }
 
                 cache_dir <- req$args$cachedir
 
-                message(paste("Temporary file created:", temp_file))
-
-                # Check if the file exists and has content
-                if (!file.exists(temp_file) || file.size(temp_file) == 0) {
-                    message("Temporary file does not exist or is empty.")
-                    return(list(error = "Failed to receive file or file is empty"))
+                if (is.null(temp_files) || length(temp_files) == 0) {
+                    message("No files received.")
+                    return(list(error = "Failed to receive file(s)"))
                 }
 
-                # Read the fst file
-                tryCatch(
-                    {
-                        sample_data <- fread(temp_file, data.table = FALSE)
-                    },
-                    error = function(e) {
-                        message("Error reading CSV: ", e$message)
-                        return(list(error = paste("Error reading the file:", e$message)))
-                    }
-                )
+                message(paste("Temporary files created:", paste(temp_files, collapse = ", ")))
+
+                # Check if the file exists and has content
+                if (any(!file.exists(temp_files))) {
+                    message("One or more temporary files do not exist.")
+                    return(list(error = "Failed to receive file(s)"))
+                }
+
+                file_sizes <- file.size(temp_files)
+                if (any(file_sizes == 0)) {
+                    message("One or more temporary files do not exist or are empty.")
+                    return(list(error = "Failed to receive file(s) or file(s) are empty"))
+                }
+
+                sample_data <- NULL
+                base_names <- if (!is.null(file_names) && length(file_names) == length(temp_files)) {
+                    file_names
+                } else {
+                    basename(temp_files)
+                }
+
+                is_readspergene <- all(grepl("ReadsPerGene\\.out\\.tab$", base_names, ignore.case = TRUE))
+                is_csv <- all(grepl("\\.csv$", base_names, ignore.case = TRUE))
+
+                if (is_readspergene) {
+                    sample_data <- tryCatch(
+                        {
+                            read_readspergene_files(temp_files, base_names)
+                        },
+                        error = function(e) {
+                            message("Error reading ReadsPerGene.out.tab files: ", e$message)
+                            return(list(error = paste("Error reading ReadsPerGene.out.tab files:", e$message)))
+                        }
+                    )
+                } else if (length(temp_files) == 1 && is_csv) {
+                    sample_data <- tryCatch(
+                        {
+                            fread(temp_files[1], data.table = FALSE)
+                        },
+                        error = function(e) {
+                            message("Error reading CSV: ", e$message)
+                            return(list(error = paste("Error reading the file:", e$message)))
+                        }
+                    )
+                } else {
+                    return(list(error = "Please upload a single CSV or one or more ReadsPerGene.out.tab files."))
+                }
+
+                if (is.list(sample_data) && !is.data.frame(sample_data)) {
+                    return(sample_data)
+                }
 
                 print(head(sample_data))
 
@@ -88,24 +173,41 @@ remove_low_expressed_genes <- function(data, threshold = 100) {
 #* @serializer json
 harmonize_data <- local({
     function(req) {
-        selected_samples <- req$args$samples
+        started_at <- Sys.time()
+        disease_selection <- get_request_disease_selection(req)
+        disease_id <- disease_selection_key(disease_selection)
+        selected_samples <- normalize_selected_samples_arg(req$args$samples)
         cache_dir <- req$args$cachedir
 
+        if (is.null(selected_samples) || length(selected_samples) == 0) {
+            return(list(error = "No samples selected for harmonization"))
+        }
+
+        message("Harmonization disease selection:", paste(disease_selection, collapse = ", "))
+        message("Harmonization disease key:", disease_id)
         message("Selected samples:", paste(selected_samples, collapse = ", "))
 
         library(sva)
 
-        uncorrected <- fread("data/counts/uncorrected_counts.csv", data.table = F)
+        uncorrected <- load_reference_uncorrected_counts(disease = disease_selection)
         sample_data <- read_fst(file.path(cache_dir, "sample_data.fst"))
-        metadata <- fread("data/meta.csv", data.table = F)
+        metadata <- load_metadata(disease = disease_selection, aligned = TRUE)
+        reference_gene_count_before_merge <- nrow(uncorrected)
+        reference_sample_count <- ncol(uncorrected) - 1
 
 
         # drop the samples that are not in the selected_samples and gene names which is the first column
         # BE CAREFUL with match function; it will only match the first occurrence of each element
-        sample_data <- sample_data[, c(1, match(selected_samples, colnames(sample_data))), drop = FALSE]
+        selected_idx <- match(selected_samples, colnames(sample_data))
+        selected_idx <- selected_idx[!is.na(selected_idx)]
+        if (length(selected_idx) == 0) {
+            return(list(error = "Selected samples were not found in uploaded sample data"))
+        }
+        sample_data <- sample_data[, c(1, selected_idx), drop = FALSE]
+        selected_samples_found <- colnames(sample_data)[-1]
 
 
-        message(length(match(selected_samples, colnames(sample_data))))
+        message(length(selected_idx))
         # Function to check if IDs are Ensembl-like
         is_ensembl <- function(ids) {
             ensembl_count <- sum(grepl("^ENSG", ids))
@@ -221,6 +323,8 @@ harmonize_data <- local({
         # Apply conversion to uncorrected and sample_data
         uncorrected <- convert_to_symbols(uncorrected)
         sample_data <- convert_to_symbols(sample_data)
+        uploaded_gene_count_before_filter <- nrow(sample_data)
+        uploaded_sample_count <- ncol(sample_data)
 
         message("Dimensions of uncorrected data:")
         print(dim(uncorrected))
@@ -230,6 +334,7 @@ harmonize_data <- local({
         # remove low expressed genes
         message("Removing genes with less than total 100 mRNA for all samples...")
         sample_data <- remove_low_expressed_genes(sample_data, threshold = 100)
+        uploaded_gene_count_after_filter <- nrow(sample_data)
 
         message("Dimensions of sample data after filtering:")
         print(dim(sample_data))
@@ -254,10 +359,11 @@ harmonize_data <- local({
         # Add "_sample_data" suffix to sample_data column names
         colnames(sample_data) <- paste0(colnames(sample_data), "_sample_data")
         # Combine the data, keeping genes as rownames and samples as columns
+        metadata <- align_reference_metadata_to_counts(metadata, colnames(uncorrected), disease = disease_selection)
         uncorrected <- cbind(uncorrected[common_genes, ], sample_data[common_genes, ])
 
         message("Creating batch vector...")
-        batch <- c(paste0(metadata$study, metadata$gender), rep("sample_data", (ncol(sample_data))))
+        batch <- c(paste0(metadata$study, "_", metadata$sex), rep("sample_data", (ncol(sample_data))))
         message(paste("Batch dimension:", length(batch)))
 
         correction.option <- "limma"
@@ -298,6 +404,94 @@ harmonize_data <- local({
         message("Dimensions of harmonized data:")
         print(dim(corrected_matrix))
 
+        # Persist a harmonization manifest for auditability and user QC review.
+        if (!dir.exists(cache_dir)) {
+            dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+        }
+        common_gene_count <- length(common_genes)
+        overlap_fraction_uploaded <- if (isTRUE(uploaded_gene_count_after_filter > 0)) common_gene_count / uploaded_gene_count_after_filter else NA_real_
+        overlap_fraction_reference <- if (isTRUE(nrow(uncorrected) > 0)) common_gene_count / nrow(uncorrected) else NA_real_
+
+        count_table_to_list <- function(x) {
+            if (length(x) == 0) return(list())
+            y <- as.list(as.integer(x))
+            names(y) <- names(x)
+            y
+        }
+
+        batch_counts <- table(batch)
+        disease_counts <- if ("disease" %in% colnames(metadata)) table(metadata$disease) else integer(0)
+        reference_match_source_counts <- if ("reference_match_source" %in% colnames(metadata)) {
+            table(ifelse(is.na(metadata$reference_match_source), "unknown", metadata$reference_match_source))
+        } else {
+            integer(0)
+        }
+
+        missing_summary <- list(
+            study = if ("meta_missing_core_study" %in% colnames(metadata)) sum(metadata$meta_missing_core_study, na.rm = TRUE) else NA_integer_,
+            sex = if ("meta_missing_core_sex" %in% colnames(metadata)) sum(metadata$meta_missing_core_sex, na.rm = TRUE) else NA_integer_,
+            subtype = if ("meta_missing_core_subtype" %in% colnames(metadata)) sum(metadata$meta_missing_core_subtype, na.rm = TRUE) else NA_integer_
+        )
+
+        warnings <- character(0)
+        if (!is.na(overlap_fraction_uploaded) && overlap_fraction_uploaded < 0.5) {
+            warnings <- c(warnings, sprintf("Low uploaded gene overlap after filtering (%.1f%%). Check gene ID type and reference choice.", 100 * overlap_fraction_uploaded))
+        }
+        if (!is.na(missing_summary$sex) && nrow(metadata) > 0 && (missing_summary$sex / nrow(metadata)) > 0.25) {
+            warnings <- c(warnings, sprintf("Reference metadata has %.1f%% missing sex values.", 100 * missing_summary$sex / nrow(metadata)))
+        }
+
+        manifest <- list(
+            version = "v1",
+            timestamp_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
+            duration_seconds = as.numeric(difftime(Sys.time(), started_at, units = "secs")),
+            cache_dir = cache_dir,
+            disease_selection = disease_selection,
+            disease_selection_key = disease_id,
+            selected_samples_requested = selected_samples,
+            selected_samples_found = selected_samples_found,
+            selected_uploaded_sample_count = length(selected_samples_found),
+            reference = list(
+                sample_count = reference_sample_count,
+                gene_count_before_symbol_merge = reference_gene_count_before_merge,
+                disease_counts = count_table_to_list(disease_counts)
+            ),
+            uploaded = list(
+                sample_count = uploaded_sample_count,
+                gene_count_before_filter = uploaded_gene_count_before_filter,
+                gene_count_after_filter = uploaded_gene_count_after_filter
+            ),
+            overlap = list(
+                common_gene_count = common_gene_count,
+                uploaded_overlap_fraction = overlap_fraction_uploaded,
+                reference_overlap_fraction = overlap_fraction_reference
+            ),
+            metadata_alignment = list(
+                registry_version = if ("meta_registry_version" %in% colnames(metadata)) unique(na.omit(metadata$meta_registry_version)) else character(0),
+                alignment_version = if ("meta_alignment_version" %in% colnames(metadata)) unique(na.omit(metadata$meta_alignment_version)) else character(0),
+                missing_core_counts = missing_summary,
+                reference_match_source_counts = count_table_to_list(reference_match_source_counts)
+            ),
+            batches = list(
+                total = length(batch),
+                unique = length(unique(batch)),
+                counts = count_table_to_list(batch_counts)
+            ),
+            output = list(
+                harmonized_gene_count = nrow(corrected_matrix),
+                harmonized_column_count = ncol(corrected_matrix) - 1
+            ),
+            warnings = as.list(warnings)
+        )
+
+        jsonlite::write_json(
+            manifest,
+            path = file.path(cache_dir, "harmonization_manifest.json"),
+            auto_unbox = TRUE,
+            pretty = TRUE,
+            null = "null"
+        )
+
         # Cleanup
         message("Cleaning up memory...")
         rm(list = c(
@@ -314,9 +508,31 @@ harmonize_data <- local({
         gc()
 
         message("Done!")
-        return(list(message = "Normalized and corrected data saved to cache"))
+        return(list(
+            message = "Normalized and corrected data saved to cache",
+            manifest = manifest
+        ))
     }
 })
+
+#* @get /harmonization-manifest
+#* @serializer json
+function(req) {
+    cache_dir <- req$args$cachedir
+    manifest_path <- file.path(cache_dir, "harmonization_manifest.json")
+    if (!file.exists(manifest_path)) {
+        return(list(error = "No harmonization manifest found. Run harmonization first."))
+    }
+
+    tryCatch(
+        {
+            return(jsonlite::fromJSON(manifest_path, simplifyVector = FALSE))
+        },
+        error = function(e) {
+            return(list(error = paste("Failed to read harmonization manifest:", e$message)))
+        }
+    )
+}
 
 
 # this function runs t-SNE and saves the results to cache
@@ -359,9 +575,520 @@ run_tsne <- function(cache_dir) {
     return(tsne_df)
 }
 
-load_metadata <- function() {
-    metadata <- fread("data/meta.csv", data.table = F)
+get_request_disease <- function(req, default = "aml") {
+    selected <- get_request_disease_selection(req, default = default)
+    key <- disease_selection_key(selected)
+    if (identical(key, "pan_leukemia")) return("pan_leukemia")
+    selected[[1]]
+}
+
+normalize_disease_selection <- function(x, default = "aml") {
+    vals <- normalize_arg_vector(x)
+    if (is.null(vals) || length(vals) == 0) {
+        vals <- default
+    }
+    vals <- unlist(lapply(vals, function(v) strsplit(as.character(v), ",", fixed = TRUE)[[1]]), use.names = FALSE)
+    vals <- trimws(vals)
+    vals <- vals[nzchar(vals)]
+    if (length(vals) == 0) {
+        vals <- default
+    }
+
+    vals <- unique(vapply(vals, normalize_disease_id, FUN.VALUE = character(1)))
+
+    if ("pan_leukemia" %in% vals) {
+        return(c("aml", "ball", "tall"))
+    }
+
+    vals <- vals[vals %in% c("aml", "ball", "tall")]
+    if (length(vals) == 0) {
+        return(c("aml"))
+    }
+
+    preferred_order <- c("aml", "ball", "tall")
+    vals[order(match(vals, preferred_order))]
+}
+
+disease_selection_key <- function(diseases) {
+    vals <- normalize_disease_selection(diseases)
+    if (length(vals) == 3 && all(c("aml", "ball", "tall") %in% vals)) {
+        return("pan_leukemia")
+    }
+    paste(vals, collapse = "+")
+}
+
+get_request_disease_selection <- function(req, default = "aml") {
+    if (!is.null(req$args$diseases)) {
+        return(normalize_disease_selection(req$args$diseases, default = default))
+    }
+    if (!is.null(req$args$disease)) {
+        return(normalize_disease_selection(req$args$disease, default = default))
+    }
+    normalize_disease_selection(default, default = default)
+}
+
+coalesce_metadata_columns <- function(df, candidates, fallback = NA_character_) {
+    if (nrow(df) == 0) return(rep(fallback, 0))
+    out <- rep(NA_character_, nrow(df))
+    for (col in candidates) {
+        if (!col %in% colnames(df)) next
+        vals <- as.character(df[[col]])
+        vals[is.na(vals)] <- NA_character_
+        vals[trimws(vals) == ""] <- NA_character_
+        replace_idx <- is.na(out) & !is.na(vals)
+        out[replace_idx] <- vals[replace_idx]
+    }
+    out[is.na(out)] <- fallback
+    out
+}
+
+coalesce_metadata_with_source <- function(df, candidates, fallback = NA_character_) {
+    if (nrow(df) == 0) {
+        return(list(
+            value = rep(fallback, 0),
+            source = rep(NA_character_, 0)
+        ))
+    }
+
+    out <- rep(NA_character_, nrow(df))
+    src <- rep(NA_character_, nrow(df))
+    for (col in candidates) {
+        if (!col %in% colnames(df)) next
+        vals <- as.character(df[[col]])
+        vals[is.na(vals)] <- NA_character_
+        vals[trimws(vals) == ""] <- NA_character_
+        replace_idx <- is.na(out) & !is.na(vals)
+        out[replace_idx] <- vals[replace_idx]
+        src[replace_idx] <- col
+    }
+
+    out[is.na(out)] <- fallback
+    return(list(value = out, source = src))
+}
+
+normalize_metadata_na <- function(x) {
+    vals <- as.character(x)
+    vals[is.na(vals)] <- NA_character_
+    vals <- trimws(vals)
+    vals[vals == ""] <- NA_character_
+    vals[toupper(vals) %in% c("NA", "N/A", "NONE", "NULL", "UNKNOWN", "NAN")] <- NA_character_
+    vals
+}
+
+normalize_metadata_sex <- function(x) {
+    vals <- normalize_metadata_na(x)
+
+    key <- toupper(vals)
+    vals[key %in% c("M", "MALE")] <- "Male"
+    vals[key %in% c("F", "FEMALE")] <- "Female"
+    vals[is.na(vals)] <- "unknown"
+    vals
+}
+
+normalize_metadata_study <- function(x, disease = "aml") {
+    vals <- normalize_metadata_na(x)
+    vals <- gsub("[[:space:]]+", "_", vals)
+    vals[is.na(vals)] <- sprintf("%s_reference", toupper(normalize_disease_id(disease)))
+    vals
+}
+
+normalize_metadata_tissue <- function(x) {
+    vals <- normalize_metadata_na(x)
+    key <- tolower(vals)
+    vals[key %in% c("bm", "bone marrow", "bone_marrow")] <- "bone marrow"
+    vals[key %in% c("pb", "peripheral blood", "peripheral_blood")] <- "peripheral blood"
+    vals[key %in% c("blood")] <- "peripheral blood"
+    vals[is.na(vals)] <- "unknown"
+    vals
+}
+
+normalize_metadata_prim_rec <- function(x) {
+    vals <- normalize_metadata_na(x)
+    key <- tolower(vals)
+    vals[key %in% c("primary", "diagnosis", "dx")] <- "Primary"
+    vals[key %in% c("relapse", "recurrent")] <- "Relapse"
+    vals[key %in% c("refractory")] <- "Refractory"
+    vals[is.na(vals)] <- "unknown"
+    vals
+}
+
+normalize_metadata_event <- function(x) {
+    vals <- normalize_metadata_na(x)
+    key <- tolower(vals)
+    vals[key %in% c("dead", "deceased", "1")] <- "Dead"
+    vals[key %in% c("alive", "living", "0")] <- "Alive"
+    vals[is.na(vals)] <- "unknown"
+    vals
+}
+
+normalize_metadata_subtype <- function(x, disease = "aml") {
+    vals <- normalize_metadata_na(x)
+    if (all(is.na(vals))) {
+        return(rep("unknown", length(vals)))
+    }
+    vals <- gsub("[[:space:]]+", " ", vals)
+    vals <- trimws(vals)
+    # Preserve labels as much as possible; only normalize obvious missing markers.
+    vals[is.na(vals)] <- "unknown"
+    vals
+}
+
+derive_metadata_lineage <- function(disease, btall_label = NULL, subtype = NULL) {
+    disease_key <- normalize_disease_id(disease)
+    n <- length(subtype)
+    lineage <- rep(NA_character_, n)
+    if (identical(disease_key, "aml")) {
+        lineage[] <- "AML"
+    } else {
+        btall <- normalize_metadata_na(btall_label)
+        btall_key <- toupper(btall)
+        lineage[btall_key == "B-ALL"] <- "B-ALL"
+        lineage[btall_key == "T-ALL"] <- "T-ALL"
+        if (identical(disease_key, "ball")) lineage[is.na(lineage)] <- "B-ALL"
+        if (identical(disease_key, "tall")) lineage[is.na(lineage)] <- "T-ALL"
+    }
+    lineage[is.na(lineage)] <- "unknown"
+    lineage
+}
+
+build_metadata_sample_id_aliases <- function(df, disease = "aml") {
+    if (nrow(df) == 0) return(rep("", 0))
+    alias_cols <- unique(c("sample_id", metadata_registry_sample_id_alias_candidates(disease)))
+    alias_cols <- alias_cols[alias_cols %in% colnames(df)]
+    if (length(alias_cols) == 0) return(rep("", nrow(df)))
+
+    alias_matrix <- lapply(alias_cols, function(col) normalize_metadata_na(df[[col]]))
+    names(alias_matrix) <- alias_cols
+
+    vapply(seq_len(nrow(df)), function(i) {
+        vals <- unique(unlist(lapply(alias_matrix, function(v) v[[i]]), use.names = FALSE))
+        vals <- vals[!is.na(vals)]
+        paste(vals, collapse = "|")
+    }, FUN.VALUE = character(1))
+}
+
+match_metadata_to_reference_columns <- function(metadata, count_colnames, disease = "aml") {
+    if (length(count_colnames) == 0) {
+        return(list(index = integer(0), source = character(0)))
+    }
+
+    match_idx <- rep(NA_integer_, length(count_colnames))
+    match_source <- rep(NA_character_, length(count_colnames))
+    selected_diseases <- normalize_disease_selection(disease)
+    alias_cols <- unique(unlist(
+        lapply(selected_diseases, function(d) metadata_registry_sample_id_alias_candidates(d)),
+        use.names = FALSE
+    ))
+    candidate_cols <- unique(c("sample_id", alias_cols))
+    candidate_cols <- candidate_cols[candidate_cols %in% colnames(metadata)]
+
+    for (col in candidate_cols) {
+        vals <- normalize_metadata_na(metadata[[col]])
+        remaining <- which(is.na(match_idx))
+        if (length(remaining) == 0) break
+        local_match <- match(count_colnames[remaining], vals)
+        hit <- !is.na(local_match)
+        if (any(hit)) {
+            hit_idx <- remaining[hit]
+            match_idx[hit_idx] <- local_match[hit]
+            match_source[hit_idx] <- col
+        }
+    }
+
+    list(index = match_idx, source = match_source)
+}
+
+align_metadata <- function(metadata, disease = "aml") {
+    if (is.null(metadata)) return(metadata)
+    metadata <- as.data.frame(metadata, stringsAsFactors = FALSE)
+    disease_key <- normalize_disease_id(disease)
+
+    sample_id <- coalesce_metadata_with_source(
+        metadata,
+        metadata_registry_field_candidates("sample_id", disease_key)
+    )
+    sex <- coalesce_metadata_with_source(metadata, metadata_registry_field_candidates("sex", disease_key), fallback = NA_character_)
+    study_source <- coalesce_metadata_with_source(
+        metadata,
+        metadata_registry_field_candidates("study_source", disease_key),
+        fallback = NA_character_
+    )
+    study_collection <- coalesce_metadata_with_source(
+        metadata,
+        metadata_registry_field_candidates("study_collection", disease_key),
+        fallback = NA_character_
+    )
+    study_title <- coalesce_metadata_with_source(
+        metadata,
+        metadata_registry_field_candidates("study_title", disease_key),
+        fallback = NA_character_
+    )
+    subtype <- coalesce_metadata_with_source(
+        metadata,
+        metadata_registry_field_candidates("subtype_label", disease_key),
+        fallback = NA_character_
+    )
+    tissue <- coalesce_metadata_with_source(metadata, metadata_registry_field_candidates("tissue", disease_key), fallback = NA_character_)
+    prim_rec <- coalesce_metadata_with_source(metadata, metadata_registry_field_candidates("prim_rec", disease_key), fallback = NA_character_)
+    event <- coalesce_metadata_with_source(metadata, metadata_registry_field_candidates("event", disease_key), fallback = NA_character_)
+
+    metadata$disease <- disease_key
+    metadata$sample_id <- sample_id$value
+    metadata$sample_id_source <- sample_id$source
+    metadata$sample_id_aliases <- build_metadata_sample_id_aliases(metadata, disease = disease_key)
+    metadata$sex <- normalize_metadata_sex(sex$value)
+    metadata$sex_source <- sex$source
+    metadata$study_source <- normalize_metadata_study(study_source$value, disease = metadata$disease[1])
+    metadata$study_source_source <- study_source$source
+    metadata$study_collection <- normalize_metadata_na(study_collection$value)
+    metadata$study_collection_source <- study_collection$source
+    metadata$study_title <- normalize_metadata_na(study_title$value)
+    metadata$study_title_source <- study_title$source
+    metadata$study <- metadata$study_source
+    metadata$subtype_label <- normalize_metadata_subtype(subtype$value, disease = metadata$disease[1])
+    metadata$subtype_label_source <- subtype$source
+    metadata$clusters <- metadata$subtype_label
+    metadata$tissue <- normalize_metadata_tissue(tissue$value)
+    metadata$tissue_source <- tissue$source
+    metadata$prim_rec <- normalize_metadata_prim_rec(prim_rec$value)
+    metadata$prim_rec_source <- prim_rec$source
+    metadata$event <- normalize_metadata_event(event$value)
+    metadata$event_source <- event$source
+
+    metadata$study_collection[is.na(metadata$study_collection)] <- metadata$study_source[is.na(metadata$study_collection)]
+    metadata$lineage <- derive_metadata_lineage(
+        disease = metadata$disease[1],
+        btall_label = if ("btall_label" %in% colnames(metadata)) metadata$btall_label else NULL,
+        subtype = metadata$subtype_label
+    )
+
+    if ("age" %in% colnames(metadata)) suppressWarnings(metadata$age <- as.numeric(metadata$age))
+    if ("blasts" %in% colnames(metadata)) suppressWarnings(metadata$blasts <- as.numeric(metadata$blasts))
+
+    metadata$sample_id[trimws(metadata$sample_id) == ""] <- NA_character_
+    metadata <- metadata[!is.na(metadata$sample_id), , drop = FALSE]
+
+    if (anyDuplicated(metadata$sample_id)) {
+        dup_count <- sum(duplicated(metadata$sample_id))
+        message(sprintf("Metadata alignment: dropping %d duplicate rows by sample_id for disease=%s", dup_count, metadata$disease[1]))
+        metadata <- metadata[!duplicated(metadata$sample_id), , drop = FALSE]
+    }
+
+    metadata$meta_alignment_version <- "v2"
+    metadata$meta_missing_core_study <- metadata$study %in% c(NA_character_, "unknown")
+    metadata$meta_missing_core_sex <- metadata$sex %in% c(NA_character_, "unknown")
+    metadata$meta_missing_core_subtype <- metadata$subtype_label %in% c(NA_character_, "unknown")
+    metadata$meta_core_missing_count <- 
+        as.integer(metadata$meta_missing_core_study) +
+        as.integer(metadata$meta_missing_core_sex) +
+        as.integer(metadata$meta_missing_core_subtype)
+
+    metadata$meta_registry_version <- metadata_registry_get("version")
+
     return(metadata)
+}
+
+load_metadata <- function(disease = "aml", aligned = TRUE) {
+    diseases <- normalize_disease_selection(disease)
+    if (length(diseases) > 1) {
+        metadata <- as.data.frame(
+            data.table::rbindlist(
+                lapply(diseases, function(d) load_metadata(d, aligned = aligned)),
+                fill = TRUE,
+                use.names = TRUE
+            ),
+            stringsAsFactors = FALSE
+        )
+        return(metadata)
+    }
+    disease_id <- diseases[[1]]
+
+    metadata_path <- require_existing_path(
+        resolve_disease_asset(disease_id, "metadata"),
+        sprintf("%s metadata", disease_id)
+    )
+    metadata <- fread(metadata_path, data.table = F)
+    if (isTRUE(aligned)) {
+        metadata <- align_metadata(metadata, disease = disease_id)
+    }
+    return(metadata)
+}
+
+normalize_reference_gene_ids_for_merge <- function(df) {
+    if (is.null(df) || ncol(df) < 1) return(df)
+    gene_col <- colnames(df)[1]
+    df[[gene_col]] <- as.character(df[[gene_col]])
+    df[[gene_col]] <- gsub("\\.[0-9]+$", "", df[[gene_col]])
+    if (gene_col != "gene_id") {
+        colnames(df)[1] <- "gene_id"
+    }
+    return(df)
+}
+
+load_reference_uncorrected_counts <- function(disease = "aml") {
+    diseases <- normalize_disease_selection(disease)
+    selection_key <- disease_selection_key(diseases)
+    disease_id <- if (length(diseases) == 1) diseases[[1]] else selection_key
+
+    if (length(diseases) > 1) {
+        ref_cache_dir <- file.path("cache", ".reference")
+        if (!dir.exists(ref_cache_dir)) {
+            dir.create(ref_cache_dir, recursive = TRUE)
+        }
+        cache_fst <- file.path(ref_cache_dir, sprintf("%s_reference_uncorrected.fst", selection_key))
+
+        if (file.exists(cache_fst)) {
+            message(sprintf("Loading cached %s reference counts from %s", disease_id, cache_fst))
+            return(read_fst(cache_fst))
+        }
+
+        message(sprintf("Building %s harmonization reference from: %s", selection_key, paste(diseases, collapse = ", ")))
+        count_list <- lapply(
+            diseases,
+            function(d) normalize_reference_gene_ids_for_merge(load_reference_uncorrected_counts(d))
+        )
+
+        merged_counts <- Reduce(
+            function(x, y) merge(x, y, by = "gene_id", all = FALSE),
+            count_list
+        )
+
+        write_fst(merged_counts, cache_fst)
+        message(sprintf("Cached %s reference counts at %s", disease_id, cache_fst))
+        return(merged_counts)
+    }
+
+    if (identical(disease_id, "aml")) {
+        return(fread(
+            require_existing_path(
+                resolve_disease_asset("aml", "counts", "uncorrected"),
+                "AML uncorrected counts"
+            ),
+            data.table = FALSE
+        ))
+    }
+
+    if (!(disease_id %in% c("ball", "tall"))) {
+        stop(sprintf("Unsupported disease for harmonization reference: %s", disease_id))
+    }
+
+    parquet_path <- require_existing_path(
+        resolve_disease_asset(disease_id, "training", "rna_parquet"),
+        sprintf("%s training RNA parquet", disease_id)
+    )
+
+    ref_cache_dir <- file.path("cache", ".reference")
+    if (!dir.exists(ref_cache_dir)) {
+        dir.create(ref_cache_dir, recursive = TRUE)
+    }
+    cache_fst <- file.path(ref_cache_dir, sprintf("%s_reference_uncorrected.fst", disease_id))
+
+    if (file.exists(cache_fst)) {
+        message(sprintf("Loading cached %s reference counts from %s", disease_id, cache_fst))
+        return(read_fst(cache_fst))
+    }
+
+    message(sprintf("Converting %s parquet reference to CSV/FST cache...", disease_id))
+    parquet_python <- Sys.getenv("PARQUET_PYTHON")
+    if (!nzchar(parquet_python)) parquet_python <- "python3"
+
+    converter_script <- file.path(getwd(), "parquet_to_counts_csv.py")
+    if (!file.exists(converter_script)) {
+        stop(sprintf("Parquet converter script not found: %s", converter_script))
+    }
+
+    tmp_csv <- tempfile(fileext = ".csv")
+    on.exit(unlink(tmp_csv), add = TRUE)
+
+    converter_output <- tryCatch(
+        {
+            system2(
+                parquet_python,
+                c(converter_script, "--input-parquet", parquet_path, "--output-csv", tmp_csv),
+                stdout = TRUE,
+                stderr = TRUE
+            )
+        },
+        error = function(e) {
+            structure(character(), status = 1L, error_message = e$message)
+        }
+    )
+    converter_status <- attr(converter_output, "status")
+    if (!is.null(converter_status) && converter_status != 0) {
+        stop(
+            sprintf(
+                "Failed to convert %s parquet reference (%s): %s",
+                disease_id,
+                parquet_python,
+                paste(converter_output, collapse = "\n")
+            )
+        )
+    }
+
+    counts_df <- fread(tmp_csv, data.table = FALSE)
+    write_fst(counts_df, cache_fst)
+    message(sprintf("Cached %s reference counts at %s", disease_id, cache_fst))
+    return(counts_df)
+}
+
+align_reference_metadata_to_counts <- function(metadata, count_colnames, disease = "aml") {
+    disease_key <- disease_selection_key(disease)
+    default_study <- sprintf("%s_reference", toupper(disease_key))
+    if (is.null(metadata) || nrow(metadata) == 0) {
+        metadata <- data.frame(sample_id = character(0), stringsAsFactors = FALSE)
+    }
+
+    metadata <- as.data.frame(metadata, stringsAsFactors = FALSE)
+    if (!"sample_id" %in% colnames(metadata)) {
+        metadata$sample_id <- character(nrow(metadata))
+    }
+    if (!"study" %in% colnames(metadata)) {
+        metadata$study <- NA_character_
+    }
+    if (!"sex" %in% colnames(metadata)) {
+        metadata$sex <- NA_character_
+    }
+
+    match_info <- match_metadata_to_reference_columns(metadata, count_colnames, disease = disease)
+    match_idx <- match_info$index
+    match_source <- match_info$source
+    missing_idx <- which(is.na(match_idx))
+    if (length(missing_idx) > 0) {
+        placeholder <- data.frame(
+            sample_id = count_colnames[missing_idx],
+            study = default_study,
+            sex = "unknown",
+            reference_match_source = "placeholder",
+            stringsAsFactors = FALSE
+        )
+        metadata <- rbind(metadata, placeholder)
+        match_info <- match_metadata_to_reference_columns(metadata, count_colnames, disease = disease)
+        match_idx <- match_info$index
+        match_source <- match_info$source
+    }
+
+    aligned <- metadata[match_idx, , drop = FALSE]
+    aligned$sample_id <- count_colnames
+    aligned$study[is.na(aligned$study) | trimws(aligned$study) == ""] <- default_study
+    aligned$sex[is.na(aligned$sex) | trimws(aligned$sex) == ""] <- "unknown"
+    if (!"reference_match_source" %in% colnames(aligned)) {
+        aligned$reference_match_source <- match_source
+    } else {
+        aligned$reference_match_source[is.na(aligned$reference_match_source)] <- match_source[is.na(aligned$reference_match_source)]
+    }
+    return(aligned)
+}
+
+normalize_selected_samples_arg <- function(x) {
+    vals <- normalize_arg_vector(x)
+    if (is.null(vals)) return(NULL)
+    if (length(vals) == 1 && grepl(",", vals[1], fixed = TRUE)) {
+        vals <- strsplit(vals[1], ",", fixed = TRUE)[[1]]
+    }
+    vals <- trimws(vals)
+    vals <- vals[nzchar(vals)]
+    if (length(vals) == 0) return(NULL)
+    vals
 }
 
 #* @get /tsne
@@ -369,8 +1096,10 @@ load_metadata <- function() {
 tsne <- local({
     function(req) {
         cache_dir <- req$args$cachedir
+        disease_selection <- get_request_disease_selection(req)
+        disease_id <- disease_selection_key(disease_selection)
         tsne_result <- run_tsne(cache_dir)
-        metadata <- load_metadata()
+        metadata <- load_metadata(disease = disease_selection, aligned = TRUE)
 
         # Identify which rows in tsne_result correspond to the original data
         original_samples <- intersect(rownames(tsne_result), metadata$sample_id)
@@ -380,12 +1109,20 @@ tsne <- local({
             sample_id = rownames(tsne_result),
             X1 = tsne_result$X1,
             X2 = tsne_result$X2,
-            data_source = ifelse(rownames(tsne_result) %in% original_samples, "original", "uploaded")
+            data_source = ifelse(rownames(tsne_result) %in% original_samples, "original", "uploaded"),
+            disease = disease_id
         )
 
+        # Avoid merge suffixes on core plotting columns.
+        metadata_merge <- metadata
+        conflicting_cols <- intersect(colnames(metadata_merge), colnames(result))
+        conflicting_cols <- setdiff(conflicting_cols, "sample_id")
+        if (length(conflicting_cols) > 0) {
+            metadata_merge <- metadata_merge[, !colnames(metadata_merge) %in% conflicting_cols, drop = FALSE]
+        }
 
         # Merge metadata only for the original samples
-        result <- merge(result, metadata, by = "sample_id", all.x = TRUE)
+        result <- merge(result, metadata_merge, by = "sample_id", all.x = TRUE)
 
         # returning the result (as long as it is not too big)
         return(result)
@@ -474,10 +1211,20 @@ function(req) {
 drug_response_tsne <- function(req) {
     cache_dir <- req$args$cachedir
     # Load drug response data
-    drug_response <- fread("data/drug_response/ex_vivo_drug_response.csv")
+    drug_response <- fread(
+        require_existing_path(
+            resolve_disease_asset("aml", "drug_response", "ex_vivo"),
+            "AML drug response table"
+        )
+    )
 
     # Load drug families data
-    drug_families <- fread("data/drug_response/drug_families.csv")
+    drug_families <- fread(
+        require_existing_path(
+            resolve_disease_asset("aml", "drug_response", "families"),
+            "AML drug family table"
+        )
+    )
 
     # Merge drug response with drug families
     drug_response <- merge(drug_response, drug_families, by.x = "inhibitor", by.y = "drug", all.x = TRUE)
@@ -500,7 +1247,12 @@ drug_response_tsne <- function(req) {
 mutation_tsne <- function(req) {
     cache_dir <- req$args$cachedir
     # Load mutation data
-    mutation_data <- fread("data/aberrations/mutations.csv")
+    mutation_data <- fread(
+        require_existing_path(
+            resolve_disease_asset("aml", "aberrations", "mutations"),
+            "AML mutation aberrations table"
+        )
+    )
 
     # Load t-SNE results
     tsne_result <- run_tsne(cache_dir)
@@ -519,7 +1271,12 @@ mutation_tsne <- function(req) {
 aberrations_tsne <- function(req) {
     cache_dir <- req$args$cachedir
     # Load aberrations data
-    aberrations_data <- fread("data/aberrations/aberrations_oh.csv")
+    aberrations_data <- fread(
+        require_existing_path(
+            resolve_disease_asset("aml", "aberrations", "one_hot"),
+            "AML aberrations one-hot table"
+        )
+    )
 
     # Find the column name that contains ZZEF1 and get the columns after it
     ZZEF1_col <- grep("ZZEF1", colnames(aberrations_data))
@@ -649,7 +1406,8 @@ genome_expression <- local({
         sample_sex <- NA
         if (!is.null(samples) && length(samples) == 1) {
             tryCatch({
-                metadata <- fread("data/meta.csv", data.table = FALSE)
+                disease_id <- get_request_disease(req)
+                metadata <- load_metadata(disease = disease_id, aligned = TRUE)
                 sample_info <- metadata[metadata$sample_id == samples[1], ]
                 if (nrow(sample_info) > 0 && "sex" %in% colnames(sample_info)) {
                     sex_val <- sample_info$sex[1]
@@ -776,7 +1534,13 @@ genome_expression <- local({
         # Load gene positions data
         message("Loading gene positions...")
         canonical_chromosomes <- c(as.character(1:22), "X", "Y", "MT")
-        gene_positions <- fread("data/gene_positions_hg38.csv", data.table = FALSE)
+        gene_positions <- fread(
+            require_existing_path(
+                resolve_disease_asset("aml", "reference", "gene_positions_hg38"),
+                "AML gene positions hg38"
+            ),
+            data.table = FALSE
+        )
         # The CSV has headers: "hgnc_symbol","chromosome_name","start_position","end_position"
         # But some rows have empty gene symbols, so we need to handle that
         gene_positions <- gene_positions[, c(1, 2, 3, 4)] # Extract the four columns we need
@@ -1023,10 +1787,1030 @@ genome_expression <- local({
             gene_count = nrow(result),
             chromosomes = unique(result$chromosome[order(result$chr_sort)]),
             bin_size = bin_size,
-            metadata = list(gender = sample_gender)
+            metadata = list(gender = sample_sex)
         ))
     }
 })
+
+find_bridge_python <- function() {
+    env_python <- Sys.getenv("BRIDGE_PYTHON", unset = "")
+    candidates <- c(
+        env_python,
+        "/Users/onur-lumc/.local/share/mamba/envs/aml_bridge_m1/bin/python",
+        Sys.which("python3"),
+        Sys.which("python")
+    )
+    candidates <- unique(candidates[nzchar(candidates)])
+
+    for (candidate in candidates) {
+        if (file.exists(candidate)) {
+            return(candidate)
+        }
+    }
+
+    return(NULL)
+}
+
+find_molecular_tools_python <- function() {
+    env_python <- Sys.getenv("MOLECULAR_TOOLS_PYTHON", unset = "")
+    bridge_python <- Sys.getenv("BRIDGE_PYTHON", unset = "")
+    candidates <- c(
+        env_python,
+        "/Users/onur-lumc/.local/share/mamba/envs/molecular_diag_py310/bin/python",
+        bridge_python,
+        Sys.which("python3"),
+        Sys.which("python")
+    )
+    candidates <- unique(candidates[nzchar(candidates)])
+
+    for (candidate in candidates) {
+        if (file.exists(candidate)) {
+            return(candidate)
+        }
+    }
+
+    return(NULL)
+}
+
+resolve_uploaded_sample_column <- function(sample_data, requested_sample_id) {
+    sample_id <- as.character(requested_sample_id)[1]
+    available_sample_cols <- colnames(sample_data)[-1]
+    warning <- NULL
+
+    if (!(sample_id %in% colnames(sample_data))) {
+        suffix_candidates <- c(
+            paste0(sample_id, "_unstranded"),
+            paste0(sample_id, "_fwd"),
+            paste0(sample_id, "_rev")
+        )
+        matched_candidate <- suffix_candidates[suffix_candidates %in% available_sample_cols]
+        if (length(matched_candidate) > 0) {
+            sample_id <- matched_candidate[1]
+        }
+    }
+
+    if (sample_id %in% available_sample_cols && grepl("_(fwd|rev)$", sample_id)) {
+        warning <- "Using stranded count column. Prefer *_unstranded unless your pipeline requires stranded counts."
+    }
+
+    list(
+        requested_sample = requested_sample_id,
+        resolved_sample_column = sample_id,
+        available_samples = available_sample_cols,
+        warning = warning
+    )
+}
+
+extract_uploaded_sample_counts <- function(sample_data, sample_id) {
+    gene_col <- colnames(sample_data)[1]
+    out <- data.table(
+        gene_id_original = as.character(sample_data[[gene_col]]),
+        count = as.numeric(sample_data[[sample_id]])
+    )
+    out[, gene_id := sub("\\.[0-9]+$", "", gene_id_original)]
+    out[is.na(count), count := 0]
+    out
+}
+
+write_feature_row_csv <- function(feature_counts, sample_id, out_csv, feature_col = "feature") {
+    dt <- as.data.table(feature_counts)
+    if (!all(c(feature_col, "count") %in% colnames(dt))) {
+        stop("feature_counts must contain feature column and count column")
+    }
+
+    dt <- dt[!is.na(get(feature_col)) & trimws(as.character(get(feature_col))) != ""]
+    if (nrow(dt) == 0) {
+        stop("No feature rows available to write")
+    }
+
+    dt[, count := as.numeric(count)]
+    dt[is.na(count), count := 0]
+    dt <- dt[, .(count = sum(count, na.rm = TRUE)), by = feature_col]
+    setorderv(dt, feature_col)
+
+    row_df <- as.data.frame(as.list(setNames(dt$count, dt[[feature_col]])), check.names = FALSE)
+    row_df <- data.frame(sample_id = sample_id, row_df, check.names = FALSE, stringsAsFactors = FALSE)
+    fwrite(row_df, out_csv)
+    invisible(out_csv)
+}
+
+convert_counts_to_gene_symbols <- function(counts_dt) {
+    if (!requireNamespace("seAMLess", quietly = TRUE)) {
+        stop("seAMLess is required for Ensembl->symbol conversion")
+    }
+
+    mapping <- as.data.table(seAMLess::grch38)
+    if (!all(c("ensgene", "symbol") %in% colnames(mapping))) {
+        stop("seAMLess::grch38 mapping is missing expected columns (ensgene, symbol)")
+    }
+
+    mapping <- mapping[, .(
+        gene_id = as.character(ensgene),
+        gene_symbol = as.character(symbol)
+    )]
+    mapping <- unique(mapping[!is.na(gene_id) & !is.na(gene_symbol) & gene_symbol != ""])
+
+    merged <- merge(
+        counts_dt[, .(gene_id, count)],
+        mapping,
+        by = "gene_id",
+        all.x = FALSE,
+        all.y = FALSE
+    )
+
+    symbol_counts <- merged[
+        !is.na(gene_symbol) & gene_symbol != "",
+        .(count = sum(count, na.rm = TRUE)),
+        by = gene_symbol
+    ]
+
+    list(
+        counts = symbol_counts,
+        note = sprintf(
+            "Converted Ensembl IDs to gene symbols for %d/%d rows (%d unique symbols).",
+            nrow(merged),
+            nrow(counts_dt),
+            nrow(symbol_counts)
+        )
+    )
+}
+
+run_json_python_script <- function(python_bin, script_path, args, tool_label = "python tool") {
+    output <- tryCatch(
+        {
+            system2(python_bin, c(script_path, args), stdout = TRUE, stderr = TRUE)
+        },
+        error = function(e) {
+            return(structure(character(), status = 1L, error_message = e$message))
+        }
+    )
+
+    status_code <- attr(output, "status")
+    if (!is.null(status_code) && status_code != 0) {
+        return(list(
+            error = sprintf("%s failed", tool_label),
+            status = status_code,
+            details = paste(output, collapse = "\n")
+        ))
+    }
+
+    if (length(output) == 0) {
+        return(list(error = sprintf("%s returned no output", tool_label)))
+    }
+
+    parsed <- tryCatch(
+        {
+            jsonlite::fromJSON(
+                tail(output, 1),
+                simplifyVector = TRUE,
+                simplifyDataFrame = FALSE
+            )
+        },
+        error = function(e) {
+            list(
+                error = sprintf("Failed to parse %s output", tool_label),
+                details = e$message,
+                raw = paste(output, collapse = "\n")
+            )
+        }
+    )
+
+    if (is.list(parsed)) {
+        parsed$stdout_log <- output
+    }
+    parsed
+}
+
+normalized_supported_diseases <- function(x) {
+    vals <- normalize_arg_vector(x)
+    if (is.null(vals)) return(character(0))
+    unique(vapply(vals, normalize_disease_id, FUN.VALUE = character(1)))
+}
+
+molecular_tool_runtime_status <- function(tool_id) {
+    tool <- get_molecular_tool_definition(tool_id)
+    if (is.null(tool)) {
+        return(list(
+            available = FALSE,
+            runtime_ready = FALSE,
+            missing = c("tool_registry"),
+            details = "Tool not found in molecular registry"
+        ))
+    }
+
+    if (isFALSE(tool$integrated %||% TRUE)) {
+        return(list(
+            available = FALSE,
+            runtime_ready = FALSE,
+            catalog_only = TRUE,
+            missing = character(0)
+        ))
+    }
+
+    key <- as.character(tool$id %||% tool_id)
+    missing <- character(0)
+
+    if (identical(key, "bridge")) {
+        assets <- resolve_bridge_assets("pan_leukemia")
+        bundle_path <- first_existing_path(assets$bundle_candidates)
+        meta_path <- first_existing_path(assets$meta_candidates)
+        ckpt_path <- first_existing_path(assets$ckpt_candidates)
+        lr_path <- first_existing_path(assets$lr_candidates)
+        script_path <- "bridge_predict.py"
+
+        if (is.null(bundle_path)) {
+            if (is.null(meta_path)) missing <- c(missing, "meta")
+            if (is.null(ckpt_path)) missing <- c(missing, "ckpt")
+            if (is.null(lr_path)) missing <- c(missing, "classifier")
+        }
+        if (!file.exists(script_path)) missing <- c(missing, "bridge_predict.py")
+        runtime_ready <- !is.null(find_bridge_python())
+        if (!runtime_ready) missing <- c(missing, "bridge_python")
+
+        return(list(
+            available = length(missing) == 0,
+            runtime_ready = runtime_ready,
+            missing = unique(missing),
+            artifact_source = if (!is.null(bundle_path)) "bundle" else "standalone"
+        ))
+    }
+
+    if (key %in% c("allsorts", "tallsorts")) {
+        assets <- resolve_molecular_tool_assets(key)
+        if (identical(key, "allsorts")) {
+            if (is.null(assets$model) || !file.exists(assets$model)) missing <- c(missing, "model")
+            if (is.null(assets$model_dir) || !dir.exists(assets$model_dir)) missing <- c(missing, "model_dir")
+            if (!file.exists("allsorts_predict.py")) missing <- c(missing, "allsorts_predict.py")
+        }
+        if (identical(key, "tallsorts")) {
+            if (is.null(assets$model) || !file.exists(assets$model)) missing <- c(missing, "model")
+            if (!file.exists("tallsorts_predict.py")) missing <- c(missing, "tallsorts_predict.py")
+        }
+        runtime_ready <- !is.null(find_molecular_tools_python())
+        if (!runtime_ready) missing <- c(missing, "molecular_tools_python")
+        return(list(
+            available = length(missing) == 0,
+            runtime_ready = runtime_ready,
+            missing = unique(missing)
+        ))
+    }
+
+    if (identical(key, "amlmapr")) {
+        assets <- resolve_molecular_tool_assets("amlmapr")
+        if (is.null(assets$functions_r) || !file.exists(assets$functions_r)) missing <- c(missing, "functions_r")
+        if (is.null(assets$sysdata_rda) || !file.exists(assets$sysdata_rda)) missing <- c(missing, "sysdata_rda")
+        if (is.null(assets$example_matrix_rda) || !file.exists(assets$example_matrix_rda)) missing <- c(missing, "example_matrix_rda")
+        if (!requireNamespace("caret", quietly = TRUE)) missing <- c(missing, "R:caret")
+        if (!requireNamespace("kernlab", quietly = TRUE)) missing <- c(missing, "R:kernlab")
+        return(list(
+            available = length(missing) == 0,
+            runtime_ready = length(missing) == 0,
+            missing = unique(missing)
+        ))
+    }
+
+    if (identical(key, "allcatchr")) {
+        if (!requireNamespace("ALLCatchRbcrabl1", quietly = TRUE)) missing <- c(missing, "R:ALLCatchRbcrabl1")
+        deps <- c("caret", "singscore", "LiblineaR", "kknn", "randomForest", "ranger", "glmnet")
+        for (pkg in deps) {
+            if (!requireNamespace(pkg, quietly = TRUE)) missing <- c(missing, paste0("R:", pkg))
+        }
+        return(list(
+            available = length(missing) == 0,
+            runtime_ready = length(missing) == 0,
+            missing = unique(missing)
+        ))
+    }
+
+    list(
+        available = FALSE,
+        runtime_ready = FALSE,
+        missing = c("unsupported_runtime_status")
+    )
+}
+
+molecular_tools_catalog <- function(disease = "aml") {
+    disease_key <- normalize_disease_id(disease)
+    registry <- get_molecular_tool_registry()
+    lapply(names(registry), function(tool_id) {
+        tool <- registry[[tool_id]]
+        runtime <- molecular_tool_runtime_status(tool_id)
+        supported_diseases <- normalized_supported_diseases(tool$supported_diseases)
+
+        list(
+            id = tool$id %||% tool_id,
+            label = tool$label %||% tool_id,
+            short_label = tool$short_label %||% tool$label %||% tool_id,
+            family = tool$family %||% "molecular_diagnostic",
+            integrated = isTRUE(tool$integrated %||% TRUE),
+            endpoint = tool$endpoint %||% NA_character_,
+            disease_scope = normalize_disease_id(tool$disease_scope %||% disease_key),
+            supported_diseases = supported_diseases,
+            applicable_for_request = disease_key %in% supported_diseases,
+            input_modality = tool$input_modality %||% NA_character_,
+            gene_identifier = tool$gene_identifier %||% NA_character_,
+            output_kind = tool$output_kind %||% NA_character_,
+            confidence_semantics = tool$confidence_semantics %||% NA_character_,
+            repo_url = tool$repo_url %||% NULL,
+            docs_url = tool$docs_url %||% NULL,
+            notes = tool$notes %||% NULL,
+            availability = runtime
+        )
+    })
+}
+
+dispatch_molecular_prediction <- function(req) {
+    tool_id <- tolower(trimws(as.character(req$args$tool %||% "")[1]))
+    if (!nzchar(tool_id)) {
+        return(list(error = "tool parameter is required"))
+    }
+
+    handlers <- list(
+        bridge = bridge_predict,
+        amlmapr = amlmapr_predict,
+        allcatchr = allcatchr_predict,
+        allsorts = allsorts_predict,
+        tallsorts = tallsorts_predict
+    )
+    handler <- handlers[[tool_id]]
+    if (is.null(handler) || !is.function(handler)) {
+        return(list(
+            error = sprintf("Unsupported molecular tool: %s", tool_id),
+            supported_tools = names(handlers)
+        ))
+    }
+
+    out <- handler(req)
+    if (is.list(out)) {
+        out$tool <- tool_id
+    }
+    out
+}
+
+#* @get /bridge-predict
+#* @serializer json
+bridge_predict <- local({
+    function(req) {
+        cache_dir <- req$args$cachedir
+        sample_id <- req$args$sample
+        requested_sample_id <- sample_id
+        disease_id <- get_request_disease(req)
+
+        if (is.null(sample_id) || !nzchar(sample_id)) {
+            return(list(error = "sample parameter is required"))
+        }
+
+        sample_data_path <- file.path(cache_dir, "sample_data.fst")
+        if (!file.exists(sample_data_path)) {
+            return(list(error = "No uploaded sample data found. Please upload data first."))
+        }
+
+        bridge_assets <- resolve_bridge_assets(disease_id)
+        bundle_path <- first_existing_path(bridge_assets$bundle_candidates)
+        meta_path <- first_existing_path(bridge_assets$meta_candidates)
+        ckpt_path <- first_existing_path(bridge_assets$ckpt_candidates)
+        lr_path <- first_existing_path(bridge_assets$lr_candidates)
+        script_path <- "bridge_predict.py"
+
+        artifact_source <- "standalone"
+        use_bundle_path <- NULL
+        if (!is.null(bundle_path) && file.exists(bundle_path)) {
+            use_bundle_path <- bundle_path
+            artifact_source <- "bundle"
+        }
+
+        if (!is.null(use_bundle_path)) {
+            required_paths <- c(use_bundle_path, script_path)
+        } else {
+            unresolved_artifacts <- c(
+                meta = is.null(meta_path),
+                ckpt = is.null(ckpt_path),
+                classifier = is.null(lr_path)
+            )
+            if (any(unresolved_artifacts)) {
+                return(list(
+                    error = paste(
+                        "Missing Bridge files in registry:",
+                        paste(names(unresolved_artifacts)[unresolved_artifacts], collapse = ", ")
+                    ),
+                    disease = disease_id
+                ))
+            }
+            required_paths <- c(meta_path, ckpt_path, lr_path, script_path)
+        }
+        missing_paths <- required_paths[!file.exists(required_paths)]
+        if (length(missing_paths) > 0) {
+            return(list(error = paste("Missing Bridge files:", paste(missing_paths, collapse = ", "))))
+        }
+
+        bridge_python <- find_bridge_python()
+        if (is.null(bridge_python)) {
+            return(list(error = "Bridge python environment not found. Set BRIDGE_PYTHON to a Python executable with the official Bridge package and dependencies installed."))
+        }
+
+        sample_data <- read_fst(sample_data_path)
+        available_sample_cols <- colnames(sample_data)[-1]
+        if (!(sample_id %in% colnames(sample_data))) {
+            suffix_candidates <- c(
+                paste0(sample_id, "_unstranded"),
+                paste0(sample_id, "_fwd"),
+                paste0(sample_id, "_rev")
+            )
+            matched_candidate <- suffix_candidates[suffix_candidates %in% available_sample_cols]
+            if (length(matched_candidate) > 0) {
+                sample_id <- matched_candidate[1]
+            }
+        }
+
+        if (!(sample_id %in% colnames(sample_data))) {
+            return(list(
+                error = "Requested sample not found in uploaded data",
+                available_samples = available_sample_cols
+            ))
+        }
+
+        gene_col <- colnames(sample_data)[1]
+        gene_ids <- as.character(sample_data[[gene_col]])
+        stripped_gene_ids <- sub("\\.[0-9]+$", "", gene_ids)
+
+        ensg_fraction <- mean(grepl("^ENSG", stripped_gene_ids), na.rm = TRUE)
+        if (is.na(ensg_fraction)) ensg_fraction <- 0
+
+        converted_gene_ids <- stripped_gene_ids
+        gene_id_note <- "Input gene IDs appear to be Ensembl IDs."
+
+        if (ensg_fraction < 0.5) {
+            if (requireNamespace("seAMLess", quietly = TRUE)) {
+                mapping_df <- seAMLess::grch38
+                mapped_ensg <- mapping_df$ensgene[match(stripped_gene_ids, mapping_df$symbol)]
+                n_mapped <- sum(!is.na(mapped_ensg))
+                if (n_mapped > 0) {
+                    converted_gene_ids[!is.na(mapped_ensg)] <- mapped_ensg[!is.na(mapped_ensg)]
+                    gene_id_note <- paste0(
+                        "Converted gene symbols to Ensembl IDs for ",
+                        n_mapped,
+                        " rows before Bridge inference."
+                    )
+                } else {
+                    gene_id_note <- "Input genes are not Ensembl IDs and symbol->Ensembl mapping failed."
+                }
+            } else {
+                gene_id_note <- "Input genes are not Ensembl IDs and seAMLess mapping is unavailable."
+            }
+        }
+
+        sample_frame <- data.frame(
+            gene_id = converted_gene_ids,
+            stringsAsFactors = FALSE
+        )
+        sample_frame[[sample_id]] <- sample_data[[sample_id]]
+
+        input_csv <- tempfile(fileext = ".csv")
+        on.exit(unlink(input_csv), add = TRUE)
+        fwrite(sample_frame, input_csv)
+
+        if (!is.null(use_bundle_path)) {
+            cmd_args <- c(
+                script_path,
+                "--input-csv", input_csv,
+                "--bundle", use_bundle_path,
+                "--sample-name", sample_id
+            )
+        } else {
+            cmd_args <- c(
+                script_path,
+                "--input-csv", input_csv,
+                "--meta", meta_path,
+                "--ckpt", ckpt_path,
+                "--lr", lr_path,
+                "--sample-name", sample_id
+            )
+        }
+
+        output <- tryCatch(
+            {
+                system2(bridge_python, cmd_args, stdout = TRUE, stderr = TRUE)
+            },
+            error = function(e) {
+                return(structure(character(), status = 1L, error_message = e$message))
+            }
+        )
+
+        status_code <- attr(output, "status")
+        if (!is.null(status_code) && status_code != 0) {
+            return(list(
+                error = "Bridge prediction failed",
+                status = status_code,
+                details = paste(output, collapse = "\n")
+            ))
+        }
+
+        if (length(output) == 0) {
+            return(list(error = "Bridge prediction returned no output"))
+        }
+
+        json_line <- tail(output, 1)
+        parsed <- tryCatch(
+            {
+                jsonlite::fromJSON(
+                    json_line,
+                    simplifyVector = TRUE,
+                    simplifyDataFrame = FALSE
+                )
+            },
+            error = function(e) {
+                list(
+                    error = "Failed to parse Bridge prediction output",
+                    details = e$message,
+                    raw = paste(output, collapse = "\n")
+                )
+            }
+        )
+
+        if (is.list(parsed) && is.null(parsed$error)) {
+            parsed$gene_id_note <- gene_id_note
+            parsed$requested_sample <- requested_sample_id
+            parsed$resolved_sample_column <- sample_id
+            parsed$artifact_source <- artifact_source
+            parsed$disease <- disease_id
+            if (!is.null(use_bundle_path)) {
+                parsed$artifact_bundle_path <- use_bundle_path
+            }
+            if (grepl("_(fwd|rev)$", sample_id)) {
+                parsed$warning <- paste(
+                    c(parsed$warning, "Using stranded count column. Prefer *_unstranded for Bridge unless your pipeline requires stranded counts."),
+                    collapse = " "
+                )
+            }
+        }
+
+        return(parsed)
+    }
+})
+
+#* @get /amlmapr-predict
+#* @serializer json
+amlmapr_predict <- local({
+    function(req) {
+        cache_dir <- req$args$cachedir
+        requested_sample_id <- req$args$sample
+        disease_id <- get_request_disease(req)
+
+        if (is.null(requested_sample_id) || !nzchar(requested_sample_id)) {
+            return(list(error = "sample parameter is required"))
+        }
+
+        sample_data_path <- file.path(cache_dir, "sample_data.fst")
+        if (!file.exists(sample_data_path)) {
+            return(list(error = "No uploaded sample data found. Please upload data first."))
+        }
+
+        assets <- resolve_molecular_tool_assets("amlmapr")
+        required_assets <- c(
+            functions_r = assets$functions_r,
+            sysdata_rda = assets$sysdata_rda,
+            example_matrix_rda = assets$example_matrix_rda
+        )
+        missing_assets <- names(required_assets)[vapply(required_assets, function(x) is.null(x) || !file.exists(x), logical(1))]
+        if (length(missing_assets) > 0) {
+            return(list(error = paste("Missing AMLmapR files in registry:", paste(missing_assets, collapse = ", "))))
+        }
+
+        if (!requireNamespace("caret", quietly = TRUE) || !requireNamespace("kernlab", quietly = TRUE)) {
+            return(list(
+                error = "AMLmapR dependencies are missing in the R backend environment.",
+                required_packages = c("caret", "kernlab")
+            ))
+        }
+
+        sample_data <- read_fst(sample_data_path)
+        sample_resolution <- resolve_uploaded_sample_column(sample_data, requested_sample_id)
+        sample_id <- sample_resolution$resolved_sample_column
+        if (!(sample_id %in% colnames(sample_data))) {
+            return(list(
+                error = "Requested sample not found in uploaded data",
+                available_samples = sample_resolution$available_samples
+            ))
+        }
+
+        counts_dt <- extract_uploaded_sample_counts(sample_data, sample_id)
+        counts_dt[, count := as.integer(round(count))]
+        counts_dt[is.na(count), count := 0L]
+        counts_dt <- counts_dt[, .(count = sum(count, na.rm = TRUE)), by = gene_id]
+
+        amlmapr_result <- tryCatch(
+            {
+                suppressPackageStartupMessages(library(caret))
+                suppressPackageStartupMessages(library(kernlab))
+
+                aml_env <- new.env(parent = .GlobalEnv)
+                source(required_assets[["functions_r"]], local = aml_env)
+                load(required_assets[["sysdata_rda"]], envir = aml_env)
+                example_env <- new.env(parent = emptyenv())
+                load(required_assets[["example_matrix_rda"]], envir = example_env)
+                example_matrix <- get("example_matrix", envir = example_env)
+
+                # AMLmapR assumes matrix subsetting keeps dimensions; patch for single-sample inputs.
+                aml_env$scale_data <- function(matrix, d) {
+                    predict(d$scaler, matrix[, d$genes, drop = FALSE])
+                }
+                aml_env$deseq_normalise <- function(matrix, d) {
+                    pseudo_reference <- d[["keep"]][[2]]
+                    keep <- d$keep[[1]]
+                    ratio_to_ref <- apply(matrix[, keep, drop = FALSE], 1, function(x) x / pseudo_reference)
+                    if (is.null(dim(ratio_to_ref))) {
+                        ratio_to_ref <- matrix(ratio_to_ref, ncol = 1)
+                    }
+                    sizeFactor <- apply(ratio_to_ref, 2, function(x) stats::median(x))
+                    matrix <- matrix / sizeFactor
+                    matrix <- log(matrix + 1)
+                    matrix
+                }
+
+                ref_genes <- colnames(example_matrix)
+                ref_gene_keys <- sub("\\.[0-9]+$", "", ref_genes)
+                count_lookup <- setNames(counts_dt$count, counts_dt$gene_id)
+                padded_counts <- as.integer(count_lookup[ref_gene_keys])
+                padded_counts[is.na(padded_counts)] <- 0L
+
+                aml_matrix <- matrix(padded_counts, nrow = 1)
+                colnames(aml_matrix) <- ref_genes
+                rownames(aml_matrix) <- sample_id
+
+                pred <- aml_env$predict_AML_clusters(aml_matrix)
+                pred_row <- pred[1, , drop = FALSE]
+                score_cols <- setdiff(colnames(pred_row), c("prediction", "pass_cutoff", "sample_id"))
+                score_values <- as.numeric(pred_row[1, score_cols, drop = TRUE])
+                names(score_values) <- score_cols
+                score_values <- sort(score_values, decreasing = TRUE)
+
+                list(
+                    sample_id = sample_id,
+                    model = "AMLmapR",
+                    prediction = as.character(pred_row$prediction[[1]]),
+                    pass_cutoff = isTRUE(pred_row$pass_cutoff[[1]]),
+                    top_scores = lapply(
+                        head(names(score_values), 10),
+                        function(lbl) list(label = lbl, score = unname(score_values[[lbl]]))
+                    ),
+                    score_count = length(score_cols),
+                    input_gene_count = nrow(counts_dt),
+                    expected_gene_count = length(ref_genes),
+                    matched_nonzero_reference_genes = sum(padded_counts > 0, na.rm = TRUE),
+                    gene_id_note = "Matched uploaded Ensembl IDs to AMLmapR reference gene order by stripping version suffixes.",
+                    implementation = "amlmapr_r_package_source"
+                )
+            },
+            error = function(e) {
+                list(
+                    error = "AMLmapR prediction failed",
+                    details = e$message
+                )
+            }
+        )
+
+        amlmapr_result$requested_sample <- requested_sample_id
+        amlmapr_result$resolved_sample_column <- sample_id
+        amlmapr_result$disease <- disease_id
+        if (!is.null(sample_resolution$warning)) {
+            amlmapr_result$warning <- paste(
+                c(amlmapr_result$warning, sample_resolution$warning),
+                collapse = " "
+            )
+        }
+        if (!disease_id %in% c("aml", "pan_leukemia")) {
+            amlmapr_result$warning <- paste(
+                c(amlmapr_result$warning, "AMLmapR is an AML-specific classifier; interpret non-AML results cautiously."),
+                collapse = " "
+            )
+        }
+
+        return(amlmapr_result)
+    }
+})
+
+#* @get /allcatchr-predict
+#* @serializer json
+allcatchr_predict <- local({
+    function(req) {
+        cache_dir <- req$args$cachedir
+        requested_sample_id <- req$args$sample
+        disease_id <- get_request_disease(req)
+
+        if (is.null(requested_sample_id) || !nzchar(requested_sample_id)) {
+            return(list(error = "sample parameter is required"))
+        }
+
+        sample_data_path <- file.path(cache_dir, "sample_data.fst")
+        if (!file.exists(sample_data_path)) {
+            return(list(error = "No uploaded sample data found. Please upload data first."))
+        }
+
+        required_pkgs <- c("ALLCatchRbcrabl1", "singscore", "caret", "LiblineaR", "kknn", "randomForest", "ranger", "glmnet")
+        missing_pkgs <- required_pkgs[!vapply(
+            required_pkgs,
+            function(pkg) requireNamespace(pkg, quietly = TRUE),
+            logical(1)
+        )]
+        if (length(missing_pkgs) > 0) {
+            return(list(
+                error = "ALLCatchR_bcrabl1 dependencies are missing in the R backend environment.",
+                required_packages = required_pkgs,
+                missing_packages = missing_pkgs
+            ))
+        }
+
+        sample_data <- read_fst(sample_data_path)
+        sample_resolution <- resolve_uploaded_sample_column(sample_data, requested_sample_id)
+        sample_id <- sample_resolution$resolved_sample_column
+        if (!(sample_id %in% colnames(sample_data))) {
+            return(list(
+                error = "Requested sample not found in uploaded data",
+                available_samples = sample_resolution$available_samples
+            ))
+        }
+
+        counts_dt <- extract_uploaded_sample_counts(sample_data, sample_id)
+        counts_dt[, count := as.integer(round(count))]
+        counts_dt[is.na(count), count := 0L]
+        counts_dt <- counts_dt[, .(count = sum(count, na.rm = TRUE)), by = gene_id]
+        counts_dt <- counts_dt[!is.na(gene_id) & trimws(gene_id) != ""]
+
+        input_csv <- tempfile(fileext = ".csv")
+        output_csv <- tempfile(fileext = ".csv")
+        on.exit(unlink(c(input_csv, output_csv)), add = TRUE)
+
+        allcatchr_input <- data.frame(gene_id = counts_dt$gene_id, stringsAsFactors = FALSE, check.names = FALSE)
+        allcatchr_input[[sample_id]] <- counts_dt$count
+        fwrite(allcatchr_input, input_csv)
+
+        stdout_log <- character(0)
+        allcatchr_result <- tryCatch(
+            {
+                pred_df <- NULL
+                stdout_log <- capture.output({
+                    suppressPackageStartupMessages(library(ALLCatchRbcrabl1))
+                    pred_df <- allcatch_bcrabl1(
+                        Counts.file = input_csv,
+                        ID_class = "ensemble_ID",
+                        sep = ",",
+                        out.file = output_csv
+                    )
+                })
+
+                if (is.null(pred_df) && file.exists(output_csv)) {
+                    pred_df <- fread(output_csv, data.table = FALSE)
+                }
+                if (is.null(pred_df) || nrow(pred_df) == 0) {
+                    stop("ALLCatchR_bcrabl1 returned no predictions")
+                }
+
+                if ("sample" %in% colnames(pred_df)) {
+                    pred_row <- pred_df[pred_df$sample == sample_id, , drop = FALSE]
+                    if (nrow(pred_row) == 0 && requested_sample_id != sample_id) {
+                        pred_row <- pred_df[pred_df$sample == requested_sample_id, , drop = FALSE]
+                    }
+                    if (nrow(pred_row) == 0) pred_row <- pred_df[1, , drop = FALSE]
+                } else {
+                    pred_row <- pred_df[1, , drop = FALSE]
+                }
+
+                row_list <- as.list(pred_row[1, , drop = FALSE])
+                score_num <- suppressWarnings(as.numeric(row_list[["Score"]]))
+                blast_counts_num <- suppressWarnings(as.numeric(row_list[["BlastCounts"]]))
+
+                list(
+                    sample_id = as.character(row_list[["sample"]] %||% sample_id),
+                    model = "ALLCatchRbcrabl1",
+                    prediction = as.character(row_list[["Prediction"]] %||% NA_character_),
+                    confidence = if (is.finite(score_num)) score_num else NULL,
+                    confidence_label = as.character(row_list[["Confidence"]] %||% NA_character_),
+                    bcr_abl1_maincluster_pred = as.character(row_list[["BCR_ABL1_maincluster_pred"]] %||% NA_character_),
+                    bcr_abl1_maincluster_score = as.character(row_list[["BCR_ABL1_maincluster_score"]] %||% NA_character_),
+                    bcr_abl1_subcluster_pred = as.character(row_list[["BCR_ABL1_subcluster_pred"]] %||% NA_character_),
+                    bcr_abl1_subcluster_score = as.character(row_list[["BCR_ABL1_subcluster_score"]] %||% NA_character_),
+                    bcr_abl1_hyperdiploidy_pred = as.character(row_list[["BCR_ABL1_hyperdiploidy_pred"]] %||% NA_character_),
+                    bcr_abl1_hyperdiploidy_score = as.character(row_list[["BCR_ABL1_hyperdiploidy_score"]] %||% NA_character_),
+                    immuno = as.character(row_list[["Immuno"]] %||% NA_character_),
+                    immuno_score = suppressWarnings(as.numeric(row_list[["ScoreImmuno"]])),
+                    sex_prediction = as.character(row_list[["Sex"]] %||% NA_character_),
+                    sex_score = suppressWarnings(as.numeric(row_list[["Score_sex"]])),
+                    blast_counts = if (is.finite(blast_counts_num)) blast_counts_num else NULL,
+                    input_gene_count = nrow(counts_dt),
+                    implementation = "allcatchr_bcrabl1_r_package",
+                    gene_id_note = "ALLCatchR_bcrabl1 run with ID_class=ensemble_ID using uploaded raw counts with Ensembl version suffixes removed.",
+                    stdout_log = stdout_log
+                )
+            },
+            error = function(e) {
+                list(
+                    error = "ALLCatchR prediction failed",
+                    details = e$message,
+                    stdout_log = stdout_log
+                )
+            }
+        )
+
+        allcatchr_result$requested_sample <- requested_sample_id
+        allcatchr_result$resolved_sample_column <- sample_id
+        allcatchr_result$disease <- disease_id
+        if (!is.null(sample_resolution$warning)) {
+            allcatchr_result$warning <- paste(c(allcatchr_result$warning, sample_resolution$warning), collapse = " ")
+        }
+        if (!disease_id %in% c("ball", "pan_leukemia")) {
+            allcatchr_result$warning <- paste(
+                c(allcatchr_result$warning, "ALLCatchR_bcrabl1 is a B-ALL classifier; interpret non-B-ALL context results cautiously."),
+                collapse = " "
+            )
+        }
+        allcatchr_result$stdout_log <- NULL
+
+        return(allcatchr_result)
+    }
+})
+
+#* @get /allsorts-predict
+#* @serializer json
+allsorts_predict <- local({
+    function(req) {
+        cache_dir <- req$args$cachedir
+        requested_sample_id <- req$args$sample
+        disease_id <- get_request_disease(req)
+
+        if (is.null(requested_sample_id) || !nzchar(requested_sample_id)) {
+            return(list(error = "sample parameter is required"))
+        }
+
+        sample_data_path <- file.path(cache_dir, "sample_data.fst")
+        if (!file.exists(sample_data_path)) {
+            return(list(error = "No uploaded sample data found. Please upload data first."))
+        }
+
+        python_bin <- find_molecular_tools_python()
+        if (is.null(python_bin)) {
+            return(list(error = "Molecular tools python environment not found. Set MOLECULAR_TOOLS_PYTHON to a Python executable with ALLSorts/TALLSorts installed."))
+        }
+
+        assets <- resolve_molecular_tool_assets("allsorts")
+        required_assets <- c(
+            model = assets$model,
+            model_dir = assets$model_dir
+        )
+        missing_assets <- names(required_assets)[vapply(required_assets, function(x) is.null(x) || !file.exists(x), logical(1))]
+        if (length(missing_assets) > 0) {
+            return(list(error = paste("Missing ALLSorts files in registry:", paste(missing_assets, collapse = ", "))))
+        }
+
+        sample_data <- read_fst(sample_data_path)
+        sample_resolution <- resolve_uploaded_sample_column(sample_data, requested_sample_id)
+        sample_id <- sample_resolution$resolved_sample_column
+        if (!(sample_id %in% colnames(sample_data))) {
+            return(list(
+                error = "Requested sample not found in uploaded data",
+                available_samples = sample_resolution$available_samples
+            ))
+        }
+
+        counts_dt <- extract_uploaded_sample_counts(sample_data, sample_id)
+        symbol_conversion <- tryCatch(
+            convert_counts_to_gene_symbols(counts_dt),
+            error = function(e) list(error = e$message)
+        )
+        if (!is.null(symbol_conversion$error)) {
+            return(list(error = "Failed to convert Ensembl IDs to gene symbols for ALLSorts", details = symbol_conversion$error))
+        }
+
+        input_csv <- tempfile(fileext = ".csv")
+        on.exit(unlink(input_csv), add = TRUE)
+        write_feature_row_csv(symbol_conversion$counts, sample_id, input_csv, feature_col = "gene_symbol")
+
+        parsed <- run_json_python_script(
+            python_bin,
+            "allsorts_predict.py",
+            c(
+                "--input-csv", input_csv,
+                "--sample-name", sample_id,
+                "--model", assets$model,
+                "--model-dir", assets$model_dir,
+                "--parents"
+            ),
+            tool_label = "ALLSorts prediction"
+        )
+
+        if (is.list(parsed) && is.null(parsed$error)) {
+            parsed$gene_id_note <- symbol_conversion$note
+            parsed$requested_sample <- requested_sample_id
+            parsed$resolved_sample_column <- sample_id
+            parsed$disease <- disease_id
+            if (!is.null(sample_resolution$warning)) {
+                parsed$warning <- paste(c(parsed$warning, sample_resolution$warning), collapse = " ")
+            }
+            if (!disease_id %in% c("ball", "pan_leukemia")) {
+                parsed$warning <- paste(
+                    c(parsed$warning, "ALLSorts is a B-ALL classifier; interpret non-B-ALL context results cautiously."),
+                    collapse = " "
+                )
+            }
+            parsed$stdout_log <- NULL
+        }
+
+        return(parsed)
+    }
+})
+
+#* @get /tallsorts-predict
+#* @serializer json
+tallsorts_predict <- local({
+    function(req) {
+        cache_dir <- req$args$cachedir
+        requested_sample_id <- req$args$sample
+        disease_id <- get_request_disease(req)
+
+        if (is.null(requested_sample_id) || !nzchar(requested_sample_id)) {
+            return(list(error = "sample parameter is required"))
+        }
+
+        sample_data_path <- file.path(cache_dir, "sample_data.fst")
+        if (!file.exists(sample_data_path)) {
+            return(list(error = "No uploaded sample data found. Please upload data first."))
+        }
+
+        python_bin <- find_molecular_tools_python()
+        if (is.null(python_bin)) {
+            return(list(error = "Molecular tools python environment not found. Set MOLECULAR_TOOLS_PYTHON to a Python executable with ALLSorts/TALLSorts installed."))
+        }
+
+        assets <- resolve_molecular_tool_assets("tallsorts")
+        missing_assets <- names(assets)[vapply(assets, function(x) is.null(x), logical(1))]
+        if (is.null(assets$model) || !file.exists(assets$model)) {
+            return(list(error = "Missing TALLSorts model file in registry"))
+        }
+
+        sample_data <- read_fst(sample_data_path)
+        sample_resolution <- resolve_uploaded_sample_column(sample_data, requested_sample_id)
+        sample_id <- sample_resolution$resolved_sample_column
+        if (!(sample_id %in% colnames(sample_data))) {
+            return(list(
+                error = "Requested sample not found in uploaded data",
+                available_samples = sample_resolution$available_samples
+            ))
+        }
+
+        counts_dt <- extract_uploaded_sample_counts(sample_data, sample_id)
+        input_csv <- tempfile(fileext = ".csv")
+        on.exit(unlink(input_csv), add = TRUE)
+        write_feature_row_csv(counts_dt[, .(gene_id, count)], sample_id, input_csv, feature_col = "gene_id")
+
+        parsed <- run_json_python_script(
+            python_bin,
+            "tallsorts_predict.py",
+            c(
+                "--input-csv", input_csv,
+                "--sample-name", sample_id,
+                "--model", assets$model
+            ),
+            tool_label = "TALLSorts prediction"
+        )
+
+        if (is.list(parsed) && is.null(parsed$error)) {
+            parsed$requested_sample <- requested_sample_id
+            parsed$resolved_sample_column <- sample_id
+            parsed$disease <- disease_id
+            parsed$gene_id_note <- "TALLSorts uses Ensembl gene IDs; uploaded IDs were stripped of version suffixes before inference."
+            if (!is.null(sample_resolution$warning)) {
+                parsed$warning <- paste(c(parsed$warning, sample_resolution$warning), collapse = " ")
+            }
+            if (!disease_id %in% c("tall", "pan_leukemia")) {
+                parsed$warning <- paste(
+                    c(parsed$warning, "TALLSorts is a T-ALL classifier; interpret non-T-ALL context results cautiously."),
+                    collapse = " "
+                )
+            }
+            parsed$stdout_log <- NULL
+        }
+
+        return(parsed)
+    }
+})
+
+#* @get /molecular-tools
+#* @serializer json
+function(req) {
+    disease_id <- get_request_disease(req)
+    disease_selection <- get_request_disease_selection(req)
+
+    return(list(
+        request_disease = disease_id,
+        request_diseases = disease_selection,
+        tools = molecular_tools_catalog(disease_id)
+    ))
+}
+
+#* @get /molecular-predict
+#* @serializer json
+function(req) {
+    dispatch_molecular_prediction(req)
+}
 
 #* @get /ai-report
 #* @serializer json

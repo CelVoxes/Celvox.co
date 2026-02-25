@@ -32,6 +32,42 @@ interface TSNEDataItem {
 	[key: string]: unknown;
 }
 
+const PREFERRED_TSNE_ATTRIBUTES = [
+	"disease",
+	"lineage",
+	"subtype_label",
+	"clusters",
+	"study",
+	"study_source",
+	"study_collection",
+	"sex",
+	"tissue",
+	"prim_rec",
+	"event",
+	"FAB",
+	"WHO_2022",
+	"ICC_2022",
+	"KMT2A_diagnosis",
+	"rare_diagnosis",
+	"blasts",
+	"age",
+] as const;
+
+function getAvailableTsneAttributes(rows: TSNEDataItem[]): string[] {
+	if (rows.length === 0) return [...PREFERRED_TSNE_ATTRIBUTES];
+	const reserved = new Set(["X1", "X2", "sample_id"]);
+	const keys = new Set<string>();
+	for (const row of rows) {
+		Object.keys(row).forEach((k) => {
+			if (!reserved.has(k)) keys.add(k);
+		});
+	}
+	const preferred = PREFERRED_TSNE_ATTRIBUTES.filter((k) => keys.has(k));
+	const rest = [...keys].filter((k) => !PREFERRED_TSNE_ATTRIBUTES.includes(k as never));
+	rest.sort();
+	return [...preferred, ...rest];
+}
+
 export function TSNEChart() {
 	const [tsneData, setTsneData] = useState([]);
 	const [isLoading, setIsLoading] = useState(false);
@@ -41,6 +77,9 @@ export function TSNEChart() {
 	const chartInstance = useRef<Chart | null>(null);
 	const [pointRadius, setPointRadius] = useState(4);
 	const [showSettings, setShowSettings] = useState(false);
+	const [legendItems, setLegendItems] = useState<{ label: string; color: string; count: number }[]>([]);
+
+	const availableAttributes = getAvailableTsneAttributes(tsneData as TSNEDataItem[]);
 
 	const handleRunTSNE = async () => {
 		setIsLoading(true);
@@ -57,12 +96,19 @@ export function TSNEChart() {
 	};
 
 	useEffect(() => {
+		if (availableAttributes.length === 0) return;
+		if (!availableAttributes.includes(selectedAttribute)) {
+			setSelectedAttribute(availableAttributes[0]);
+		}
+	}, [availableAttributes, selectedAttribute]);
+
+	useEffect(() => {
 		if (tsneData.length > 0 && chartRef.current) {
 			const ctx = chartRef.current.getContext("2d");
 
 			const isNumeric =
 				selectedAttribute === "blasts" || selectedAttribute === "age";
-			let colorMap: Record<string, string>;
+			let colorMap: Record<string, string> = {};
 			let datasets: ChartDataset<"scatter", unknown[]>[];
 
 			if (isNumeric) {
@@ -102,6 +148,19 @@ export function TSNEChart() {
 					...new Set(tsneData.map((item) => item[selectedAttribute])),
 				];
 				colorMap = generateColorMap(uniqueValues);
+				setLegendItems(
+					uniqueValues.map((value) => ({
+						label:
+							value === null || value === undefined || value === ""
+								? "Unknown"
+								: String(value),
+						color:
+							colorMap[value as keyof typeof colorMap] ?? "rgba(0,0,0,0.2)",
+						count: tsneData.filter(
+							(item) => item[selectedAttribute] === value
+						).length,
+					}))
+				);
 
 				datasets = uniqueValues.flatMap((value) => {
 					const normalData = tsneData.filter(
@@ -147,6 +206,9 @@ export function TSNEChart() {
 				// Filter out empty datasets
 				datasets = datasets.filter((dataset) => dataset.data.length > 0);
 			}
+			if (isNumeric) {
+				setLegendItems([]);
+			}
 
 			if (chartInstance.current) {
 				chartInstance.current.destroy();
@@ -162,12 +224,13 @@ export function TSNEChart() {
 						maintainAspectRatio: false,
 						plugins: {
 							legend: {
+								display: isNumeric,
 								position: "right",
 								align: "start",
 								labels: {
 									boxWidth: 10,
 									padding: 10,
-									generateLabels: (chart: Chart) => {
+										generateLabels: (_chart: Chart) => {
 										if (isNumeric) {
 											// Create a color scale legend for numeric attributes
 											const values = tsneData
@@ -195,10 +258,7 @@ export function TSNEChart() {
 												},
 											];
 										} else {
-											// Use default legend for categorical attributes
-											return Chart.defaults.plugins.legend.labels.generateLabels(
-												chart
-											);
+											return [];
 										}
 									},
 								},
@@ -311,20 +371,7 @@ export function TSNEChart() {
 								<SelectValue placeholder="Select attribute" />
 							</SelectTrigger>
 							<SelectContent>
-								{[
-									"sex",
-									"tissue",
-									"prim_rec",
-									"FAB",
-									"WHO_2022",
-									"ICC_2022",
-									"KMT2A_diagnosis",
-									"rare_diagnosis",
-									"clusters",
-									"study",
-									"blasts",
-									"age",
-								].map((attr) => (
+								{availableAttributes.map((attr) => (
 									<SelectItem key={attr} value={attr}>
 										{attr}
 									</SelectItem>
@@ -370,6 +417,37 @@ export function TSNEChart() {
 									className="w-full lg:w-[100px]"
 								/>
 								<span className="min-w-[20px] text-center">{pointRadius}</span>
+							</div>
+						</div>
+					)}
+
+					{legendItems.length > 0 && (
+						<div className="rounded-md border bg-background/60 p-3">
+							<div className="mb-2 flex items-center justify-between gap-2">
+								<div className="text-xs font-medium text-muted-foreground">
+									Labels ({legendItems.length})
+								</div>
+								<div className="text-[11px] text-muted-foreground">
+									Uploaded samples are outlined in black
+								</div>
+							</div>
+							<div className="max-h-32 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5 pr-1">
+								{legendItems.map((item) => (
+									<div
+										key={item.label}
+										className="flex items-center gap-2 rounded border border-border/50 px-2 py-1 text-xs"
+										title={item.label}
+									>
+										<span
+											className="h-2.5 w-2.5 rounded-full shrink-0"
+											style={{ backgroundColor: item.color }}
+										/>
+										<span className="truncate flex-1">{item.label}</span>
+										<span className="text-muted-foreground tabular-nums">
+											{item.count}
+										</span>
+									</div>
+								))}
 							</div>
 						</div>
 					)}

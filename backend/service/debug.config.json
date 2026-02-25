@@ -1,5 +1,5 @@
 {
   "firebase": {
-    "serviceAccountFile": "/root/firebase-admin-credentials-do-not-delete.json"
+    "serviceAccountFile": "firebase-credentials.json"
   }
 }

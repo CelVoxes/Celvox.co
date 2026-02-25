@@ -37,7 +37,7 @@ export const CollapsibleCardTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between py-4 text-sm font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180 [&[data-disabled=]>svg]:hidden  bg-white ",
+        "flex flex-1 items-center justify-between py-4 text-sm font-medium transition-colors hover:bg-muted/30 [&[data-state=open]>svg]:rotate-180 [&[data-disabled=]>svg]:hidden bg-transparent",
         className
       )}
       {...props}
@@ -65,4 +65,3 @@ export const CollapsibleCardContent = React.forwardRef<
   </AccordionPrimitive.Content>
 ))
 CollapsibleCardContent.displayName = "CollapsibleCardContent"
-

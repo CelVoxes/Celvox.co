@@ -34,6 +34,41 @@ interface TSNEDataItem {
 	X1: number;
 	X2: number;
 	data_source: string;
+	[key: string]: unknown;
+}
+
+const PREFERRED_KNN_ATTRIBUTES = [
+	"disease",
+	"lineage",
+	"subtype_label",
+	"clusters",
+	"study",
+	"study_source",
+	"study_collection",
+	"sex",
+	"tissue",
+	"prim_rec",
+	"event",
+	"FAB",
+	"WHO_2022",
+	"ICC_2022",
+	"KMT2A_diagnosis",
+	"rare_diagnosis",
+] as const;
+
+function getAvailableKnnAttributes(rows: TSNEDataItem[]): string[] {
+	if (rows.length === 0) return [...PREFERRED_KNN_ATTRIBUTES];
+	const reserved = new Set(["X1", "X2", "sample_id"]);
+	const keys = new Set<string>();
+	for (const row of rows) {
+		Object.keys(row).forEach((k) => {
+			if (!reserved.has(k)) keys.add(k);
+		});
+	}
+	const preferred = PREFERRED_KNN_ATTRIBUTES.filter((k) => keys.has(k));
+	const rest = [...keys].filter((k) => !PREFERRED_KNN_ATTRIBUTES.includes(k as never));
+	rest.sort();
+	return [...preferred, ...rest];
 }
 
 export function TSNEKNNChart() {
@@ -48,6 +83,14 @@ export function TSNEKNNChart() {
 	const [hoveredSample, setHoveredSample] = useState<string | null>(null);
 	const [selectedAttribute, setSelectedAttribute] = useState("sex");
 	const [showSettings, setShowSettings] = useState(false);
+	const availableAttributes = getAvailableKnnAttributes(tsneData);
+
+	useEffect(() => {
+		if (availableAttributes.length === 0) return;
+		if (!availableAttributes.includes(selectedAttribute)) {
+			setSelectedAttribute(availableAttributes[0]);
+		}
+	}, [availableAttributes, selectedAttribute]);
 
 	const handleRunTSNEKNN = async () => {
 		setIsLoading(true);
@@ -283,14 +326,15 @@ export function TSNEKNNChart() {
 				)
 				.filter(Boolean);
 
-			const valueCount = neighbors.reduce((acc, neighbor) => {
-				const value = neighbor
-					? neighbor[selectedAttribute as keyof typeof neighbor]
-					: null;
-				if (value !== null) {
-					acc[value] = (acc[value] || 0) + 1;
-				}
-				return acc;
+				const valueCount = neighbors.reduce((acc, neighbor) => {
+					const rawValue = neighbor
+						? neighbor[selectedAttribute as keyof typeof neighbor]
+						: null;
+					if (rawValue !== null && rawValue !== undefined) {
+						const value = String(rawValue);
+						acc[value] = (acc[value] || 0) + 1;
+					}
+					return acc;
 			}, {} as Record<string, number>);
 
 			const [predictedValue] = Object.entries(valueCount).reduce((a, b) =>
@@ -329,18 +373,7 @@ export function TSNEKNNChart() {
 								<SelectValue placeholder="Select attribute" />
 							</SelectTrigger>
 							<SelectContent>
-								{[
-									"sex",
-									"tissue",
-									"prim_rec",
-									"FAB",
-									"WHO_2022",
-									"ICC_2022",
-									"KMT2A_diagnosis",
-									"rare_diagnosis",
-									"clusters",
-									"study",
-								].map((attr) => (
+								{availableAttributes.map((attr) => (
 									<SelectItem key={attr} value={attr}>
 										{attr}
 									</SelectItem>

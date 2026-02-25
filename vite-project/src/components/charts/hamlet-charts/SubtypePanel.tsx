@@ -11,25 +11,120 @@ import {
 import { AlertCircle, CheckCircle, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+type PredictionRecord = Record<string, any>;
+
 interface SubtypePanelProps {
-	subtype: Record<string, any>;
+	subtype: PredictionRecord;
 	sampleName: string;
 }
 
-export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
-	// Handle different possible formats of subtype data
-	if (!subtype || Object.keys(subtype).length === 0) {
+interface PredictionViewProps {
+	prediction: PredictionRecord | null;
+	sampleName: string;
+	title: string;
+	emptyMessage: string;
+	referenceLabel: string;
+	referenceHref?: string;
+	methodologyNote: string;
+	clinicalNote: string;
+	extraExcludedKeys?: string[];
+}
+
+const COMMON_PREDICTION_FIELDS = [
+	"predicted_subtype",
+	"subtype",
+	"classification",
+	"predicted_class",
+	"final_prediction",
+	"best_subtype",
+	"prediction",
+	"predicted_label",
+	"class_label",
+];
+
+const isRecord = (value: unknown): value is PredictionRecord =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
+const hasDirectPredictionField = (value: unknown) => {
+	if (!isRecord(value)) return false;
+	return COMMON_PREDICTION_FIELDS.some(
+		(field) => typeof value[field] === "string" && value[field].length > 0
+	);
+};
+
+const findNestedPredictionByKey = (
+	root: PredictionRecord,
+	keyMatcher: (key: string) => boolean
+): PredictionRecord | null => {
+	for (const [key, value] of Object.entries(root)) {
+		if (keyMatcher(key) && isRecord(value)) {
+			return value;
+		}
+	}
+
+	const containerKeys = ["predictions", "models", "classifiers", "diagnostics"];
+	for (const containerKey of containerKeys) {
+		const container = root[containerKey];
+		if (!isRecord(container)) continue;
+		for (const [key, value] of Object.entries(container)) {
+			if (keyMatcher(key) && isRecord(value)) {
+				return value;
+			}
+		}
+	}
+
+	return null;
+};
+
+const getBridgePrediction = (subtype: PredictionRecord): PredictionRecord | null =>
+	findNestedPredictionByKey(subtype, (key) => key.toLowerCase().includes("bridge"));
+
+const getStandardPrediction = (
+	subtype: PredictionRecord,
+	bridgePrediction: PredictionRecord | null
+): PredictionRecord | null => {
+	if (hasDirectPredictionField(subtype)) return subtype;
+
+	for (const [key, value] of Object.entries(subtype)) {
+		if (!isRecord(value)) continue;
+		if (bridgePrediction && value === bridgePrediction) continue;
+		if (hasDirectPredictionField(value)) return value;
+		if (key.toLowerCase().includes("severens")) return value;
+	}
+
+	const nestedStandard = findNestedPredictionByKey(
+		subtype,
+		(key) => !key.toLowerCase().includes("bridge")
+	);
+	if (nestedStandard && hasDirectPredictionField(nestedStandard)) {
+		return nestedStandard;
+	}
+
+	// Fall back to the original object to preserve existing behavior.
+	return subtype;
+};
+
+function PredictionView({
+	prediction,
+	sampleName,
+	title,
+	emptyMessage,
+	referenceLabel,
+	referenceHref,
+	methodologyNote,
+	clinicalNote,
+	extraExcludedKeys = [],
+}: PredictionViewProps) {
+	if (!prediction || Object.keys(prediction).length === 0) {
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>AML Subtype Prediction</CardTitle>
+					<CardTitle>{title}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<Alert>
 						<Info className="h-4 w-4" />
-						<AlertDescription>
-							No subtype prediction data available for this sample.
-						</AlertDescription>
+						<AlertDescription>{emptyMessage}</AlertDescription>
 					</Alert>
 				</CardContent>
 			</Card>
@@ -37,27 +132,13 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 	}
 
 	const getPrimarySubtype = () => {
-		// Check common prediction field names
-		const possibleFields = [
-			"predicted_subtype",
-			"subtype",
-			"classification",
-			"predicted_class",
-			"final_prediction",
-			"best_subtype",
-			"prediction",
-			"predicted_label",
-			"class_label",
-		];
-
-		for (const field of possibleFields) {
-			if (subtype[field] && typeof subtype[field] === "string") {
-				return subtype[field] as string;
+		for (const field of COMMON_PREDICTION_FIELDS) {
+			if (prediction[field] && typeof prediction[field] === "string") {
+				return prediction[field] as string;
 			}
 		}
 
-		// If no direct string field found, look for any string value that might be a subtype
-		for (const [key, value] of Object.entries(subtype)) {
+		for (const [key, value] of Object.entries(prediction)) {
 			if (
 				typeof value === "string" &&
 				value.length > 0 &&
@@ -75,23 +156,20 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 		return "Unknown";
 	};
 
-	const getConfidence = () => {
-		return subtype.confidence || subtype.probability || subtype.score;
-	};
+	const getConfidence = () =>
+		prediction.confidence ?? prediction.probability ?? prediction.score;
 
 	const getFeatures = () => {
-		// First try the standard field names
-		if (subtype.features && Array.isArray(subtype.features)) {
-			return subtype.features;
+		if (prediction.features && Array.isArray(prediction.features)) {
+			return prediction.features;
 		}
 		if (
-			subtype.contributing_factors &&
-			Array.isArray(subtype.contributing_factors)
+			prediction.contributing_factors &&
+			Array.isArray(prediction.contributing_factors)
 		) {
-			return subtype.contributing_factors;
+			return prediction.contributing_factors;
 		}
 
-		// Look for other possible field names
 		const possibleFeatureFields = [
 			"contributing_features",
 			"important_features",
@@ -105,13 +183,12 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 		];
 
 		for (const field of possibleFeatureFields) {
-			if (subtype[field] && Array.isArray(subtype[field])) {
-				return subtype[field];
+			if (prediction[field] && Array.isArray(prediction[field])) {
+				return prediction[field];
 			}
 		}
 
-		// Look for string fields that might contain feature information
-		for (const [key, value] of Object.entries(subtype)) {
+		for (const [key, value] of Object.entries(prediction)) {
 			if (
 				typeof value === "string" &&
 				(key.toLowerCase().includes("feature") ||
@@ -119,14 +196,11 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 					key.toLowerCase().includes("marker")) &&
 				value.length > 0
 			) {
-				// Try to split on common delimiters
 				const features = value
 					.split(/[,;|\n]/)
 					.map((f) => f.trim())
 					.filter((f) => f.length > 0);
-				if (features.length > 0) {
-					return features;
-				}
+				if (features.length > 0) return features;
 			}
 		}
 
@@ -134,7 +208,6 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 	};
 
 	const getCutoffInfo = () => {
-		// Look for cutoff-related fields
 		const cutoffFields = [
 			"cutoff",
 			"pass_cutoff",
@@ -145,13 +218,12 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 		];
 
 		for (const field of cutoffFields) {
-			if (subtype[field] !== undefined) {
-				return { field, value: subtype[field] };
+			if (prediction[field] !== undefined) {
+				return { field, value: prediction[field] };
 			}
 		}
 
-		// Look for any field containing "cutoff" or "threshold"
-		for (const [key, value] of Object.entries(subtype)) {
+		for (const [key, value] of Object.entries(prediction)) {
 			if (
 				key.toLowerCase().includes("cutoff") ||
 				key.toLowerCase().includes("threshold") ||
@@ -165,7 +237,6 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 	};
 
 	const getSampleId = () => {
-		// Look for sample ID related fields
 		const sampleFields = [
 			"sample_id",
 			"sample",
@@ -177,8 +248,8 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 		];
 
 		for (const field of sampleFields) {
-			if (subtype[field] && typeof subtype[field] === "string") {
-				return subtype[field] as string;
+			if (prediction[field] && typeof prediction[field] === "string") {
+				return prediction[field] as string;
 			}
 		}
 
@@ -191,7 +262,6 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 	const cutoffInfo = getCutoffInfo();
 	const sampleId = getSampleId();
 
-	// Common AML subtypes and their characteristics
 	const amlSubtypes: Record<
 		string,
 		{ description: string; prognosis: string; color: string }
@@ -239,19 +309,18 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 	};
 
 	const subtypeInfo = amlSubtypes[primarySubtype] || {
-		description: "AML subtype classification",
+		description: "Acute leukemia diagnostic prediction",
 		prognosis: "Unknown",
 		color: "bg-gray-100 text-gray-800 border-gray-200",
 	};
 
 	return (
 		<div className="space-y-6">
-			{/* Primary Prediction */}
 			<Card className="border-2 border-blue-200">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
 						<CheckCircle className="h-5 w-5 text-blue-600" />
-						Predicted AML Subtype
+						{title}
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
@@ -269,28 +338,31 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 							<p className="text-gray-700">{subtypeInfo.description}</p>
 						</div>
 
-						{confidence && (
+						{confidence !== undefined && confidence !== null && (
 							<div className="text-center">
 								<p className="text-sm text-gray-600 mb-1">
 									Prediction Confidence
 								</p>
 								<div className="inline-flex items-center gap-2">
-									<div className="w-32 bg-gray-200 rounded-full h-3">
-										<div
-											className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-											style={{
-												width: `${Math.min(
-													100,
-													(confidence as number) * 100
-												)}%`,
-											}}
-										/>
-									</div>
+									{typeof confidence === "number" && (
+										<div className="w-32 bg-gray-200 rounded-full h-3">
+											<div
+												className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+												style={{
+													width: `${Math.min(
+														100,
+														Math.max(0, confidence <= 1 ? confidence * 100 : confidence)
+													)}%`,
+												}}
+											/>
+										</div>
+									)}
 									<span className="text-sm font-medium">
 										{typeof confidence === "number"
-											? (confidence * 100).toFixed(1)
-											: confidence}
-										%
+											? confidence <= 1
+												? `${(confidence * 100).toFixed(1)}%`
+												: `${confidence.toFixed(1)}%`
+											: String(confidence)}
 									</span>
 								</div>
 							</div>
@@ -299,9 +371,7 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 				</CardContent>
 			</Card>
 
-			{/* Detailed Information */}
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-				{/* Subtype Details */}
 				<Card>
 					<CardHeader>
 						<CardTitle>Classification Details</CardTitle>
@@ -320,7 +390,7 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 								</span>
 							</div>
 							<div className="flex justify-between items-center py-2 border-b">
-								<span className="text-sm font-medium">Primary Subtype</span>
+								<span className="text-sm font-medium">Primary Prediction</span>
 								<span className="text-sm text-gray-600">{primarySubtype}</span>
 							</div>
 							{cutoffInfo && (
@@ -340,27 +410,36 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 									</span>
 								</div>
 							)}
-							{subtype.method && (
+							{prediction.method && (
 								<div className="flex justify-between items-center py-2 border-b">
 									<span className="text-sm font-medium">
 										Classification Method
 									</span>
 									<span className="text-sm text-gray-600">
-										{subtype.method}
+										{prediction.method}
 									</span>
 								</div>
 							)}
 							<div className="flex justify-between items-center py-2 border-b">
 								<span className="text-sm font-medium">Reference</span>
-								<span className="text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
-									Severens et al., Leukemia (2024)
-								</span>
+								{referenceHref ? (
+									<a
+										href={referenceHref}
+										target="_blank"
+										rel="noreferrer"
+										className="text-sm text-blue-600 hover:text-blue-800 underline"
+									>
+										{referenceLabel}
+									</a>
+								) : (
+									<span className="text-sm text-blue-600">{referenceLabel}</span>
+								)}
 							</div>
-							{subtype.timestamp && (
+							{prediction.timestamp && (
 								<div className="flex justify-between items-center py-2 border-b">
 									<span className="text-sm font-medium">Analysis Date</span>
 									<span className="text-sm text-gray-600">
-										{new Date(subtype.timestamp).toLocaleDateString()}
+										{new Date(prediction.timestamp).toLocaleDateString()}
 									</span>
 								</div>
 							)}
@@ -368,7 +447,6 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 					</CardContent>
 				</Card>
 
-				{/* Contributing Features */}
 				<Card>
 					<CardHeader>
 						<CardTitle>Contributing Features</CardTitle>
@@ -382,7 +460,7 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 										className="flex items-center gap-2 p-2 bg-gray-50 rounded"
 									>
 										<AlertCircle className="h-4 w-4 text-blue-600" />
-										<span className="text-sm">{feature}</span>
+										<span className="text-sm">{String(feature)}</span>
 									</div>
 								))}
 							</div>
@@ -395,8 +473,7 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 				</Card>
 			</div>
 
-			{/* Additional Subtype Information */}
-			{Object.keys(subtype).length > 3 && (
+			{Object.keys(prediction).length > 3 && (
 				<Card>
 					<CardHeader>
 						<CardTitle>Additional Classification Data</CardTitle>
@@ -411,19 +488,11 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{Object.entries(subtype)
+									{Object.entries(prediction)
 										.filter(
 											([key]) =>
 												![
-													"predicted_subtype",
-													"subtype",
-													"classification",
-													"predicted_class",
-													"final_prediction",
-													"best_subtype",
-													"prediction",
-													"predicted_label",
-													"class_label",
+													...COMMON_PREDICTION_FIELDS,
 													"confidence",
 													"probability",
 													"score",
@@ -438,7 +507,6 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 													"factors",
 													"markers",
 													"biomarkers",
-													// Exclude fields we've extracted and displayed above
 													...(cutoffInfo ? [cutoffInfo.field] : []),
 													...(sampleId
 														? [
@@ -451,6 +519,7 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 																"subject_id",
 														  ]
 														: []),
+													...extraExcludedKeys,
 												].includes(key)
 										)
 										.map(([key, value]) => (
@@ -472,26 +541,72 @@ export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
 				</Card>
 			)}
 
-			{/* Methodology Reference */}
 			<Alert className="bg-blue-50 border-blue-200">
 				<Info className="h-4 w-4 text-blue-600" />
 				<AlertDescription className="text-blue-800">
-					<strong>Methodology:</strong> AML subtype classification based on
-					Severens et al., Leukemia (2024). This approach uses integrated
-					genomic and transcriptomic analysis for precise AML subtyping.
+					<strong>Methodology:</strong> {methodologyNote}
 				</AlertDescription>
 			</Alert>
 
-			{/* Clinical Implications */}
 			<Alert>
 				<Info className="h-4 w-4" />
 				<AlertDescription>
-					<strong>Clinical Note:</strong> This subtype prediction is generated
-					from genomic and transcriptomic data. Clinical decisions should always
-					be made in consultation with hematologists and consider additional
-					clinical information, morphology, and cytogenetics.
+					<strong>Clinical Note:</strong> {clinicalNote}
 				</AlertDescription>
 			</Alert>
 		</div>
+	);
+}
+
+export function SubtypePanel({ subtype, sampleName }: SubtypePanelProps) {
+	if (!subtype || Object.keys(subtype).length === 0) {
+		return (
+			<Card>
+				<CardHeader>
+					<CardTitle>Acute Leukemia Diagnostic</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<Alert>
+						<Info className="h-4 w-4" />
+						<AlertDescription>
+							No subtype prediction data available for this sample.
+						</AlertDescription>
+					</Alert>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	const bridgePrediction = getBridgePrediction(subtype);
+	const standardPrediction = getStandardPrediction(subtype, bridgePrediction);
+
+	return (
+		<PredictionView
+			prediction={standardPrediction}
+			sampleName={sampleName}
+			title="Predicted AML Subtype"
+			emptyMessage="No AML subtype prediction data available for this sample."
+			referenceLabel="Severens et al., Leukemia (2024)"
+			methodologyNote="AML subtype classification based on Severens et al., Leukemia (2024). This approach uses integrated genomic and transcriptomic analysis for precise AML subtyping."
+			clinicalNote="This subtype prediction is generated from genomic and transcriptomic data. Clinical decisions should be made in consultation with hematologists and alongside morphology, cytogenetics, and other clinical information."
+			extraExcludedKeys={["bridge", "Bridge", "predictions", "models"]}
+		/>
+	);
+}
+
+export function BridgePredictionPanel({ subtype, sampleName }: SubtypePanelProps) {
+	const bridgePrediction = subtype ? getBridgePrediction(subtype) : null;
+
+	return (
+		<PredictionView
+			prediction={bridgePrediction}
+			sampleName={sampleName}
+			title="Bridge Acute Leukemia Prediction"
+			emptyMessage="No Bridge prediction data found in this HAMLET output."
+			referenceLabel="eonurk/Bridge"
+			referenceHref="https://github.com/eonurk/Bridge"
+			methodologyNote="Bridge-based acute leukemia diagnostic output is displayed when present in the HAMLET expression subtype payload. This tab reads nested Bridge prediction objects (for example keys containing 'bridge') without requiring a fixed schema."
+			clinicalNote="Bridge predictions are displayed as decision-support output. Validate against clinical, morphologic, cytogenetic, and molecular findings before clinical interpretation."
+		/>
 	);
 }

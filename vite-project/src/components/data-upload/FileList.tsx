@@ -5,6 +5,7 @@ import {
 	CacheFile,
 } from "@/utils/api";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Card,
@@ -68,8 +69,8 @@ export function FileList({onRefresh, cacheFiles}: FileListProps) {
 
   if (!Array.isArray(cacheFiles) || cacheFiles.length === 0) {
     return (
-      <div className="text-center py-4 text-muted-foreground">
-        No files available.
+      <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+        No workspace files yet. Upload a matrix to get started.
       </div>
     );
   }
@@ -80,7 +81,7 @@ export function FileList({onRefresh, cacheFiles}: FileListProps) {
       <div className="space-y-4 md:hidden">
         <ScrollArea className="h-[400px] w-full">
           {cacheFiles.map((file, index) => (
-            <Card key={index} className="p-4 my-2">
+            <Card key={index} className="p-4 my-2 shadow-none border-border/60">
               <div className="space-y-2">
                 {/* Filename */}
                 <p className="font-medium break-all">{file.name}</p>
@@ -91,9 +92,9 @@ export function FileList({onRefresh, cacheFiles}: FileListProps) {
                     <span>
                       Size: {(file.size / (1024 * 1024)).toFixed(2)} MB
                     </span>
-                    <span>
-                      Type: {file.isUserUploaded ? "User File" : "Cache File"}
-                    </span>
+                    <Badge variant={file.isUserUploaded ? "secondary" : "outline"}>
+                      {file.isUserUploaded ? "User File" : "Cache"}
+                    </Badge>
                   </div>
                   <div>
                     Modified: {new Date(file.modified).toLocaleString()}
@@ -118,7 +119,7 @@ export function FileList({onRefresh, cacheFiles}: FileListProps) {
       {/* Desktop view */}
       <div className="hidden md:block">
         <Table>
-          <TableHeader className="bg-gray-100">
+          <TableHeader className="bg-muted/30">
             <TableRow>
               <TableCell className="p-2 border-b whitespace-nowrap">
                 File Name
@@ -140,7 +141,7 @@ export function FileList({onRefresh, cacheFiles}: FileListProps) {
           <TableBody>
             {Array.isArray(cacheFiles) && cacheFiles.length > 0 ? (
               cacheFiles.map((file, index) => (
-                <TableRow key={index} className="hover:bg-gray-50">
+                <TableRow key={index} className="hover:bg-muted/20">
                   <TableCell className="p-2 border-b">{file.name}</TableCell>
                   <TableCell className="p-2 border-b">
                     {(file.size / (1024 * 1024)).toFixed(2)} MB
@@ -149,17 +150,15 @@ export function FileList({onRefresh, cacheFiles}: FileListProps) {
                     {new Date(file.modified).toLocaleString()}
                   </TableCell>
                   <TableCell className="p-2 border-b">
-                    {file.isUserUploaded ? (
-                      <span className="text-blue-600">User Uploaded</span>
-                    ) : (
-                      <span className="text-green-600">Cache File</span>
-                    )}
+                    <Badge variant={file.isUserUploaded ? "secondary" : "outline"}>
+                      {file.isUserUploaded ? "User Uploaded" : "Cache File"}
+                    </Badge>
                   </TableCell>
                   <TableCell className="p-2 border-b">
                     <Button
                       variant="ghost"
                       onClick={() => confirmDelete(file.name)}
-                      className="text-red-500 hover:text-red-700"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
                     >
                       Delete
                     </Button>
