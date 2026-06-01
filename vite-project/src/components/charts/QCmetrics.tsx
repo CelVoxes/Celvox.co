@@ -322,7 +322,7 @@ export function QCCharts() {
 						return count === 0 ? t : `${t}(${count + 1})`;
 					});
 
-					heatmapChartRef.current = new Chart(ctx, {
+					heatmapChartRef.current = (new Chart(ctx, {
 						type: "matrix",
 						data: {
 							datasets: [
@@ -402,7 +402,7 @@ export function QCCharts() {
 								},
 							},
 						},
-					});
+					})) as unknown as Chart;
 			}
 		}
 

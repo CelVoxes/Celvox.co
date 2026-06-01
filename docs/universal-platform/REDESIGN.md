@@ -234,17 +234,25 @@ three existing diseases (regression-safe). Order is dependency-driven.
   auto-corrects when the current view becomes unavailable.
 - Verified type-clean via `tsc` (no errors in changed files).
 
-**Phase 2b — remaining frontend** *(todo)*
-- Drive cohort + modality **selection UI** from the catalog (replace the
-  hardcoded `REFERENCE_DISEASE_OPTIONS`; add modality picker once a 2nd modality
-  is available).
-- Rework `MolecularPrediction.tsx` to consume `/molecular-tools` (or `/catalog`)
-  as the sole source and **delete `MOLECULAR_TOOL_CONFIGS`** (kills the drift).
-- ⚠️ Pre-existing build breakage discovered (not introduced here): at `HEAD`,
-  `MolecularPrediction.tsx` references `tool.question` / `tool.outputType` which
-  don't exist on `MolecularDashboardToolMetadata`, and `QCmetrics.tsx` has a
-  chart-matrix typing error. The branch build is red until these are fixed —
-  fold into Phase 2b's MolecularPrediction rework.
+**Phase 2b — MolecularPrediction on catalog + green build** ✅ *delivered*
+- Reworked `MolecularPrediction.tsx` to drive its tool list from the live
+  `/molecular-tools` catalog (availability, labels, repo/docs, disease scope) +
+  a small local `TOOL_PRESENTATION` map for the two UI-copy fields
+  (`question`, `outputType`) the catalog doesn't carry. **Deleted
+  `MOLECULAR_TOOL_CONFIGS` and `MolecularDashboardToolMetadata`** — the
+  frontend/backend tool-catalog drift (blocker #4) is gone.
+- Fixed the two pre-existing build errors (the `tool.question`/`tool.outputType`
+  references, now resolved by the rework; and the `QCmetrics.tsx` chart-matrix
+  result cast). **`npm run build` is green** (`tsc -b` clean + `vite build` ok).
+
+**Phase 2c — catalog-driven selection UI** *(deferred, intentional)*
+- Driving the cohort/modality **selection UI** from the catalog (replacing the
+  closed `ReferenceDiseaseId` union in `Dashboard.tsx`/`HarmonizeData.tsx` and
+  `getSelectedReferenceDiseases`/localStorage) is **no-op churn until a real new
+  cohort exists** — today's three cohorts are correct and type-encoded, and the
+  mechanism (`getReferenceCohortOptions` + open string ids in the catalog) is
+  already in place. Do this as part of onboarding the first non-leukemia cohort
+  (after Phase 4), when it actually pays off.
 
 **Phase 3 — Backend layering**
 - Split `plumber.R` into `ingest/ harmonize/ analysis/ predict/ report/ api/`.

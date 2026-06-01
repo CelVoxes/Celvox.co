@@ -11,11 +11,7 @@ import {
   MessageSquare,
   AlertTriangle,
 } from "lucide-react";
-import type {
-  CapabilityDataRequirement,
-  MolecularToolId,
-  PlatformCatalog,
-} from "@/utils/api";
+import type { CapabilityDataRequirement, PlatformCatalog } from "@/utils/api";
 
 export type DashboardViewId =
   | "qc"
@@ -89,18 +85,6 @@ export const DASHBOARD_TOOL_REGISTRY: Record<string, DashboardToolEntry> = {
       "Estimates the relative abundance of immune and stromal cell types in bulk RNA-seq samples using reference-based deconvolution.",
     badges: ["RNA-seq", "Immune Profiling", "Bulk Deconvolution"],
   },
-};
-
-export type MolecularDashboardToolMetadata = {
-  id: MolecularToolId;
-  label: string;
-  shortLabel?: string;
-  repoUrl?: string;
-  docsUrl?: string;
-  diseaseScope?: string;
-  supportedDiseases?: string[];
-  description?: string;
-  notes?: string;
 };
 
 // --- Capability gating -------------------------------------------------------
@@ -239,49 +223,6 @@ export const STATIC_FALLBACK_CATALOG: PlatformCatalog = {
   tools: [],
 };
 
-export const MOLECULAR_TOOL_CONFIGS: MolecularDashboardToolMetadata[] = [
-  {
-    id: "bridge",
-    label: "BRIDGE",
-    shortLabel: "BRIDGE",
-    diseaseScope: "aml",
-    supportedDiseases: ["aml"],
-    description: "Bayesian Ridge regression for integrated diagnostic gene expression in AML.",
-  },
-  {
-    id: "amlmapr",
-    label: "AML-MaPR",
-    shortLabel: "AML-MaPR",
-    repoUrl: "https://github.com/eonurk/AML-MaPR",
-    diseaseScope: "aml",
-    supportedDiseases: ["aml"],
-    description: "Molecular profiling and risk stratification for AML.",
-  },
-  {
-    id: "allcatchr",
-    label: "ALLCatchR",
-    shortLabel: "ALLCatchR",
-    repoUrl: "https://github.com/ThomasBeder/ALLCatchR",
-    diseaseScope: "ball",
-    supportedDiseases: ["ball"],
-    description: "B-ALL subtype classification using gene expression.",
-  },
-  {
-    id: "allsorts",
-    label: "ALLSorts",
-    shortLabel: "ALLSorts",
-    repoUrl: "https://github.com/Oshlack/ALLSorts",
-    diseaseScope: "ball",
-    supportedDiseases: ["ball"],
-    description: "B-ALL subtype classification from RNA-seq data.",
-  },
-  {
-    id: "tallsorts",
-    label: "TALLSorts",
-    shortLabel: "TALLSorts",
-    repoUrl: "https://github.com/Oshlack/TALLSorts",
-    diseaseScope: "tall",
-    supportedDiseases: ["tall"],
-    description: "T-ALL subtype classification from RNA-seq data.",
-  },
-];
+// Molecular prediction tools are served by the backend catalog
+// (GET /molecular-tools) and consumed directly in MolecularPrediction.tsx; the
+// previously-duplicated static MOLECULAR_TOOL_CONFIGS has been removed.

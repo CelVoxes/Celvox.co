@@ -19,10 +19,6 @@ import {
 	type MolecularToolCatalogEntry,
 	type MolecularToolId,
 } from "@/utils/api";
-import {
-	MOLECULAR_TOOL_CONFIGS,
-	type MolecularDashboardToolMetadata,
-} from "@/config/dashboard-tools";
 import { cn } from "@/lib/utils";
 
 type SampleOption = {
@@ -66,7 +62,52 @@ type NormalizedPrediction = {
 	meta: Record<string, string | number | boolean | null>;
 };
 
-const TOOL_CONFIGS = MOLECULAR_TOOL_CONFIGS;
+type MolecularToolView = {
+	id: MolecularToolId;
+	label: string;
+	question: string;
+	outputType: string;
+};
+
+// Frontend presentation copy for the runnable molecular tools. The backend
+// catalog (GET /molecular-tools) is the source of truth for availability,
+// labels, repo/docs links and disease scope (consumed via toolUiMetaById);
+// `question` and `outputType` are UI copy the catalog does not carry.
+const TOOL_PRESENTATION: Record<
+	MolecularToolId,
+	{ label: string; question: string; outputType: string }
+> = {
+	bridge: {
+		label: "BRIDGE",
+		question: "Which leukemia class does this sample resemble?",
+		outputType: "Class probabilities",
+	},
+	amlmapr: {
+		label: "AML-MaPR",
+		question: "What is the AML transcriptional subtype?",
+		outputType: "AML cluster scores",
+	},
+	allcatchr: {
+		label: "ALLCatchR",
+		question: "What is the BCP-ALL subtype (incl. BCR::ABL1)?",
+		outputType: "Subtype + confidence",
+	},
+	allsorts: {
+		label: "ALLSorts",
+		question: "What is the B-ALL subtype?",
+		outputType: "Class probabilities",
+	},
+	tallsorts: {
+		label: "TALLSorts",
+		question: "What is the T-ALL subtype?",
+		outputType: "Hierarchical probabilities",
+	},
+};
+
+const buildToolView = (id: MolecularToolId): MolecularToolView => {
+	const p = TOOL_PRESENTATION[id];
+	return { id, label: p.label, question: p.question, outputType: p.outputType };
+};
 
 type ToolUiMeta = {
 	id: MolecularToolId;
@@ -284,8 +325,7 @@ const labelForDisease = (disease?: string) => {
 	return disease;
 };
 
-const getToolById = (id: MolecularToolId): MolecularDashboardToolMetadata =>
-	TOOL_CONFIGS.find((tool) => tool.id === id) ?? TOOL_CONFIGS[0];
+const getToolById = (id: MolecularToolId): MolecularToolView => buildToolView(id);
 
 const resultKey = (toolId: MolecularToolId, sample: string) => `${toolId}::${sample}`;
 
@@ -610,8 +650,8 @@ export function MolecularPredictionPanel() {
 
 	const toolUiMetaById = useMemo(() => {
 		const out: Partial<Record<MolecularToolId, ToolUiMeta>> = {};
-		for (const tool of TOOL_CONFIGS) {
-			const entry = toolCatalog[tool.id];
+		for (const toolId of RUNNABLE_TOOL_IDS) {
+			const entry = toolCatalog[toolId];
 			const entryObj = asObjectRecord(entry);
 			const availabilityObj = asObjectRecord(entryObj?.availability);
 			const missing =
@@ -620,10 +660,11 @@ export function MolecularPredictionPanel() {
 							.map((item) => asString(item))
 							.filter((x): x is string => Boolean(x))
 					: undefined;
-			out[tool.id] = {
-				id: tool.id,
-				label: asString(entryObj?.label) || tool.label,
-				shortLabel: asString(entryObj?.short_label) || tool.label,
+			out[toolId] = {
+				id: toolId,
+				label: asString(entryObj?.label) || TOOL_PRESENTATION[toolId].label,
+				shortLabel:
+					asString(entryObj?.short_label) || TOOL_PRESENTATION[toolId].label,
 				integrated:
 					asBoolean((entryObj as { integrated?: unknown } | undefined)?.integrated) ?? true,
 				applicable: asBoolean(entryObj?.applicable_for_request),
@@ -743,7 +784,7 @@ export function MolecularPredictionPanel() {
 					<div className="flex flex-wrap items-center gap-2 text-xs">
 						<Badge variant="outline">Disease context: {currentDiseaseLabel}</Badge>
 						<Badge variant="secondary">
-							Completed: {consensusSummary.totalCompleted}/{TOOL_CONFIGS.length * selectedSamples.length}
+							Completed: {consensusSummary.totalCompleted}/{RUNNABLE_TOOL_IDS.length * selectedSamples.length}
 						</Badge>
 						{consensusSummary.status === "agreement" && (
 							<Badge variant="default">Agreement</Badge>
