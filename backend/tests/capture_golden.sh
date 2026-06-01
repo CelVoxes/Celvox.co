@@ -34,13 +34,21 @@ fi
 capture() {
     local name="$1" path="$2"
     local out="$OUT_DIR/${name}.json"
+    local tmp code
+    tmp="$(mktemp)"
     printf '  %-44s ' "$name"
-    if curl -fsS "${BASE_URL}${path}" 2>/dev/null | normalize > "$out"; then
+    # Fetch to a temp file and capture the HTTP status; only promote to a golden
+    # on 200 so a failed/erroring endpoint never leaves an empty or stale file.
+    code="$(curl -sS -m 60 -o "$tmp" -w '%{http_code}' "${BASE_URL}${path}" 2>/dev/null || echo 000)"
+    if [ "$code" = "200" ]; then
+        normalize < "$tmp" > "$out"
         echo "ok ($(wc -c < "$out" | tr -d ' ') bytes)"
     else
-        echo "FAILED"
+        rm -f "$out"
+        echo "FAILED (HTTP $code)"
         echo "    GET ${BASE_URL}${path}" >&2
     fi
+    rm -f "$tmp"
 }
 
 echo "Capturing golden responses from ${BASE_URL} -> ${OUT_DIR}"

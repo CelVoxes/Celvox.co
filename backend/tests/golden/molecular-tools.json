@@ -1,0 +1,428 @@
+{
+  "request_disease": [
+    "aml"
+  ],
+  "request_diseases": [
+    "aml"
+  ],
+  "tools": [
+    {
+      "applicable_for_request": [
+        true
+      ],
+      "availability": {
+        "artifact_source": [
+          "bundle"
+        ],
+        "available": [
+          true
+        ],
+        "missing": [],
+        "runtime_ready": [
+          true
+        ]
+      },
+      "confidence_semantics": [
+        "class_probability"
+      ],
+      "disease_scope": [
+        "pan_leukemia"
+      ],
+      "docs_url": {},
+      "endpoint": [
+        "bridge-predict"
+      ],
+      "family": [
+        "molecular_diagnostic"
+      ],
+      "gene_identifier": [
+        "ensembl"
+      ],
+      "id": [
+        "bridge"
+      ],
+      "input_modality": [
+        "raw_rna_counts"
+      ],
+      "integrated": [
+        true
+      ],
+      "label": [
+        "Bridge"
+      ],
+      "notes": [
+        "Pan-leukemia Bridge bundle (official Bridge Python package)."
+      ],
+      "output_kind": [
+        "multiclass_probabilities"
+      ],
+      "repo_url": [
+        "https://github.com/eonurk/Bridge"
+      ],
+      "short_label": [
+        "Bridge"
+      ],
+      "supported_diseases": [
+        "aml",
+        "ball",
+        "tall",
+        "pan_leukemia"
+      ]
+    },
+    {
+      "applicable_for_request": [
+        true
+      ],
+      "availability": {
+        "available": [
+          true
+        ],
+        "missing": [],
+        "runtime_ready": [
+          true
+        ]
+      },
+      "confidence_semantics": [
+        "svm_decision_score"
+      ],
+      "disease_scope": [
+        "aml"
+      ],
+      "docs_url": {},
+      "endpoint": [
+        "amlmapr-predict"
+      ],
+      "family": [
+        "molecular_diagnostic"
+      ],
+      "gene_identifier": [
+        "ensembl"
+      ],
+      "id": [
+        "amlmapr"
+      ],
+      "input_modality": [
+        "raw_rna_counts"
+      ],
+      "integrated": [
+        true
+      ],
+      "label": [
+        "AMLmapR"
+      ],
+      "notes": [
+        "AML-specific transcriptional subtype predictor."
+      ],
+      "output_kind": [
+        "aml_cluster_scores"
+      ],
+      "repo_url": [
+        "https://github.com/jeppeseverens/AMLmapR"
+      ],
+      "short_label": [
+        "AMLmapR"
+      ],
+      "supported_diseases": [
+        "aml",
+        "pan_leukemia"
+      ]
+    },
+    {
+      "applicable_for_request": [
+        false
+      ],
+      "availability": {
+        "available": [
+          true
+        ],
+        "missing": [],
+        "runtime_ready": [
+          true
+        ]
+      },
+      "confidence_semantics": [
+        "class_probability"
+      ],
+      "disease_scope": [
+        "ball"
+      ],
+      "docs_url": {},
+      "endpoint": [
+        "allsorts-predict"
+      ],
+      "family": [
+        "molecular_diagnostic"
+      ],
+      "gene_identifier": [
+        "gene_symbol"
+      ],
+      "id": [
+        "allsorts"
+      ],
+      "input_modality": [
+        "raw_rna_counts"
+      ],
+      "integrated": [
+        true
+      ],
+      "label": [
+        "ALLSorts (B-ALL)"
+      ],
+      "notes": [
+        "B-ALL subtype classifier; Ensembl counts are converted to symbols before inference."
+      ],
+      "output_kind": [
+        "multiclass_probabilities"
+      ],
+      "repo_url": [
+        "https://github.com/Oshlack/ALLSorts"
+      ],
+      "short_label": [
+        "ALLSorts"
+      ],
+      "supported_diseases": [
+        "ball",
+        "pan_leukemia"
+      ]
+    },
+    {
+      "applicable_for_request": [
+        false
+      ],
+      "availability": {
+        "available": [
+          true
+        ],
+        "missing": [],
+        "runtime_ready": [
+          true
+        ]
+      },
+      "confidence_semantics": [
+        "class_probability_by_level"
+      ],
+      "disease_scope": [
+        "tall"
+      ],
+      "docs_url": {},
+      "endpoint": [
+        "tallsorts-predict"
+      ],
+      "family": [
+        "molecular_diagnostic"
+      ],
+      "gene_identifier": [
+        "ensembl"
+      ],
+      "id": [
+        "tallsorts"
+      ],
+      "input_modality": [
+        "raw_rna_counts"
+      ],
+      "integrated": [
+        true
+      ],
+      "label": [
+        "TALLSorts (T-ALL)"
+      ],
+      "notes": [
+        "T-ALL hierarchical subtype classifier."
+      ],
+      "output_kind": [
+        "hierarchical_probabilities"
+      ],
+      "repo_url": [
+        "https://github.com/Oshlack/TALLSorts"
+      ],
+      "short_label": [
+        "TALLSorts"
+      ],
+      "supported_diseases": [
+        "tall",
+        "pan_leukemia"
+      ]
+    },
+    {
+      "applicable_for_request": [
+        false
+      ],
+      "availability": {
+        "available": [
+          true
+        ],
+        "missing": [],
+        "runtime_ready": [
+          true
+        ]
+      },
+      "confidence_semantics": [
+        "discrete_confidence_label_and_score"
+      ],
+      "disease_scope": [
+        "ball"
+      ],
+      "docs_url": {},
+      "endpoint": [
+        "allcatchr-predict"
+      ],
+      "family": [
+        "molecular_diagnostic"
+      ],
+      "gene_identifier": [
+        "ensembl_or_symbol"
+      ],
+      "id": [
+        "allcatchr"
+      ],
+      "input_modality": [
+        "raw_rna_counts"
+      ],
+      "integrated": [
+        true
+      ],
+      "label": [
+        "ALLCatchR (BCR-ABL1)"
+      ],
+      "notes": [
+        "BCP-ALL gene expression classifier (ALLCatchR_bcrabl1); predicts subtype plus BCR::ABL1 subclusters."
+      ],
+      "output_kind": [
+        "b_all_subtype_classifier_with_bcrabl1_subclusters"
+      ],
+      "repo_url": [
+        "https://github.com/ThomasBeder/ALLCatchR_bcrabl1"
+      ],
+      "short_label": [
+        "ALLCatchR"
+      ],
+      "supported_diseases": [
+        "ball",
+        "pan_leukemia"
+      ]
+    },
+    {
+      "applicable_for_request": [
+        false
+      ],
+      "availability": {
+        "available": [
+          false
+        ],
+        "catalog_only": [
+          true
+        ],
+        "missing": [],
+        "runtime_ready": [
+          false
+        ]
+      },
+      "confidence_semantics": [
+        "tool_specific"
+      ],
+      "disease_scope": [
+        "ball"
+      ],
+      "docs_url": {},
+      "endpoint": [
+        null
+      ],
+      "family": [
+        "molecular_diagnostic"
+      ],
+      "gene_identifier": [
+        "mixed"
+      ],
+      "id": [
+        "md_all"
+      ],
+      "input_modality": [
+        "integrative_rna_and_genetic_events"
+      ],
+      "integrated": [
+        false
+      ],
+      "label": [
+        "MD-ALL"
+      ],
+      "notes": [
+        "Integrative B-ALL molecular diagnostic platform (catalog entry; not yet integrated)."
+      ],
+      "output_kind": [
+        "integrative_b_all_diagnostic_platform"
+      ],
+      "repo_url": [
+        "https://github.com/gu-lab20/MD-ALL"
+      ],
+      "short_label": [
+        "MD-ALL"
+      ],
+      "supported_diseases": [
+        "ball"
+      ]
+    },
+    {
+      "applicable_for_request": [
+        true
+      ],
+      "availability": {
+        "available": [
+          false
+        ],
+        "catalog_only": [
+          true
+        ],
+        "missing": [],
+        "runtime_ready": [
+          false
+        ]
+      },
+      "confidence_semantics": [
+        "likelihood_or_score"
+      ],
+      "disease_scope": [
+        "multi-disease"
+      ],
+      "docs_url": [
+        "https://nrctm-bioinfo.github.io/HematoMap/index.html"
+      ],
+      "endpoint": [
+        null
+      ],
+      "family": [
+        "molecular_diagnostic"
+      ],
+      "gene_identifier": [
+        "mixed"
+      ],
+      "id": [
+        "hematomap"
+      ],
+      "input_modality": [
+        "bulk_or_single_cell_rna"
+      ],
+      "integrated": [
+        false
+      ],
+      "label": [
+        "HematoMap"
+      ],
+      "notes": [
+        "Lineage aberration / hierarchy projection tool (reported for AML and BCP-ALL; catalog entry)."
+      ],
+      "output_kind": [
+        "lineage_aberration_projection"
+      ],
+      "repo_url": [
+        "https://github.com/NRCTM-bioinfo/HematoMap"
+      ],
+      "short_label": [
+        "HematoMap"
+      ],
+      "supported_diseases": [
+        "aml",
+        "ball"
+      ]
+    }
+  ]
+}
