@@ -44,6 +44,73 @@ export type MolecularToolCatalogEntry = {
 	availability?: MolecularToolAvailability;
 };
 
+// --- Platform catalog --------------------------------------------------------
+// Single source of truth served by GET /catalog (see backend/catalog.R). The
+// frontend derives modalities, cohorts, capabilities and tools from this instead
+// of hardcoding them. Ids are intentionally `string` (not closed unions) so new
+// cohorts/modalities require no frontend change.
+export type CapabilityDataRequirement =
+	| "reference_only"
+	| "requires_samples"
+	| "both";
+
+export type CatalogModality = {
+	id: string;
+	label: string;
+	status: "available" | "planned";
+	feature_identifier?: string | null;
+	harmonization?: string | null;
+};
+
+export type CatalogCohort = {
+	id: string;
+	label: string;
+	full_name?: string;
+	lineage?: string | null;
+	modalities: string[];
+	// dataset keys the cohort ships, keyed by modality id.
+	provides: Record<string, string[]>;
+};
+
+export type CatalogCapability = {
+	id: string;
+	label: string;
+	modalities: string[];
+	data_requirement: CapabilityDataRequirement;
+	requires_cohort_data: string[];
+};
+
+export type CatalogTool = {
+	id: string;
+	label: string;
+	short_label?: string;
+	family?: string;
+	modality?: string;
+	integrated?: boolean;
+	supported_cohorts: string[];
+	input_modality?: string | null;
+	gene_identifier?: string | null;
+	output_kind?: string | null;
+	endpoint?: string | null;
+	repo_url?: string | null;
+	docs_url?: string | null;
+	notes?: string | null;
+};
+
+export type PlatformCatalog = {
+	version: string;
+	generated_at?: string;
+	modalities: CatalogModality[];
+	cohorts: CatalogCohort[];
+	capabilities: CatalogCapability[];
+	tools: CatalogTool[];
+};
+
+export async function fetchCatalog(): Promise<PlatformCatalog> {
+	const response = await axios.get(`${API_BASE_URL}/catalog`);
+	return response.data;
+}
+
 function normalizeReferenceDiseases(
 	values?: string[] | null,
 ): ReferenceDiseaseId[] {

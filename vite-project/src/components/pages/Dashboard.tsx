@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SeamlessHeader } from "@/components/charts/SeamlessHeader";
 import { DeconvolutionChart } from "@/components/charts/deconvolution";
 import { TSNEChart } from "@/components/charts/tsne-chart";
@@ -31,8 +31,11 @@ import {
 	DASHBOARD_SECTIONS,
 	DASHBOARD_VIEW_REGISTRY,
 	DEFAULT_DASHBOARD_VIEW_ID,
+	computeViewAvailability,
 	type DashboardViewId,
+	type ViewAvailability,
 } from "@/config/dashboard-tools";
+import { useCatalog } from "@/hooks/useCatalog";
 import {
 	DASHBOARD_DISEASE_STORAGE_KEY,
 	type ReferenceDiseaseId,
@@ -57,7 +60,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Lock } from "lucide-react";
 export const description = "A collection of AML samples.";
 
 const REFERENCE_DISEASE_OPTIONS: { value: ReferenceDiseaseId; label: string }[] = [
@@ -111,16 +114,45 @@ export function Dashboard({ user }: { user: User | null }) {
 								?.label ?? d.toUpperCase(),
 					)
 					.join(" + ");
-	const navSectionsForDisplay = dashboardSections;
-	const activeSection =
-		dashboardSections.find((section) =>
-			section.tabs.some((tab) => tab.id === activeTab),
-		) ?? dashboardSections[0];
-	const mobileQuickTabs = activeSection.tabs;
 	const setupReady = setupStatus.uploadedCount > 0;
 	const harmonizeComplete =
 		setupReady &&
 		setupStatus.harmonizedUploadedCount >= setupStatus.uploadedCount;
+
+	// Capability gating: derive which analysis views are available / locked for
+	// the current data type + selected cohorts (see config/dashboard-tools.ts).
+	// reference_only / both views stay open so cohorts are explorable with no
+	// upload; requires_samples views are locked until samples are harmonized.
+	const activeModality = "rna_bulk";
+	const { catalog } = useCatalog();
+	const availability = useMemo(
+		() =>
+			computeViewAvailability(catalog, {
+				modality: activeModality,
+				cohorts: selectedDiseases,
+				samplesReady: harmonizeComplete,
+			}),
+		[catalog, selectedDiseases, harmonizeComplete],
+	);
+	const viewAvail = useCallback(
+		(id: DashboardViewId): ViewAvailability =>
+			availability[id] ?? { available: true, locked: false },
+		[availability],
+	);
+
+	const navSectionsForDisplay = dashboardSections
+		.map((section) => ({
+			...section,
+			tabs: section.tabs
+				.filter((tab) => viewAvail(tab.id).available)
+				.map((tab) => ({ ...tab, ...viewAvail(tab.id) })),
+		}))
+		.filter((section) => section.tabs.length > 0);
+	const activeSection =
+		navSectionsForDisplay.find((section) =>
+			section.tabs.some((tab) => tab.id === activeTab),
+		) ?? navSectionsForDisplay[0];
+	const mobileQuickTabs = activeSection?.tabs ?? [];
 
 	const refreshSetupStatus = useCallback(async () => {
 		try {
@@ -192,6 +224,20 @@ export function Dashboard({ user }: { user: User | null }) {
 		window.addEventListener("focus", onFocus);
 		return () => window.removeEventListener("focus", onFocus);
 	}, [refreshSetupStatus]);
+
+	// If the active view becomes unavailable (e.g. after switching cohort), move
+	// to the first usable view — preferring one that's explorable without upload.
+	useEffect(() => {
+		if (viewAvail(activeTab).available) return;
+		const firstUsable =
+			dashboardViewIds.find((id) => {
+				const a = viewAvail(id);
+				return a.available && !a.locked;
+			}) ??
+			dashboardViewIds.find((id) => viewAvail(id).available) ??
+			DEFAULT_DASHBOARD_VIEW_ID;
+		setActiveTab(firstUsable);
+	}, [viewAvail, activeTab]);
 
 	const dashboardPanels = {
 		qc: <QCCharts />,
@@ -343,14 +389,17 @@ export function Dashboard({ user }: { user: User | null }) {
 											<button
 												key={tab.id}
 												type="button"
+												title={tab.reason}
 												onClick={() => handleSelectTab(tab.id)}
 												className={cn(
-													"rounded-full border px-3 py-1.5 text-xs font-medium leading-tight transition-colors",
+													"inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium leading-tight transition-colors",
 													activeTab === tab.id
 														? "bg-primary text-primary-foreground border-primary"
 														: "bg-background text-foreground border-border/70 hover:bg-muted",
+													tab.locked && "opacity-60",
 												)}
 											>
+												{tab.locked && <Lock className="h-3 w-3" />}
 												{tab.mobileLabel ?? tab.label}
 											</button>
 										))}
@@ -373,19 +422,21 @@ export function Dashboard({ user }: { user: User | null }) {
 													</div>
 													<div className="flex flex-wrap gap-1">
 														{section.tabs.map((tab) => {
-															const Icon = tab.icon;
+															const Icon = tab.locked ? Lock : tab.icon;
 															const isActive = activeTab === tab.id;
 															return (
 																<button
 																	key={tab.id}
 																	type="button"
 																	aria-current={isActive ? "page" : undefined}
+																	title={tab.reason}
 																	onClick={() => handleSelectTab(tab.id)}
 																	className={cn(
 																		"inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors",
 																		isActive
 																			? "border-primary bg-primary/10 text-primary"
 																			: "border-border/70 bg-background hover:bg-muted",
+																		tab.locked && "opacity-60",
 																	)}
 																>
 																	<Icon className="h-2.5 w-2.5" />
@@ -402,11 +453,40 @@ export function Dashboard({ user }: { user: User | null }) {
 								</CardContent>
 							</Card>
 							<div className="min-w-0">
-								{dashboardViewIds.map((viewId) => (
-									<div key={viewId} className={activeTab === viewId ? "" : "hidden"}>
-										{dashboardPanels[viewId]}
-									</div>
-								))}
+								{dashboardViewIds.map((viewId) => {
+									const avail = viewAvail(viewId);
+									if (!avail.available) return null;
+									return (
+										<div
+											key={viewId}
+											className={activeTab === viewId ? "" : "hidden"}
+										>
+											{avail.locked ? (
+												<Card className="border-border/60 shadow-none bg-background/70">
+													<CardHeader>
+														<CardTitle className="flex items-center gap-2 text-base">
+															<Lock className="h-4 w-4" />
+															{DASHBOARD_VIEW_REGISTRY[viewId].label}
+														</CardTitle>
+														<CardDescription>
+															{avail.reason ??
+																"Upload and harmonize samples to use this view."}
+														</CardDescription>
+													</CardHeader>
+													<CardContent>
+														<div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+															This view analyses your uploaded samples. Other
+															views let you explore the reference cohort without
+															uploading.
+														</div>
+													</CardContent>
+												</Card>
+											) : (
+												dashboardPanels[viewId]
+											)}
+										</div>
+									);
+								})}
 							</div>
 						</div>
 					</section>

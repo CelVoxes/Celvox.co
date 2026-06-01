@@ -3,6 +3,12 @@ library(data.table)
 source("data_registry.R")
 source("tools_registry.R")
 source("metadata_alignment_registry.R")
+source("modalities.R")
+source("capabilities.R")
+source("cohorts.R")
+source("resolve.R")
+source("context.R")
+source("catalog.R")
 
 normalize_arg_vector <- function(x) {
     if (is.null(x)) return(NULL)
@@ -2932,6 +2938,14 @@ tallsorts_predict <- local({
         return(parsed)
     }
 })
+
+#* Platform catalog: modalities, reference cohorts, capabilities and tools.
+#* Single source of truth for the frontend (Phase 0: descriptive only).
+#* @get /catalog
+#* @serializer json
+function(req) {
+    build_platform_catalog()
+}
 
 #* @get /molecular-tools
 #* @serializer json
