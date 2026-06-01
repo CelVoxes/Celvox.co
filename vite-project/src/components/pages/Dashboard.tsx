@@ -26,6 +26,13 @@ import { DrugResponseHeatmap } from "@/components/charts/drug-response-per-group
 import { HamletDashboard } from "@/components/charts/HamletDashboard";
 import { CNVChart } from "@/components/charts/cnv-chart";
 import { MolecularPredictionPanel } from "@/components/charts/MolecularPrediction";
+import { SampleDysregulationPanel } from "@/components/charts/SampleDysregulation";
+import {
+	DASHBOARD_SECTIONS,
+	DASHBOARD_VIEW_REGISTRY,
+	DEFAULT_DASHBOARD_VIEW_ID,
+	type DashboardViewId,
+} from "@/config/dashboard-tools";
 import {
 	DASHBOARD_DISEASE_STORAGE_KEY,
 	type ReferenceDiseaseId,
@@ -50,18 +57,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-	Activity,
-	BrainCircuit,
-	Dna,
-	FileSearch,
-	FlaskConical,
-	HelpCircle,
-	Network,
-	ShieldPlus,
-	Sparkles,
-	type LucideIcon,
-} from "lucide-react";
+import { HelpCircle } from "lucide-react";
 export const description = "A collection of AML samples.";
 
 const REFERENCE_DISEASE_OPTIONS: { value: ReferenceDiseaseId; label: string }[] = [
@@ -70,20 +66,6 @@ const REFERENCE_DISEASE_OPTIONS: { value: ReferenceDiseaseId; label: string }[] 
 	{ value: "tall", label: "T-ALL" },
 ];
 
-type DashboardTab = {
-	value: string;
-	label: string;
-	mobileLabel?: string;
-	description: string;
-	icon: LucideIcon;
-};
-
-type DashboardSection = {
-	title: string;
-	description: string;
-	tabs: DashboardTab[];
-};
-
 type SetupStatus = {
 	uploadedCount: number;
 	harmonizedUploadedCount: number;
@@ -91,119 +73,33 @@ type SetupStatus = {
 	isLoading: boolean;
 };
 
+const dashboardSections = DASHBOARD_SECTIONS.map((section) => ({
+	...section,
+	tabs: section.viewIds.map((viewId) => DASHBOARD_VIEW_REGISTRY[viewId]),
+}));
+const dashboardViewIds = DASHBOARD_SECTIONS.flatMap((section) => section.viewIds);
+
+const isDashboardViewId = (value: string): value is DashboardViewId =>
+	value in DASHBOARD_VIEW_REGISTRY;
+
 export function Dashboard({ user }: { user: User | null }) {
-	const [activeTab, setActiveTab] = useState("qc");
+	const [activeTab, setActiveTab] = useState<DashboardViewId>(
+		DEFAULT_DASHBOARD_VIEW_ID,
+	);
 	const [selectedDiseases, setSelectedDiseases] = useState<ReferenceDiseaseId[]>([
 		"aml",
 	]);
 	const [showOverview, setShowOverview] = useState(false);
-	const [isSetupCollapsed, setIsSetupCollapsed] = useState(false);
-	const [hasAutoCollapsedSetup, setHasAutoCollapsedSetup] = useState(false);
 	const [setupStatus, setSetupStatus] = useState<SetupStatus>({
 		uploadedCount: 0,
 		harmonizedUploadedCount: 0,
 		totalHarmonizedColumns: 0,
 		isLoading: true,
 	});
-	const dashboardSections: DashboardSection[] = [
-		{
-			title: "Exploration",
-			description:
-				"Quality control and exploratory views for uploaded samples.",
-			tabs: [
-				{
-					value: "qc",
-					label: "QC Metrics",
-					mobileLabel: "QC",
-					description:
-						"Read and expression quality checks for uploaded samples.",
-					icon: Activity,
-				},
-				{
-					value: "tsne",
-					label: "t-SNE",
-					mobileLabel: "t-SNE",
-					description:
-						"Projection views across mutation, expression and aberrations.",
-					icon: Network,
-				},
-				{
-					value: "knn",
-					label: "KNN Report",
-					mobileLabel: "KNN",
-					description:
-						"Nearest-neighbor reports across clinical and molecular signals.",
-					icon: FileSearch,
-				},
-				{
-					value: "deconvolution",
-					label: "Deconvolution",
-					mobileLabel: "Deconv",
-					description:
-						"Cell-state composition estimates from the uploaded RNA matrix.",
-					icon: FlaskConical,
-				},
-			],
-		},
-		{
-			title: "Reporting",
-			description:
-				"Evidence views for treatment context and summary workflows.",
-			tabs: [
-				{
-					value: "drug",
-					label: "Drug Response",
-					mobileLabel: "Drug",
-					description: "Ex-vivo response reference comparisons and heatmaps.",
-					icon: ShieldPlus,
-				},
-			],
-		},
-		{
-			title: "Diagnostics",
-			description:
-				"Clinical interpretation views and subtype-oriented diagnostics.",
-			tabs: [
-				{
-					value: "cnv",
-					label: "CNV",
-					mobileLabel: "CNV",
-					description: "Genome-wide copy-number style expression signal view.",
-					icon: Dna,
-				},
-				{
-					value: "hamlet",
-					label: "HAMLET",
-					mobileLabel: "HAMLET",
-					description: "Acute leukemia diagnostic panels and subtype outputs.",
-					icon: Sparkles,
-				},
-				{
-					value: "molecular-prediction",
-					label: "Molecular Prediction",
-					mobileLabel: "Molecular",
-					description:
-						"Bridge-based molecular class prediction from raw RNA counts.",
-					icon: BrainCircuit,
-				},
-			],
-		},
-		{
-			title: "Intelligence",
-			description: "LLM-assisted interpretation and report generation.",
-			tabs: [
-				{
-					value: "ask-ai",
-					label: "Artificial Intelligence",
-					mobileLabel: "AI",
-					description: "AI-generated summaries and follow-up analysis support.",
-					icon: BrainCircuit,
-				},
-			],
-		},
-	];
 	const handleSelectTab = (tabValue: string) => {
-		setActiveTab(tabValue);
+		if (isDashboardViewId(tabValue)) {
+			setActiveTab(tabValue);
+		}
 	};
 	const selectedDiseaseLabel =
 		selectedDiseases.length === 3
@@ -218,7 +114,7 @@ export function Dashboard({ user }: { user: User | null }) {
 	const navSectionsForDisplay = dashboardSections;
 	const activeSection =
 		dashboardSections.find((section) =>
-			section.tabs.some((tab) => tab.value === activeTab),
+			section.tabs.some((tab) => tab.id === activeTab),
 		) ?? dashboardSections[0];
 	const mobileQuickTabs = activeSection.tabs;
 	const setupReady = setupStatus.uploadedCount > 0;
@@ -273,10 +169,6 @@ export function Dashboard({ user }: { user: User | null }) {
 		);
 		if (savedOverview === "0") setShowOverview(true);
 		if (savedOverview === "1") setShowOverview(false);
-		const savedSetupCollapsed = window.localStorage.getItem(
-			"dashboard-setup-collapsed",
-		);
-		if (savedSetupCollapsed === "1") setIsSetupCollapsed(true);
 	}, []);
 
 	useEffect(() => {
@@ -294,26 +186,56 @@ export function Dashboard({ user }: { user: User | null }) {
 	}, [showOverview]);
 
 	useEffect(() => {
-		window.localStorage.setItem(
-			"dashboard-setup-collapsed",
-			isSetupCollapsed ? "1" : "0",
-		);
-	}, [isSetupCollapsed]);
-
-	useEffect(() => {
-		if (harmonizeComplete && !hasAutoCollapsedSetup) {
-			setIsSetupCollapsed(true);
-			setHasAutoCollapsedSetup(true);
-		}
-	}, [harmonizeComplete, hasAutoCollapsedSetup]);
-
-	useEffect(() => {
 		const onFocus = () => {
 			void refreshSetupStatus();
 		};
 		window.addEventListener("focus", onFocus);
 		return () => window.removeEventListener("focus", onFocus);
 	}, [refreshSetupStatus]);
+
+	const dashboardPanels = {
+		qc: <QCCharts />,
+		tsne: (
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<TSNEChart />
+				<MutationTSNE />
+				<GeneExpressionTSNE />
+				<AberrationsTSNE />
+			</div>
+		),
+		knn: (
+			<div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+				<TSNEKNNChart />
+				<KNNReport />
+				<KNNReportAberrations />
+				<KNNReportMutation />
+				<KNNReportExpression />
+			</div>
+		),
+		dysregulation: <SampleDysregulationPanel />,
+		deconvolution: <DeconvolutionChart />,
+		drug: (
+			<>
+				<p className="text-red-600 dark:text-red-500 font-medium text-center my-4 text-bold">
+					Please be aware that these are based on{" "}
+					<span className="italic">ex-vivo</span> drug responses and not
+					recommendations.
+				</p>
+				<div className="grid grid-cols-1 gap-4">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<DrugResponseTSNE />
+						<ClusterAssociationCard />
+					</div>
+					<DrugResponseHeatmap />
+					<DrugEffectivenessReport />
+				</div>
+			</>
+		),
+		cnv: <CNVChart />,
+		hamlet: <HamletDashboard />,
+		"molecular-prediction": <MolecularPredictionPanel />,
+		"ask-ai": <AIAMLReport />,
+	} satisfies Record<DashboardViewId, JSX.Element>;
 
 	if (!user) {
 		return <Navigate to="/login" replace />;
@@ -351,87 +273,37 @@ export function Dashboard({ user }: { user: User | null }) {
 						{showOverview && <SeamlessHeader />}
 					</section>
 					<section className="space-y-3">
-						<div className="rounded-xl border border-border/70 bg-card/60 p-4 shadow-sm">
-							<div className="flex flex-wrap items-start justify-between gap-3">
-								<div className="min-w-0">
-									<div className="flex flex-wrap items-center gap-2">
-										<Badge variant="outline" className="font-medium">
-											Step 1
-										</Badge>
-										<h2 className="text-base font-semibold leading-tight">
-											Prepare Your Data
-										</h2>
-									</div>
-									<p className="mt-2 text-sm text-muted-foreground">
-										Start by uploading raw counts, then harmonize selected
-										samples before moving into diagnostics and downstream
-										reports.
-									</p>
-									<div className="mt-3 flex flex-wrap gap-2">
-										<Badge variant="outline" className="font-medium">
-											{setupStatus.isLoading
-												? "Checking setup status..."
-												: !setupReady
-													? "No uploaded samples yet"
-													: harmonizeComplete
-														? `Ready: ${setupStatus.uploadedCount} uploaded, all harmonized`
-														: `Setup in progress: ${setupStatus.harmonizedUploadedCount}/${setupStatus.uploadedCount} harmonized`}
-										</Badge>
-									</div>
-								</div>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() => setIsSetupCollapsed((prev) => !prev)}
-								>
-									{isSetupCollapsed ? "Expand Setup" : "Collapse Setup"}
-								</Button>
-							</div>
-							{setupStatus.totalHarmonizedColumns > 0 && (
-								<div className="mt-2 text-xs text-muted-foreground">
-									Harmonized cache contains {setupStatus.totalHarmonizedColumns}{" "}
-									column{setupStatus.totalHarmonizedColumns === 1 ? "" : "s"}.
-								</div>
+						<div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 items-start">
+							<DataUpload
+								embedded
+								onDataChanged={() => void refreshSetupStatus()}
+							/>
+							{setupReady ? (
+								<HarmonizeData
+									embedded
+									diseases={selectedDiseases}
+									onDiseasesChange={setSelectedDiseases}
+									onDataChanged={() => void refreshSetupStatus()}
+								/>
+							) : (
+								<Card className="border-border/60 shadow-none bg-background/70">
+									<CardHeader>
+										<CardTitle className="text-base">
+											Harmonize Data
+										</CardTitle>
+										<CardDescription>
+											Upload sample data first. This step becomes available
+											after a count matrix is uploaded.
+										</CardDescription>
+									</CardHeader>
+									<CardContent>
+										<div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+											Waiting for uploaded samples.
+										</div>
+									</CardContent>
+								</Card>
 							)}
 						</div>
-						{!isSetupCollapsed && (
-							<div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 items-start">
-								<div className="min-w-0">
-									<DataUpload
-										embedded
-										onDataChanged={() => void refreshSetupStatus()}
-									/>
-								</div>
-								<div className="min-w-0">
-									{setupReady ? (
-										<HarmonizeData
-											embedded
-											diseases={selectedDiseases}
-											onDiseasesChange={setSelectedDiseases}
-											onDataChanged={() => void refreshSetupStatus()}
-										/>
-									) : (
-										<Card className="border-border/60 shadow-none bg-background/70">
-											<CardHeader>
-												<CardTitle className="text-base">
-													Harmonize Data
-												</CardTitle>
-												<CardDescription>
-													Upload sample data first. This step becomes available
-													after a count matrix is uploaded.
-												</CardDescription>
-											</CardHeader>
-											<CardContent>
-												<div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-													Waiting for uploaded samples.
-												</div>
-											</CardContent>
-										</Card>
-									)}
-								</div>
-							</div>
-						)}
 					</section>
 
 					<section className="space-y-2">
@@ -457,7 +329,7 @@ export function Dashboard({ user }: { user: User | null }) {
 															{section.title}
 														</div>
 													{section.tabs.map((tab) => (
-														<SelectItem key={tab.value} value={tab.value}>
+														<SelectItem key={tab.id} value={tab.id}>
 															{tab.label}
 														</SelectItem>
 													))}
@@ -469,12 +341,12 @@ export function Dashboard({ user }: { user: User | null }) {
 									<div className="flex flex-wrap gap-2">
 										{mobileQuickTabs.map((tab) => (
 											<button
-												key={tab.value}
+												key={tab.id}
 												type="button"
-												onClick={() => handleSelectTab(tab.value)}
+												onClick={() => handleSelectTab(tab.id)}
 												className={cn(
 													"rounded-full border px-3 py-1.5 text-xs font-medium leading-tight transition-colors",
-													activeTab === tab.value
+													activeTab === tab.id
 														? "bg-primary text-primary-foreground border-primary"
 														: "bg-background text-foreground border-border/70 hover:bg-muted",
 												)}
@@ -502,13 +374,13 @@ export function Dashboard({ user }: { user: User | null }) {
 													<div className="flex flex-wrap gap-1">
 														{section.tabs.map((tab) => {
 															const Icon = tab.icon;
-															const isActive = activeTab === tab.value;
+															const isActive = activeTab === tab.id;
 															return (
 																<button
-																	key={tab.value}
+																	key={tab.id}
 																	type="button"
 																	aria-current={isActive ? "page" : undefined}
-																	onClick={() => handleSelectTab(tab.value)}
+																	onClick={() => handleSelectTab(tab.id)}
 																	className={cn(
 																		"inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors",
 																		isActive
@@ -530,61 +402,11 @@ export function Dashboard({ user }: { user: User | null }) {
 								</CardContent>
 							</Card>
 							<div className="min-w-0">
-								<div className={activeTab === "qc" ? "" : "hidden"}>
-									<QCCharts />
-								</div>
-								<div className={activeTab === "tsne" ? "" : "hidden"}>
-									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-										<TSNEChart />
-										<MutationTSNE />
-										<GeneExpressionTSNE />
-										<AberrationsTSNE />
+								{dashboardViewIds.map((viewId) => (
+									<div key={viewId} className={activeTab === viewId ? "" : "hidden"}>
+										{dashboardPanels[viewId]}
 									</div>
-								</div>
-								<div className={activeTab === "knn" ? "" : "hidden"}>
-									<div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-										<TSNEKNNChart />
-										<KNNReport />
-										<KNNReportAberrations />
-										<KNNReportMutation />
-										<KNNReportExpression />
-									</div>
-								</div>
-
-								<div className={activeTab === "deconvolution" ? "" : "hidden"}>
-									<DeconvolutionChart />
-								</div>
-								<div className={activeTab === "drug" ? "" : "hidden"}>
-									<p className="text-red-600 dark:text-red-500 font-medium text-center my-4 text-bold">
-										Please be aware that these are based on{" "}
-										<span className="italic">ex-vivo</span> drug responses and
-										not recommendations.
-									</p>
-									<div className="grid grid-cols-1 gap-4">
-										<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-											<DrugResponseTSNE />
-											<ClusterAssociationCard />
-										</div>
-										<DrugResponseHeatmap />
-										<DrugEffectivenessReport />
-									</div>
-								</div>
-								<div className={activeTab === "hamlet" ? "" : "hidden"}>
-									<HamletDashboard />
-								</div>
-								<div className={activeTab === "cnv" ? "" : "hidden"}>
-									<CNVChart />
-								</div>
-								<div
-									className={
-										activeTab === "molecular-prediction" ? "" : "hidden"
-									}
-								>
-									<MolecularPredictionPanel />
-								</div>
-								<div className={activeTab === "ask-ai" ? "" : "hidden"}>
-									<AIAMLReport />
-								</div>
+								))}
 							</div>
 						</div>
 					</section>

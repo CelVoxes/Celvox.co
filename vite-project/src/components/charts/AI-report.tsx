@@ -24,6 +24,14 @@ import {
 	fetchTSNEData,
 	fetchMutationTSNEData,
 	fetchAIReport,
+	fetchQCMetrics,
+	fetchDeconvolutionData,
+	fetchCNVData,
+	fetchKNNDEG,
+	fetchMolecularPrediction,
+	fetchMolecularTools,
+	getSelectedDiseaseContext,
+	type MolecularToolId,
 } from "@/utils/api";
 import {
 	adjustPValues,
@@ -93,6 +101,7 @@ interface ProcessedData {
 		neighborSamples?: DrugData[];
 		comparisons?: (DrugComparison | null)[]; // Allow null values in the array
 	};
+	crossTabEvidence: Record<string, unknown>;
 }
 
 // Update this interface
@@ -101,6 +110,63 @@ interface TSNEDataItem {
 	data_source: string;
 	[key: string]: unknown;
 }
+
+type UnknownRecord = Record<string, unknown>;
+
+const asRecord = (value: unknown): UnknownRecord | null => {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+	return value as UnknownRecord;
+};
+
+const asString = (value: unknown): string | null => {
+	if (typeof value === "string") return value;
+	if (typeof value === "number" || typeof value === "boolean") return String(value);
+	return null;
+};
+
+const asNumber = (value: unknown): number | null => {
+	if (typeof value === "number" && Number.isFinite(value)) return value;
+	if (typeof value === "string" && value.trim() !== "") {
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+};
+
+const asBoolean = (value: unknown): boolean | null => {
+	if (typeof value === "boolean") return value;
+	if (typeof value === "string") {
+		const normalized = value.trim().toLowerCase();
+		if (normalized === "true") return true;
+		if (normalized === "false") return false;
+	}
+	return null;
+};
+
+const normalizeSampleId = (sampleId: string) =>
+	sampleId
+		.toLowerCase()
+		.replace(/_sample_data$/i, "")
+		.replace(/_(unstranded|fwd|rev)$/i, "")
+		.trim();
+
+const sampleMatches = (a: string | null, b: string | null) => {
+	if (!a || !b) return false;
+	if (a === b) return true;
+	return normalizeSampleId(a) === normalizeSampleId(b);
+};
+
+const MOLECULAR_TOOL_IDS: MolecularToolId[] = [
+	"bridge",
+	"amlmapr",
+	"allcatchr",
+	"allsorts",
+	"tallsorts",
+];
+const HAMLET_AI_SUMMARY_KEY = "hamlet-ai-summary-v1";
+
+const isMolecularToolId = (value: string): value is MolecularToolId =>
+	MOLECULAR_TOOL_IDS.includes(value as MolecularToolId);
 
 export const AIAMLReport = () => {
 	const [report, setReport] = useState<string>("");
@@ -111,7 +177,7 @@ export const AIAMLReport = () => {
 	const [selectedSample, setSelectedSample] = useState<string | null>(null);
 	const [tsneData, setTsneData] = useState<TSNEDataItem[]>([]);
 	const [kValue, setKValue] = useState(20);
-	const [selectedModel, setSelectedModel] = useState<string>("gpt-4o-mini");
+	const [selectedModel, setSelectedModel] = useState<string>("gpt-5.4-mini");
 
 	useEffect(() => {
 		fetchTSNEData().then(setTsneData).catch(console.error);
@@ -135,6 +201,420 @@ export const AIAMLReport = () => {
 		}
 	}, [report]);
 
+	const safeFetch = async <T,>(
+		label: string,
+		fn: () => Promise<T>
+	): Promise<T | null> => {
+		try {
+			return await fn();
+		} catch (error) {
+			console.warn(`AI report: failed to fetch ${label}`, error);
+			return null;
+		}
+	};
+
+	const summarizeQCMetrics = (qcRaw: unknown, sampleId: string) => {
+		const qc = asRecord(qcRaw);
+		const sampleStatsRaw =
+			qc && Array.isArray(qc.sample_stats) ? (qc.sample_stats as unknown[]) : [];
+
+		const sampleStats = sampleStatsRaw
+			.map((row) => {
+				const obj = asRecord(row);
+				if (!obj) return null;
+				return {
+					sample_id: asString(obj.sample_id),
+					lib_size: asNumber(obj.lib_size),
+					detected_genes: asNumber(obj.detected_genes),
+					median_expression: asNumber(obj.median_expression),
+					mean_expression: asNumber(obj.mean_expression),
+				};
+			})
+			.filter(
+				(
+					row
+				): row is {
+					sample_id: string | null;
+					lib_size: number | null;
+					detected_genes: number | null;
+					median_expression: number | null;
+					mean_expression: number | null;
+				} => row !== null
+			);
+
+		const matched = sampleStats.find((row) => sampleMatches(row.sample_id, sampleId));
+		if (!matched) {
+			return {
+				status: "unavailable",
+				reason: "No matching sample in QC metrics",
+			};
+		}
+
+		return {
+			status: "ok",
+			sample_id: matched.sample_id,
+			lib_size: matched.lib_size,
+			detected_genes: matched.detected_genes,
+			median_expression: matched.median_expression,
+			mean_expression: matched.mean_expression,
+		};
+	};
+
+	const summarizeDeconvolution = (deconvRaw: unknown, sampleId: string) => {
+		const response = asRecord(deconvRaw);
+		const payload = response ? response.deconvolution : null;
+
+		let rows: UnknownRecord[] = [];
+		if (Array.isArray(payload)) {
+			rows = payload
+				.map((item) => asRecord(item))
+				.filter((item): item is UnknownRecord => item !== null);
+		} else {
+			const payloadRecord = asRecord(payload);
+			if (payloadRecord) {
+				rows = Object.values(payloadRecord)
+					.map((item) => asRecord(item))
+					.filter((item): item is UnknownRecord => item !== null);
+			}
+		}
+
+		const matchedRow = rows.find((row) => {
+			const rowName = asString(row._row) ?? asString(row.sample_id);
+			return sampleMatches(rowName, sampleId);
+		});
+
+		if (!matchedRow) {
+			return {
+				status: "unavailable",
+				reason: "No matching sample in deconvolution output",
+			};
+		}
+
+		const rankedCellTypes = Object.entries(matchedRow)
+			.map(([cellType, rawValue]) => ({
+				cellType,
+				fraction: asNumber(rawValue),
+			}))
+			.filter(
+				(item) =>
+					item.cellType !== "_row" &&
+					item.cellType !== "sample_id" &&
+					item.fraction !== null
+			)
+			.map((item) => ({
+				cell_type: item.cellType,
+				fraction: item.fraction as number,
+				percent: Number(((item.fraction as number) * 100).toFixed(2)),
+			}))
+			.sort((a, b) => b.fraction - a.fraction);
+
+		return {
+			status: "ok",
+			sample_id: asString(matchedRow._row) ?? asString(matchedRow.sample_id) ?? sampleId,
+			dominant_cell_type: rankedCellTypes[0]?.cell_type ?? null,
+			top_cell_types: rankedCellTypes.slice(0, 8),
+		};
+	};
+
+	const summarizeCNV = (cnvRaw: unknown) => {
+		const cnv = asRecord(cnvRaw);
+		const genesRaw =
+			cnv && Array.isArray(cnv.genome_expression)
+				? (cnv.genome_expression as unknown[])
+				: [];
+
+		const genes = genesRaw
+			.map((row) => {
+				const obj = asRecord(row);
+				if (!obj) return null;
+				return {
+					gene_id: asString(obj.gene_id),
+					chromosome: asString(obj.chromosome),
+					cnv_score: asNumber(obj.cnv_score),
+					cnv_z_score: asNumber(obj.cnv_z_score),
+					is_significant_cnv: asBoolean(obj.is_significant_cnv),
+					is_amplification: asBoolean(obj.is_amplification),
+					is_deletion: asBoolean(obj.is_deletion),
+				};
+			})
+			.filter(
+				(
+					item
+				): item is {
+					gene_id: string | null;
+					chromosome: string | null;
+					cnv_score: number | null;
+					cnv_z_score: number | null;
+					is_significant_cnv: boolean | null;
+					is_amplification: boolean | null;
+					is_deletion: boolean | null;
+				} => item !== null
+			);
+
+		if (genes.length === 0) {
+			return {
+				status: "unavailable",
+				reason: "No CNV data available for selected sample",
+			};
+		}
+
+		const significant = genes.filter(
+			(gene) =>
+				gene.is_significant_cnv === true ||
+				(gene.cnv_z_score !== null && Math.abs(gene.cnv_z_score) >= 2)
+		);
+		const amplifications = genes
+			.filter(
+				(gene) =>
+					gene.is_amplification === true ||
+					(gene.cnv_z_score !== null && gene.cnv_z_score >= 2)
+			)
+			.sort((a, b) => (b.cnv_z_score ?? -Infinity) - (a.cnv_z_score ?? -Infinity))
+			.slice(0, 10)
+			.map((gene) => ({
+				gene_id: gene.gene_id,
+				chromosome: gene.chromosome,
+				cnv_score: gene.cnv_score,
+				cnv_z_score: gene.cnv_z_score,
+			}));
+		const deletions = genes
+			.filter(
+				(gene) =>
+					gene.is_deletion === true ||
+					(gene.cnv_z_score !== null && gene.cnv_z_score <= -2)
+			)
+			.sort((a, b) => (a.cnv_z_score ?? Infinity) - (b.cnv_z_score ?? Infinity))
+			.slice(0, 10)
+			.map((gene) => ({
+				gene_id: gene.gene_id,
+				chromosome: gene.chromosome,
+				cnv_score: gene.cnv_score,
+				cnv_z_score: gene.cnv_z_score,
+			}));
+
+		return {
+			status: "ok",
+			total_genes: genes.length,
+			significant_event_count: significant.length,
+			top_amplifications: amplifications,
+			top_deletions: deletions,
+		};
+	};
+
+	const summarizeKnnDeg = (degRaw: unknown) => {
+		if (!Array.isArray(degRaw)) {
+			return {
+				status: "unavailable",
+				reason: "No KNN differential expression results",
+			};
+		}
+
+		const rows = degRaw
+			.map((row) => {
+				const obj = asRecord(row);
+				if (!obj) return null;
+				return {
+					gene: asString(obj._row),
+					logFC: asNumber(obj.logFC),
+					adjPVal: asNumber(obj["adj.P.Val"]),
+					logFDR: asNumber(obj.logFDR),
+				};
+			})
+			.filter(
+				(
+					item
+				): item is {
+					gene: string | null;
+					logFC: number | null;
+					adjPVal: number | null;
+					logFDR: number | null;
+				} => item !== null
+			)
+			.filter((item) => item.gene !== null);
+
+		if (rows.length === 0) {
+			return {
+				status: "unavailable",
+				reason: "No parsable KNN differential expression rows",
+			};
+		}
+
+		const significant = rows.filter(
+			(item) =>
+				item.adjPVal !== null && item.logFC !== null && item.adjPVal < 0.05
+		);
+		const up = significant
+			.filter((item) => (item.logFC ?? 0) > 0)
+			.sort((a, b) => (b.logFC ?? -Infinity) - (a.logFC ?? -Infinity))
+			.slice(0, 12)
+			.map((item) => ({
+				gene: item.gene,
+				logFC: item.logFC,
+				adjPVal: item.adjPVal,
+				logFDR: item.logFDR,
+			}));
+		const down = significant
+			.filter((item) => (item.logFC ?? 0) < 0)
+			.sort((a, b) => (a.logFC ?? Infinity) - (b.logFC ?? Infinity))
+			.slice(0, 12)
+			.map((item) => ({
+				gene: item.gene,
+				logFC: item.logFC,
+				adjPVal: item.adjPVal,
+				logFDR: item.logFDR,
+			}));
+
+		return {
+			status: "ok",
+			total_gene_tests: rows.length,
+			significant_gene_count: significant.length,
+			top_upregulated_genes: up,
+			top_downregulated_genes: down,
+		};
+	};
+
+	const fetchMolecularEvidence = async (sampleId: string) => {
+		const diseaseContext = getSelectedDiseaseContext();
+		const preferredByDisease: Record<string, MolecularToolId[]> = {
+			aml: ["bridge", "amlmapr", "allcatchr"],
+			ball: ["bridge", "allcatchr", "allsorts"],
+			tall: ["bridge", "tallsorts", "amlmapr"],
+			pan_leukemia: ["bridge", "amlmapr", "allcatchr", "allsorts"],
+		};
+		const preferredTools =
+			preferredByDisease[diseaseContext] ?? ["bridge", "amlmapr", "allcatchr"];
+
+		const catalog = await safeFetch("molecular-tools", () => fetchMolecularTools());
+		const catalogTools =
+			catalog && Array.isArray(catalog.tools) ? (catalog.tools as unknown[]) : [];
+
+		const runnableFromCatalog = catalogTools
+			.map((tool) => asRecord(tool))
+			.filter((tool): tool is UnknownRecord => tool !== null)
+			.filter((tool) => {
+				const id = asString(tool.id);
+				if (!id || !isMolecularToolId(id)) return false;
+				const applicable = asBoolean(tool.applicable_for_request);
+				const availability = asRecord(tool.availability);
+				const available = availability ? asBoolean(availability.available) : null;
+				const runtimeReady = availability
+					? asBoolean(availability.runtime_ready)
+					: null;
+				if (applicable === false) return false;
+				if (available === false) return false;
+				if (runtimeReady === false) return false;
+				return true;
+			})
+			.map((tool) => asString(tool.id))
+			.filter((id): id is MolecularToolId => Boolean(id && isMolecularToolId(id)));
+
+		const toolsToRun = (runnableFromCatalog.length > 0
+			? preferredTools.filter((tool) => runnableFromCatalog.includes(tool))
+			: preferredTools
+		).slice(0, 3);
+
+		const predictions = await Promise.all(
+			toolsToRun.map(async (toolId) => {
+				try {
+					const rawResponse = await fetchMolecularPrediction(toolId, sampleId);
+					const raw = asRecord(rawResponse) ?? {};
+					const topPredictions = Array.isArray(raw.top_predictions)
+						? (raw.top_predictions as unknown[])
+								.map((item) => {
+									const obj = asRecord(item);
+									if (!obj) return null;
+									const label = asString(obj.label);
+									const probability = asNumber(obj.probability);
+									if (!label || probability === null) return null;
+									return { label, probability };
+								})
+								.filter(
+									(
+										item
+									): item is {
+										label: string;
+										probability: number;
+									} => item !== null
+								)
+								.slice(0, 5)
+						: [];
+
+					return {
+						tool: toolId,
+						prediction: asString(raw.prediction),
+						confidence: asNumber(raw.confidence),
+						model: asString(raw.model),
+						warning: asString(raw.warning),
+						error: asString(raw.error),
+						top_predictions: topPredictions,
+					};
+				} catch (error) {
+					return {
+						tool: toolId,
+						error:
+							error instanceof Error
+								? error.message
+								: "Failed to compute molecular prediction",
+					};
+				}
+			})
+		);
+
+		return {
+			status: "ok",
+			disease_context: diseaseContext,
+			sample_id: sampleId,
+			tools_attempted: toolsToRun,
+			predictions,
+		};
+	};
+
+	const readHamletEvidence = (sampleId: string) => {
+		if (typeof window === "undefined") {
+			return {
+				status: "unavailable",
+				reason: "No browser session available",
+			};
+		}
+
+		try {
+			const raw = window.sessionStorage.getItem(HAMLET_AI_SUMMARY_KEY);
+			if (!raw) {
+				return {
+					status: "unavailable",
+					reason: "HAMLET tab data not loaded in current session",
+				};
+			}
+
+			const parsed: unknown = JSON.parse(raw);
+			const summary = asRecord(parsed);
+			if (!summary) {
+				return {
+					status: "unavailable",
+					reason: "HAMLET summary format is invalid",
+				};
+			}
+
+			const hamletSampleName = asString(summary.sample_name);
+			if (hamletSampleName && !sampleMatches(hamletSampleName, sampleId)) {
+				return {
+					status: "unavailable",
+					reason: "HAMLET data belongs to a different sample",
+					hamlet_sample_name: hamletSampleName,
+					selected_sample: sampleId,
+				};
+			}
+
+			return summary;
+		} catch (error) {
+			console.warn("AI report: failed to read HAMLET summary", error);
+			return {
+				status: "unavailable",
+				reason: "Failed to parse HAMLET summary",
+			};
+		}
+	};
+
 	const generateReport = async () => {
 		if (!selectedSample) {
 			toast({
@@ -147,11 +627,39 @@ export const AIAMLReport = () => {
 
 		setIsLoading(true);
 		try {
-			const [knnData, drugResponseData, mutationData] = await Promise.all([
+			const [
+				knnData,
+				drugResponseData,
+				mutationData,
+				qcMetricsRaw,
+				deconvolutionRaw,
+				cnvRaw,
+				knnDegRaw,
+				molecularEvidence,
+			] = await Promise.all([
 				fetchKNNData(kValue),
 				fetchDrugResponseData(),
 				fetchMutationTSNEData(),
+				safeFetch("qc-metrics", fetchQCMetrics),
+				safeFetch("deconvolution", fetchDeconvolutionData),
+				safeFetch("cnv", () => fetchCNVData([selectedSample], false)),
+				safeFetch("knn-deg", () => fetchKNNDEG(kValue, selectedSample)),
+				safeFetch("molecular-predictions", () =>
+					fetchMolecularEvidence(selectedSample)
+				),
 			]);
+
+			const crossTabEvidence: Record<string, unknown> = {
+				qc_metrics: summarizeQCMetrics(qcMetricsRaw, selectedSample),
+				deconvolution: summarizeDeconvolution(deconvolutionRaw, selectedSample),
+				cnv: summarizeCNV(cnvRaw),
+				knn_differential_expression: summarizeKnnDeg(knnDegRaw),
+				molecular_predictions: molecularEvidence ?? {
+					status: "unavailable",
+					reason: "Molecular prediction data unavailable",
+				},
+				hamlet: readHamletEvidence(selectedSample),
+			};
 
 			const processedData = processData(
 				selectedSample,
@@ -159,7 +667,8 @@ export const AIAMLReport = () => {
 				drugResponseData,
 				mutationData,
 				tsneData,
-				kValue
+				kValue,
+				crossTabEvidence
 			);
 
 			if (processedData) {
@@ -182,7 +691,8 @@ export const AIAMLReport = () => {
 		drugResponseData: { sample_id: string; inhibitor: string; auc: number }[],
 		mutationData: { sample_id: string; gene_id: string }[],
 		tsneData: TSNEDataItem[],
-		k: number
+		k: number,
+		crossTabEvidence: Record<string, unknown>
 	) => {
 		const sample = tsneData.find((d) => d.sample_id === selectedSample);
 		const knnItem = knnData.find((item) => item.sample_id === selectedSample);
@@ -221,6 +731,7 @@ export const AIAMLReport = () => {
 			metadataReport,
 			mutationReport,
 			drugReport,
+			crossTabEvidence,
 		};
 	};
 
@@ -484,16 +995,18 @@ export const AIAMLReport = () => {
 			return "Unable to generate report due to missing data.";
 		}
 
-		const { sample, metadataReport, mutationReport, drugReport } =
+		const { sample, metadataReport, mutationReport, drugReport, crossTabEvidence } =
 			processedData;
 
 		const metadataSection = generateMetadataSection(metadataReport);
 		const mutationSection = generateMutationSection(mutationReport);
 		const drugResponseSection = generateDrugResponseSection(drugReport);
 		const integratedAnalysis = await generateIntegratedAnalysis(
+			sample.sample_id,
 			metadataReport,
 			mutationReport,
-			drugReport
+			drugReport,
+			crossTabEvidence
 		);
 
 		return `
@@ -662,6 +1175,7 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 	};
 
 	const generateIntegratedAnalysis = async (
+		sampleId: string,
 		metadataReport: Record<string, MetadataReportItem>,
 		mutationReport: {
 			gene: string;
@@ -669,32 +1183,103 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 			pValue: number;
 			neighborFrequency: string;
 		}[],
-		drugReport: DrugReport
+		drugReport: DrugReport,
+		crossTabEvidence: Record<string, unknown>
 	) => {
-		const metadataSection = generateMetadataSection(metadataReport);
-		const mutationSection = generateMutationSection(mutationReport);
-		const drugSection = generateDrugResponseSection(drugReport);
+		const crossTabCoverage = Object.entries(crossTabEvidence)
+			.filter(([, value]) => {
+				const record = asRecord(value);
+				return record ? record.status === "ok" : false;
+			})
+			.map(([key]) => key);
 
-		const patientInfo =
-			"You are an expert in AML research specializing in hematology. Generate an integrated analysis based on following information about the patient: " +
-			metadataSection +
-			"\n" +
-			mutationSection +
-			"\n" +
-			drugSection +
-			"\n" +
-			"Add relevant references to the data used to support the analysis. Make sure to use markdown formatting for the response.";
+		const structuredPatientEvidence = {
+			sample_id: sampleId,
+			metadata_summary: Object.fromEntries(
+				Object.entries(metadataReport).map(([key, value]) => [
+					key,
+					{
+						mostProbable: value.mostProbable,
+						probability: Number(value.probability.toFixed(4)),
+						breakdown: value.breakdown.slice(0, 5),
+					},
+				])
+			),
+			enriched_mutations: mutationReport.slice(0, 15),
+			drug_response: {
+				significant_comparisons: (drugReport.comparisons ?? [])
+					.filter(
+						(
+							item
+						): item is {
+							drug: string;
+							neighborAvg: number;
+							allSamplesAvg: number;
+							pValue: number;
+							significant: boolean;
+						} => item !== null
+					)
+					.sort((a, b) => a.pValue - b.pValue)
+					.slice(0, 15),
+			},
+			cross_tab_evidence: crossTabEvidence,
+			cross_tab_coverage: crossTabCoverage,
+		};
 
-		// Generate integrated analysis combining metadata, mutations, and drug response
+		const patientInfo = [
+			`Sample ID: ${sampleId}`,
+			"Patient evidence (JSON):",
+			"```json",
+			JSON.stringify(structuredPatientEvidence, null, 2),
+			"```",
+			"Task: produce an integrated AML research summary with references.",
+			"Rules: use the provided sample evidence for patient-specific claims; use web sources for current external context and cite them.",
+			"Prioritize clinically relevant findings from all available tabs, especially QC, deconvolution, CNV, KNN differential expression, and molecular predictions.",
+		].join("\n");
+
 		const aiReport = await fetchAIReport(patientInfo, selectedModel);
 
-		// Check if aiReport.summary is an array and has at least one element
-		if (Array.isArray(aiReport.summary) && aiReport.summary.length > 0) {
-			console.log(aiReport.summary[0]);
-			return aiReport.summary[0];
-		} else {
+		if (aiReport?.error) {
+			return `Unable to generate integrated analysis: ${aiReport.error}`;
+		}
+
+		const rawSummary = aiReport?.summary;
+		const summaryText = Array.isArray(rawSummary)
+			? rawSummary.filter(Boolean).join("\n\n")
+			: typeof rawSummary === "string"
+			? rawSummary
+			: "";
+
+		if (!summaryText) {
 			return "Unable to generate integrated analysis. Please try again.";
 		}
+
+		const rawSources: unknown[] = Array.isArray(aiReport?.sources)
+			? (aiReport.sources as unknown[])
+			: [];
+		const sources = rawSources
+			.filter(
+				(
+					source: unknown
+				): source is {
+					title?: string;
+					url: string;
+				} => {
+					if (!source || typeof source !== "object") return false;
+					const maybeUrl = (source as { url?: unknown }).url;
+					return typeof maybeUrl === "string" && maybeUrl.trim() !== "";
+				}
+			)
+			.map((source) => {
+				const label = source.title?.trim() || source.url;
+				return `- [${label}](${source.url})`;
+			});
+
+		if (sources.length === 0) {
+			return summaryText;
+		}
+
+		return `${summaryText}\n\n### Web Sources\n${sources.join("\n")}`;
 	};
 
 	const copyToClipboard = () => {
@@ -752,9 +1337,9 @@ Note: These drugs show the lowest AUC values for this sample's neighbors, indica
 							<SelectValue placeholder="Select a model" />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="gpt-4o-mini">GPT-4o-mini</SelectItem>
-							<SelectItem value="gpt-4o">GPT-4o</SelectItem>
-							<SelectItem value="gpt-o1-mini">GPT-o1-mini</SelectItem>
+							<SelectItem value="gpt-5.4-mini">GPT-5.4 mini</SelectItem>
+							<SelectItem value="gpt-5.4">GPT-5.4</SelectItem>
+							<SelectItem value="gpt-4.1-mini">GPT-4.1 mini</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>

@@ -7,7 +7,7 @@ export const CollapsibleCard = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {disabled?: boolean}
 >(({ className, children, disabled, ...props }, ref) => {
-  const accordionProps: any = {}
+  const accordionProps: any = { defaultValue: "only" };
   if (disabled) {
     accordionProps["value"] = "only";
   }
@@ -37,7 +37,7 @@ export const CollapsibleCardTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between py-4 text-sm font-medium transition-colors hover:bg-muted/30 [&[data-state=open]>svg]:rotate-180 [&[data-disabled=]>svg]:hidden bg-transparent",
+        "flex flex-1 items-center justify-between py-6 text-sm font-medium transition-colors hover:bg-muted/30 [&[data-state=open]>svg]:rotate-180 [&[data-disabled=]>svg]:hidden bg-transparent",
         className
       )}
       {...props}
@@ -45,7 +45,7 @@ export const CollapsibleCardTrigger = React.forwardRef<
       <div className={cn("grow")}>
         {children}
       </div>
-      <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
+      <ChevronDownIcon className="h-4 w-4 shrink-0 mr-6 text-muted-foreground transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ))

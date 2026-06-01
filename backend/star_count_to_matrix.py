@@ -3,11 +3,17 @@
 import argparse
 import pandas as pd
 from pathlib import Path
+import re
 import sys
+
+READS_PER_GENE_SUFFIX_RE = re.compile(
+    r"\.ReadsPerGene\.out(?: ?\(\d+\))?\.tab$",
+    flags=re.IGNORECASE,
+)
 
 
 def read_star_file(path):
-    sample = path.name.replace(".ReadsPerGene.out.tab", "")
+    sample = READS_PER_GENE_SUFFIX_RE.sub("", path.name)
 
     df = pd.read_csv(
         path,

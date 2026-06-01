@@ -37,6 +37,14 @@ def rank_probs(prob_row: pd.Series, top_n: int):
     return ranked[: max(1, top_n)]
 
 
+def patch_tallsorts_compat(clf) -> None:
+    """Mark TALLSorts pipeline steps as fitted for sklearn>=1.x check_is_fitted."""
+    for _, step in clf.steps:
+        fitted = [v for v in vars(step) if v.endswith("_") and not v.startswith("__")]
+        if not fitted:
+            step.is_fitted_ = True
+
+
 def main():
     args = parse_args()
     warnings.filterwarnings("ignore", category=FutureWarning)
@@ -45,6 +53,7 @@ def main():
 
     samples = load_samples_matrix(args.input_csv)
     clf = load_classifier(args.model)
+    patch_tallsorts_compat(clf)
     results = clf.predict(samples)
 
     sample_key = samples.index[0]

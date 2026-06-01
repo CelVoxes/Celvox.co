@@ -10,6 +10,14 @@ normalize_arg_vector <- function(x) {
     return(as.character(x))
 }
 
+is_readspergene_filename <- function(file_names) {
+    grepl("ReadsPerGene\\.out( ?\\([0-9]+\\))?\\.tab$", file_names, ignore.case = TRUE)
+}
+
+strip_readspergene_suffix <- function(file_name) {
+    sub("\\.ReadsPerGene\\.out( ?\\([0-9]+\\))?\\.tab$", "", file_name, ignore.case = TRUE)
+}
+
 read_readspergene_files <- function(file_paths, file_names = NULL) {
     sample_names <- if (!is.null(file_names) && length(file_names) == length(file_paths)) {
         basename(file_names)
@@ -25,15 +33,28 @@ read_readspergene_files <- function(file_paths, file_names = NULL) {
             data.table = FALSE
         )
 
+        # Fallback for files where STAR output was re-saved with non-tab whitespace.
         if (ncol(df) < 4) {
-            stop("ReadsPerGene.out.tab files must have at least 4 columns.")
+            df <- fread(
+                file_paths[i],
+                header = FALSE,
+                data.table = FALSE
+            )
+        }
+
+        if (ncol(df) < 4) {
+            stop("ReadsPerGene.out.tab files must have at least 4 columns (gene, unstranded, strand_fwd, strand_rev).")
         }
 
         colnames(df)[1:4] <- c("gene", "unstranded", "strand_fwd", "strand_rev")
-        df <- df[!startsWith(df$gene, "N_"), c("gene", "unstranded")]
+        df <- df[!startsWith(df$gene, "N_"), c("gene", "unstranded", "strand_fwd", "strand_rev")]
 
-        sample_name <- sub("\\.ReadsPerGene\\.out\\.tab$", "", sample_names[i], ignore.case = TRUE)
-        colnames(df)[2] <- sample_name
+        sample_name <- strip_readspergene_suffix(sample_names[i])
+        colnames(df)[2:4] <- c(
+            paste0(sample_name, "_unstranded"),
+            paste0(sample_name, "_fwd"),
+            paste0(sample_name, "_rev")
+        )
         return(df)
     })
 
@@ -95,7 +116,7 @@ load_sample_data <- local({
                     basename(temp_files)
                 }
 
-                is_readspergene <- all(grepl("ReadsPerGene\\.out\\.tab$", base_names, ignore.case = TRUE))
+                is_readspergene <- all(is_readspergene_filename(base_names))
                 is_csv <- all(grepl("\\.csv$", base_names, ignore.case = TRUE))
 
                 if (is_readspergene) {
@@ -119,7 +140,7 @@ load_sample_data <- local({
                         }
                     )
                 } else {
-                    return(list(error = "Please upload a single CSV or one or more ReadsPerGene.out.tab files."))
+                    return(list(error = "Please upload a single CSV or one or more ReadsPerGene.out.tab files (copied names like ReadsPerGene.out(1).tab are accepted)."))
                 }
 
                 if (is.list(sample_data) && !is.data.frame(sample_data)) {
@@ -1180,6 +1201,10 @@ function(req) {
 #* @serializer json
 function(req) {
     cache_dir <- req$args$cachedir
+    selected_samples <- normalize_selected_samples_arg(req$args$samples)
+    include_reference <- isTRUE(tolower(as.character(req$args$include_reference %||% "false")) %in% c("true", "1", "yes"))
+    disease_selection <- get_request_disease_selection(req)
+    disease_id <- disease_selection_key(disease_selection)
     # Load the exampleTCGA dataset
     library(seAMLess)
     library(Biobase) # for ExpressionSet
@@ -1194,6 +1219,97 @@ function(req) {
         ))
     }
     sample_data <- read_fst(file.path(cache_dir, "sample_data.fst"))
+    available_samples <- colnames(sample_data)[-1]
+    if (!is.null(selected_samples) && length(selected_samples) > 0) {
+        selected_idx <- match(selected_samples, available_samples)
+        missing_samples <- selected_samples[is.na(selected_idx)]
+        if (length(missing_samples) > 0) {
+            return(list(
+                error = "Selected samples were not found in uploaded sample data",
+                missing_samples = missing_samples,
+                available_samples = available_samples
+            ))
+        }
+        sample_data <- sample_data[, c(1, selected_idx + 1), drop = FALSE]
+    }
+
+    row_sources <- setNames(rep("uploaded", ncol(sample_data) - 1), colnames(sample_data)[-1])
+
+    if (isTRUE(include_reference)) {
+        reference_data <- load_reference_uncorrected_counts(disease = disease_selection)
+        reference_data <- as.data.frame(reference_data, check.names = FALSE)
+        sample_data <- as.data.frame(sample_data, check.names = FALSE)
+        ref_gene_col <- colnames(reference_data)[1]
+        sample_gene_col <- colnames(sample_data)[1]
+        reference_sample_names <- colnames(reference_data)[-1]
+        reference_metadata <- tryCatch(
+            load_metadata(disease = disease_selection, aligned = TRUE),
+            error = function(e) {
+                message("Deconvolution: reference metadata unavailable: ", e$message)
+                NULL
+            }
+        )
+        reference_metadata_match <- tryCatch(
+            {
+                if (is.null(reference_metadata)) {
+                    list(index = rep(NA_integer_, length(reference_sample_names)))
+                } else {
+                    match_metadata_to_reference_columns(
+                        reference_metadata,
+                        reference_sample_names,
+                        disease = disease_selection
+                    )
+                }
+            },
+            error = function(e) {
+                message("Deconvolution: reference metadata matching failed: ", e$message)
+                list(index = rep(NA_integer_, length(reference_sample_names)))
+            }
+        )
+        reference_subtype_values <- rep("unknown", length(reference_sample_names))
+        reference_disease_values <- rep(disease_id, length(reference_sample_names))
+        if (!is.null(reference_metadata) && length(reference_metadata_match$index) == length(reference_sample_names)) {
+            matched <- !is.na(reference_metadata_match$index)
+            if ("subtype_label" %in% colnames(reference_metadata)) {
+                reference_subtype_values[matched] <- as.character(reference_metadata$subtype_label[reference_metadata_match$index[matched]])
+            }
+            if ("disease" %in% colnames(reference_metadata)) {
+                reference_disease_values[matched] <- as.character(reference_metadata$disease[reference_metadata_match$index[matched]])
+            }
+        }
+        reference_subtype_values[is.na(reference_subtype_values) | trimws(reference_subtype_values) == ""] <- "unknown"
+        reference_disease_values[is.na(reference_disease_values) | trimws(reference_disease_values) == ""] <- disease_id
+        reference_subtypes <- setNames(reference_subtype_values, reference_sample_names)
+        reference_diseases <- setNames(reference_disease_values, reference_sample_names)
+        reference_data[[ref_gene_col]] <- gsub("\\.[0-9]+$", "", as.character(reference_data[[ref_gene_col]]))
+        sample_data[[sample_gene_col]] <- gsub("\\.[0-9]+$", "", as.character(sample_data[[sample_gene_col]]))
+        ref_is_ensembl <- sum(grepl("^ENSG", reference_data[[ref_gene_col]])) / nrow(reference_data) > 0.95
+        sample_is_ensembl <- sum(grepl("^ENSG", sample_data[[sample_gene_col]])) / nrow(sample_data) > 0.95
+        if (sample_is_ensembl && !ref_is_ensembl) {
+            message("Deconvolution: converting sample Ensembl IDs to gene symbols for reference merge...")
+            new_ids <- seAMLess::grch38$symbol[match(sample_data[[sample_gene_col]], seAMLess::grch38$ensgene)]
+            new_ids[is.na(new_ids)] <- sample_data[[sample_gene_col]][is.na(new_ids)]
+            sample_data[[sample_gene_col]] <- new_ids
+        } else if (ref_is_ensembl && !sample_is_ensembl) {
+            message("Deconvolution: converting reference Ensembl IDs to gene symbols for sample merge...")
+            new_ids <- seAMLess::grch38$symbol[match(reference_data[[ref_gene_col]], seAMLess::grch38$ensgene)]
+            new_ids[is.na(new_ids)] <- reference_data[[ref_gene_col]][is.na(new_ids)]
+            reference_data[[ref_gene_col]] <- new_ids
+        }
+        common_genes <- intersect(reference_data[[ref_gene_col]], sample_data[[sample_gene_col]])
+        if (length(common_genes) == 0) {
+            return(list(error = "No shared genes found between uploaded samples and reference counts."))
+        }
+        reference_data <- reference_data[match(common_genes, reference_data[[ref_gene_col]]), , drop = FALSE]
+        sample_data <- sample_data[match(common_genes, sample_data[[sample_gene_col]]), , drop = FALSE]
+        colnames(reference_data)[1] <- "gene_id"
+        colnames(sample_data)[1] <- "gene_id"
+        row_sources <- c(
+            setNames(rep("reference", ncol(reference_data) - 1), colnames(reference_data)[-1]),
+            row_sources
+        )
+        sample_data <- cbind(reference_data, sample_data[, -1, drop = FALSE])
+    }
 
     # remove gene names with __no_feature or __ambiguous
     sample_data <- sample_data[!grepl("__no_feature|__ambiguous", sample_data[, 1]), ]
@@ -1201,7 +1317,31 @@ function(req) {
     # remove the row if it is incomplete
     sample_data <- sample_data[complete.cases(sample_data), ]
     result <- seAMLess(sample_data)
-    return(list(message = paste("Deconvolution complete. Samples:", nrow(result$Deconvolution)), deconvolution = data.frame(result$Deconvolution)))
+    deconv <- data.frame(result$Deconvolution, check.names = FALSE)
+    if (!"_row" %in% colnames(deconv)) {
+        deconv[["_row"]] <- rownames(deconv)
+    }
+    deconv[["_source"]] <- unname(row_sources[as.character(deconv[["_row"]])])
+    deconv[["_source"]][is.na(deconv[["_source"]])] <- "unknown"
+    deconv[["_subtype"]] <- if (exists("reference_subtypes")) {
+        unname(reference_subtypes[as.character(deconv[["_row"]])])
+    } else {
+        NA_character_
+    }
+    deconv[["_subtype"]][is.na(deconv[["_subtype"]]) & deconv[["_source"]] == "reference"] <- "unknown"
+    deconv[["_disease"]] <- if (exists("reference_diseases")) {
+        unname(reference_diseases[as.character(deconv[["_row"]])])
+    } else {
+        NA_character_
+    }
+    deconv[["_disease"]][is.na(deconv[["_disease"]]) & deconv[["_source"]] == "reference"] <- disease_id
+    return(list(
+        message = paste("Deconvolution complete. Samples:", nrow(deconv)),
+        deconvolution = deconv,
+        selected_samples = selected_samples %||% available_samples,
+        include_reference = include_reference,
+        disease = disease_id
+    ))
 }
 
 
@@ -2820,49 +2960,70 @@ function(req) {
 
     tryCatch(
         {
-            # Get the OpenAI API key from system environment
             api_key <- Sys.getenv("OPENAI_API_KEY")
             if (api_key == "") {
-                # Try to get it directly from system
-                api_key <- system("echo $OPENAI_API_KEY", intern = TRUE)
-                if (length(api_key) == 0 || api_key == "") {
-                    return(list(error = "OpenAI API key not found in environment variables"))
-                }
-                # Set it in R's environment for future use
-                Sys.setenv(OPENAI_API_KEY = api_key)
+                return(list(error = "OpenAI API key not found in environment variables"))
             }
 
-            message(Sys.getenv("OPENAI_API_KEY"))
-
-            patient_info <- req$args$patientInfo
-            model <- req$args$model
+            patient_info <- trimws(as.character(req$args$patientInfo %||% ""))
+            model <- trimws(as.character(req$args$model %||% ""))
 
             message(paste("Patient info:", patient_info))
             message(paste("Selected model:", model))
 
-            if (is.null(patient_info) || patient_info == "") {
+            if (patient_info == "") {
                 return(list(error = "Patient information is required"))
             }
 
-            if (is.null(model) || model == "") {
-                model <- "gpt-4o-mini" # Default model if not specified
+            if (model == "" || model == "gpt-o1-mini" || model == "o1-mini") {
+                model <- "gpt-5.4-mini"
             }
 
-            # Prepare the API request
-            url <- "https://api.openai.com/v1/chat/completions"
+            url <- "https://api.openai.com/v1/responses"
             headers <- c(
                 "Content-Type" = "application/json",
                 "Authorization" = paste("Bearer", api_key)
             )
+            system_prompt <- paste(
+                "You are an AML clinical research assistant.",
+                "Use patient-specific evidence only from the provided input.",
+                "Use web search for up-to-date external evidence and references.",
+                "Do not fabricate sample-specific values; if a value is missing, say that it is unavailable.",
+                "Return concise Markdown with sections:",
+                "1) Patient-Specific Findings, 2) Evidence-Grounded Context, 3) Limitations, 4) Sources."
+            )
             body <- list(
-                model = model, # Use the selected or default model
-                messages = list(
-                    list(role = "system", content = "Make coherent paragraphs. Use markdown to format the response."),
-                    list(role = "user", content = paste(patient_info, "."))
-                )
+                model = model,
+                input = list(
+                    list(
+                        role = "system",
+                        content = list(
+                            list(
+                                type = "input_text",
+                                text = system_prompt
+                            )
+                        )
+                    ),
+                    list(
+                        role = "user",
+                        content = list(
+                            list(
+                                type = "input_text",
+                                text = patient_info
+                            )
+                        )
+                    )
+                ),
+                tools = list(
+                    list(
+                        type = "web_search_preview",
+                        search_context_size = "high"
+                    )
+                ),
+                temperature = 0.2,
+                max_output_tokens = 1200
             )
 
-            # Make the API request
             response <- POST(
                 url,
                 add_headers(.headers = headers),
@@ -2870,14 +3031,64 @@ function(req) {
                 encode = "json"
             )
 
-            # Check if the request was successful
-            if (http_status(response)$category == "Success") {
-                content <- content(response, "parsed")
-                summary <- content$choices[[1]]$message$content
-                return(list(summary = summary))
-            } else {
-                return(list(error = paste("API request failed with status:", http_status(response)$message)))
+            parsed <- content(response, "parsed", simplifyVector = FALSE)
+            if (http_status(response)$category != "Success") {
+                error_message <- parsed$error$message %||% http_status(response)$message
+                return(list(error = paste("API request failed:", error_message)))
             }
+
+            summary <- ""
+            if (!is.null(parsed$output_text) && is.character(parsed$output_text) && length(parsed$output_text) > 0) {
+                summary <- paste(parsed$output_text, collapse = "\n\n")
+            }
+
+            if (summary == "" && !is.null(parsed$output) && is.list(parsed$output)) {
+                text_chunks <- character(0)
+                for (output_item in parsed$output) {
+                    if (!is.list(output_item) || is.null(output_item$content) || !is.list(output_item$content)) next
+                    for (content_item in output_item$content) {
+                        if (!is.list(content_item)) next
+                        if (identical(content_item$type, "output_text") && !is.null(content_item$text)) {
+                            text_chunks <- c(text_chunks, as.character(content_item$text))
+                        }
+                    }
+                }
+                if (length(text_chunks) > 0) {
+                    summary <- paste(text_chunks, collapse = "\n\n")
+                }
+            }
+
+            sources <- list()
+            seen_urls <- character(0)
+            if (!is.null(parsed$output) && is.list(parsed$output)) {
+                for (output_item in parsed$output) {
+                    if (!is.list(output_item) || is.null(output_item$content) || !is.list(output_item$content)) next
+                    for (content_item in output_item$content) {
+                        if (!is.list(content_item) || is.null(content_item$annotations) || !is.list(content_item$annotations)) next
+                        for (annotation in content_item$annotations) {
+                            if (!is.list(annotation)) next
+                            url_value <- as.character(annotation$url %||% "")
+                            title_value <- as.character(annotation$title %||% url_value)
+                            if (url_value == "" || url_value %in% seen_urls) next
+                            seen_urls <- c(seen_urls, url_value)
+                            sources[[length(sources) + 1]] <- list(
+                                title = title_value,
+                                url = url_value
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (summary == "") {
+                return(list(error = "No textual summary was returned by the model"))
+            }
+
+            return(list(
+                summary = summary,
+                sources = sources,
+                model = model
+            ))
         },
         error = function(e) {
             return(list(error = paste("An error occurred:", e$message)))
@@ -2932,14 +3143,22 @@ function(req) {
 #* @serializer json
 sample_data_names <- function(req) {
     cache_dir <- req$args$cachedir
-    return(colnames(read_fst(file.path(cache_dir, "sample_data.fst"))))
+    sample_path <- file.path(cache_dir, "sample_data.fst")
+    if (!file.exists(sample_path)) {
+        return(character(0))
+    }
+    return(colnames(read_fst(sample_path)))
 }
 
 #* @get /harmonized-data-names
 #* @serializer json
 harmonized_data_names <- function(req) {
     cache_dir <- req$args$cachedir
-    return(colnames(read_fst(file.path(cache_dir, "harmonized_data.fst"))))
+    harmonized_path <- file.path(cache_dir, "harmonized_data.fst")
+    if (!file.exists(harmonized_path)) {
+        return(character(0))
+    }
+    return(colnames(read_fst(harmonized_path)))
 }
 
 # source the DEG.R file
@@ -3008,4 +3227,339 @@ function(req) {
     results[["neighbor_vs_background"]]$logFDR <- -log10(results[["neighbor_vs_background"]]$adj.P.Val)
 
     return(results[["neighbor_vs_background"]])
+}
+
+resolve_harmonized_sample_column <- function(corrected, requested_sample_id) {
+    sample_id <- as.character(requested_sample_id)[1]
+    available_cols <- colnames(corrected)
+    warning <- NULL
+
+    if (sample_id %in% available_cols) {
+        resolved <- sample_id
+    } else if (paste0(sample_id, "_sample_data") %in% available_cols) {
+        resolved <- paste0(sample_id, "_sample_data")
+    } else {
+        base <- sub("_sample_data$", "", sample_id, ignore.case = TRUE)
+        base_no_strand <- sub("_(unstranded|fwd|rev)$", "", base, ignore.case = TRUE)
+        candidates <- c(
+            paste0(base_no_strand, "_unstranded_sample_data"),
+            paste0(base_no_strand, "_fwd_sample_data"),
+            paste0(base_no_strand, "_rev_sample_data"),
+            paste0(base_no_strand, "_unstranded"),
+            paste0(base_no_strand, "_fwd"),
+            paste0(base_no_strand, "_rev"),
+            base,
+            base_no_strand
+        )
+        matched <- candidates[candidates %in% available_cols]
+        resolved <- if (length(matched) > 0) matched[1] else sample_id
+    }
+
+    if (resolved %in% available_cols && grepl("_(fwd|rev)(_sample_data)?$", resolved, ignore.case = TRUE)) {
+        warning <- "Using stranded column for dysregulation. Prefer *_unstranded unless your protocol is stranded."
+    }
+
+    list(
+        requested_sample = requested_sample_id,
+        resolved_sample_column = resolved,
+        available_samples = available_cols,
+        warning = warning
+    )
+}
+
+#* @get /sample-dysregulation
+#* @serializer json
+function(req) {
+    cache_dir <- req$args$cachedir
+    sample_id <- as.character(req$args$sample %||% req$args$sampleId %||% "")
+    top_n <- suppressWarnings(as.integer(req$args$top_n %||% 50))
+    min_abs_delta <- suppressWarnings(as.numeric(req$args$min_abs_delta %||% 1.0))
+    min_abs_z <- suppressWarnings(as.numeric(req$args$min_abs_z %||% 2.0))
+    up_percentile <- suppressWarnings(as.numeric(req$args$up_percentile %||% 0.95))
+    down_percentile <- suppressWarnings(as.numeric(req$args$down_percentile %||% 0.05))
+
+    if (!nzchar(sample_id)) {
+        return(list(error = "sample parameter is required"))
+    }
+
+    if (!is.finite(top_n) || top_n < 1) top_n <- 50
+    top_n <- min(top_n, 500L)
+    if (!is.finite(min_abs_delta) || min_abs_delta <= 0) min_abs_delta <- 1.0
+    if (!is.finite(min_abs_z) || min_abs_z <= 0) min_abs_z <- 2.0
+    if (!is.finite(up_percentile) || up_percentile <= 0 || up_percentile >= 1) up_percentile <- 0.95
+    if (!is.finite(down_percentile) || down_percentile <= 0 || down_percentile >= 1) down_percentile <- 0.05
+
+    corrected <- tryCatch(
+        get_corrected_data(cache_dir),
+        error = function(e) NULL
+    )
+    if (is.null(corrected) || ncol(corrected) < 2) {
+        return(list(error = "Harmonized data not found. Run harmonization before dysregulation analysis."))
+    }
+
+    resolved <- resolve_harmonized_sample_column(corrected, sample_id)
+    resolved_sample <- resolved$resolved_sample_column
+    if (!(resolved_sample %in% colnames(corrected))) {
+        return(list(
+            error = "Requested sample not found in harmonized data",
+            requested_sample = sample_id,
+            available_samples = colnames(corrected)
+        ))
+    }
+
+    cohort_cols <- setdiff(colnames(corrected), resolved_sample)
+    if (length(cohort_cols) < 5) {
+        return(list(
+            error = "Need at least 5 cohort samples besides the target sample for dysregulation.",
+            cohort_size = length(cohort_cols)
+        ))
+    }
+
+    corrected_mat <- as.matrix(corrected)
+    storage.mode(corrected_mat) <- "double"
+    target_expr <- corrected_mat[, resolved_sample]
+    cohort_mat <- corrected_mat[, cohort_cols, drop = FALSE]
+
+    cohort_mean <- rowMeans(cohort_mat, na.rm = TRUE)
+    cohort_median <- apply(cohort_mat, 1, median, na.rm = TRUE)
+    cohort_mad <- apply(cohort_mat, 1, mad, na.rm = TRUE)
+
+    delta <- target_expr - cohort_mean
+    robust_z <- rep(NA_real_, length(target_expr))
+    valid_mad <- is.finite(cohort_mad) & cohort_mad > 1e-6
+    robust_z[valid_mad] <- (target_expr[valid_mad] - cohort_median[valid_mad]) / cohort_mad[valid_mad]
+
+    percentile_rank <- rowMeans(sweep(cohort_mat, 1, target_expr, "<="), na.rm = TRUE)
+
+    result <- data.frame(
+        gene_id = rownames(corrected_mat),
+        target_expr = as.numeric(target_expr),
+        cohort_mean = as.numeric(cohort_mean),
+        delta = as.numeric(delta),
+        robust_z = as.numeric(robust_z),
+        percentile_rank = as.numeric(percentile_rank),
+        stringsAsFactors = FALSE
+    )
+
+    result <- result[is.finite(result$target_expr) & is.finite(result$cohort_mean), , drop = FALSE]
+
+    up <- result[
+        result$delta >= min_abs_delta &
+            (result$robust_z >= min_abs_z | result$percentile_rank >= up_percentile),
+        ,
+        drop = FALSE
+    ]
+    down <- result[
+        result$delta <= (-min_abs_delta) &
+            (result$robust_z <= (-min_abs_z) | result$percentile_rank <= down_percentile),
+        ,
+        drop = FALSE
+    ]
+
+    if (nrow(up) > 0) {
+        up <- up[order(-up$robust_z, -up$delta, -up$percentile_rank, up$gene_id), , drop = FALSE]
+    }
+    if (nrow(down) > 0) {
+        down <- down[order(down$robust_z, down$delta, down$percentile_rank, down$gene_id), , drop = FALSE]
+    }
+
+    list(
+        sample_requested = sample_id,
+        sample_resolved = resolved_sample,
+        warning = resolved$warning,
+        cohort_size = length(cohort_cols),
+        genes_tested = nrow(result),
+        thresholds = list(
+            top_n = top_n,
+            min_abs_delta = min_abs_delta,
+            min_abs_z = min_abs_z,
+            up_percentile = up_percentile,
+            down_percentile = down_percentile
+        ),
+        summary = list(
+            up_count = nrow(up),
+            down_count = nrow(down),
+            extreme_abs_z_count = sum(abs(result$robust_z) >= min_abs_z, na.rm = TRUE)
+        ),
+        top_up = head(up, top_n),
+        top_down = head(down, top_n)
+    )
+}
+
+build_sample_rank_stats <- function(corrected, resolved_sample) {
+    cohort_cols <- setdiff(colnames(corrected), resolved_sample)
+    if (length(cohort_cols) < 5) {
+        stop("Need at least 5 cohort samples besides the target sample for GSEA.")
+    }
+
+    corrected_mat <- as.matrix(corrected)
+    storage.mode(corrected_mat) <- "double"
+    target_expr <- corrected_mat[, resolved_sample]
+    cohort_mat <- corrected_mat[, cohort_cols, drop = FALSE]
+    cohort_median <- apply(cohort_mat, 1, median, na.rm = TRUE)
+    cohort_mad <- apply(cohort_mat, 1, mad, na.rm = TRUE)
+
+    robust_z <- rep(NA_real_, length(target_expr))
+    valid_mad <- is.finite(cohort_mad) & cohort_mad > 1e-6
+    robust_z[valid_mad] <- (target_expr[valid_mad] - cohort_median[valid_mad]) / cohort_mad[valid_mad]
+
+    ranks_df <- data.frame(
+        gene = rownames(corrected_mat),
+        score = as.numeric(robust_z),
+        stringsAsFactors = FALSE
+    )
+    ranks_df <- ranks_df[is.finite(ranks_df$score) & nzchar(ranks_df$gene), , drop = FALSE]
+    if (nrow(ranks_df) == 0) {
+        stop("No finite gene scores available for ranking.")
+    }
+
+    # Keep one score per gene symbol (max absolute score).
+    ranks_df$abs_score <- abs(ranks_df$score)
+    ranks_df <- ranks_df[order(-ranks_df$abs_score), , drop = FALSE]
+    ranks_df <- ranks_df[!duplicated(ranks_df$gene), c("gene", "score"), drop = FALSE]
+
+    stats <- setNames(ranks_df$score, ranks_df$gene)
+    stats <- sort(stats, decreasing = TRUE)
+
+    list(
+        stats = stats,
+        cohort_size = length(cohort_cols),
+        genes_ranked = length(stats)
+    )
+}
+
+build_msig_pathways <- function(collection = "hallmark") {
+    if (!requireNamespace("msigdbr", quietly = TRUE)) {
+        stop("Package 'msigdbr' is not installed.")
+    }
+
+    coll <- tolower(as.character(collection)[1])
+    if (coll %in% c("h", "hallmark", "msig_hallmark")) {
+        db <- msigdbr::msigdbr(species = "Homo sapiens", category = "H")
+    } else if (coll %in% c("reactome", "c2_reactome", "cp:reactome")) {
+        db <- msigdbr::msigdbr(species = "Homo sapiens", category = "C2", subcategory = "CP:REACTOME")
+    } else if (coll %in% c("go_bp", "c5_go_bp", "gobp")) {
+        db <- msigdbr::msigdbr(species = "Homo sapiens", category = "C5", subcategory = "GO:BP")
+    } else {
+        stop("Unsupported collection. Use one of: hallmark, reactome, go_bp.")
+    }
+
+    pathways <- split(as.character(db$gene_symbol), as.character(db$gs_name))
+    pathways <- lapply(pathways, unique)
+    pathways
+}
+
+#* @get /sample-gsea
+#* @serializer json
+function(req) {
+    cache_dir <- req$args$cachedir
+    sample_id <- as.character(req$args$sample %||% req$args$sampleId %||% "")
+    collection <- as.character(req$args$collection %||% "hallmark")
+    min_size <- suppressWarnings(as.integer(req$args$min_size %||% 15))
+    max_size <- suppressWarnings(as.integer(req$args$max_size %||% 500))
+    top_n <- suppressWarnings(as.integer(req$args$top_n %||% 30))
+
+    if (!nzchar(sample_id)) {
+        return(list(error = "sample parameter is required"))
+    }
+    if (!is.finite(min_size) || min_size < 5) min_size <- 15
+    if (!is.finite(max_size) || max_size < min_size) max_size <- 500
+    if (!is.finite(top_n) || top_n < 1) top_n <- 30
+    top_n <- min(top_n, 200L)
+
+    if (!requireNamespace("fgsea", quietly = TRUE) || !requireNamespace("msigdbr", quietly = TRUE)) {
+        return(list(
+            error = "GSEA dependencies are missing in this R environment.",
+            missing = c(
+                if (!requireNamespace("fgsea", quietly = TRUE)) "fgsea" else NULL,
+                if (!requireNamespace("msigdbr", quietly = TRUE)) "msigdbr" else NULL
+            ),
+            install_hint = "Install with: BiocManager::install('fgsea'); install.packages('msigdbr')"
+        ))
+    }
+
+    corrected <- tryCatch(
+        get_corrected_data(cache_dir),
+        error = function(e) NULL
+    )
+    if (is.null(corrected) || ncol(corrected) < 2) {
+        return(list(error = "Harmonized data not found. Run harmonization before GSEA."))
+    }
+
+    resolved <- resolve_harmonized_sample_column(corrected, sample_id)
+    resolved_sample <- resolved$resolved_sample_column
+    if (!(resolved_sample %in% colnames(corrected))) {
+        return(list(
+            error = "Requested sample not found in harmonized data",
+            requested_sample = sample_id,
+            available_samples = colnames(corrected)
+        ))
+    }
+
+    rank_obj <- tryCatch(
+        build_sample_rank_stats(corrected, resolved_sample),
+        error = function(e) list(error = e$message)
+    )
+    if (!is.null(rank_obj$error)) {
+        return(list(error = rank_obj$error))
+    }
+
+    pathways <- tryCatch(
+        build_msig_pathways(collection),
+        error = function(e) list(error = e$message)
+    )
+    if (is.list(pathways) && !is.null(pathways$error)) {
+        return(list(error = pathways$error))
+    }
+
+    gsea <- tryCatch(
+        fgsea::fgseaMultilevel(
+            pathways = pathways,
+            stats = rank_obj$stats,
+            minSize = min_size,
+            maxSize = max_size
+        ),
+        error = function(e) list(error = e$message)
+    )
+    if (is.list(gsea) && !is.data.frame(gsea) && !is.null(gsea$error)) {
+        return(list(error = paste("fgsea failed:", gsea$error)))
+    }
+
+    if (nrow(gsea) == 0) {
+        return(list(
+            sample_requested = sample_id,
+            sample_resolved = resolved_sample,
+            warning = resolved$warning,
+            collection = tolower(collection),
+            cohort_size = rank_obj$cohort_size,
+            genes_ranked = rank_obj$genes_ranked,
+            pathways_tested = 0,
+            pathways = data.frame()
+        ))
+    }
+
+    gsea <- as.data.frame(gsea)
+    gsea <- gsea[order(gsea$padj, -abs(gsea$NES), gsea$pathway), , drop = FALSE]
+    if ("leadingEdge" %in% colnames(gsea)) {
+        gsea$leading_edge <- vapply(
+            gsea$leadingEdge,
+            function(x) paste(as.character(x), collapse = ","),
+            character(1)
+        )
+    } else {
+        gsea$leading_edge <- ""
+    }
+
+    gsea_out <- gsea[, c("pathway", "NES", "pval", "padj", "size", "leading_edge"), drop = FALSE]
+
+    list(
+        sample_requested = sample_id,
+        sample_resolved = resolved_sample,
+        warning = resolved$warning,
+        collection = tolower(collection),
+        cohort_size = rank_obj$cohort_size,
+        genes_ranked = rank_obj$genes_ranked,
+        pathways_tested = nrow(gsea_out),
+        pathways = head(gsea_out, top_n)
+    )
 }

@@ -44,6 +44,9 @@ def patch_allsorts_compat(model) -> None:
                 obj.eigenvectors_ = obj.__dict__["alphas_"]
             if "lambdas_" in obj.__dict__ and "eigenvalues_" not in obj.__dict__:
                 obj.eigenvalues_ = obj.__dict__["lambdas_"]
+            # sklearn>=1.x _get_kernel uses gamma_ (set during fit); old pickles only have gamma param
+            if "gamma_" not in obj.__dict__:
+                obj.gamma_ = obj.__dict__.get("gamma")
 
         if isinstance(obj, dict):
             for value in obj.values():

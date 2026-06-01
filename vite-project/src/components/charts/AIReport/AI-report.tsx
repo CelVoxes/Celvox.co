@@ -36,7 +36,7 @@ export function AIAMLReport() {
 	const [selectedSample, setSelectedSample] = useState<string | null>(null);
 	const [tsneData, setTsneData] = useState<TSNEDataItem[]>([]);
 	const [kValue, setKValue] = useState(20);
-	const [selectedModel, setSelectedModel] = useState<string>("gpt-4o-mini");
+	const [selectedModel, setSelectedModel] = useState<string>("gpt-5.4-mini");
 
 	useEffect(() => {
 		fetchTSNEData().then(setTsneData).catch(console.error);

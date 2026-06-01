@@ -13,12 +13,9 @@ import { CacheFile, fetchCacheFiles, uploadSampleData } from "@/utils/api";
 import { useToast } from "@/hooks/use-toast";
 import { FileList } from "./FileList";
 import { FilePreview } from "./FilePreview";
-import {
-	CollapsibleCard,
-	CollapsibleCardContent,
-	CollapsibleCardTrigger,
-} from "../ui/collapsible-card";
-import { Database, FileUp, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Database, FileUp, Loader2 } from "lucide-react";
+
+const READS_PER_GENE_FILE_REGEX = /readspergene\.out(?: ?\(\d+\))?\.tab$/i;
 
 export function DataUpload({
 	onDataChanged,
@@ -32,19 +29,15 @@ export function DataUpload({
 	const [isUploading, setIsUploading] = useState(false);
 	const [filePreview, setFilePreview] = useState<string[][]>([]);
 	const [fileHeaders, setFileHeaders] = useState<string[]>([]);
-	const [showPreview, setShowPreview] = useState(false);
-	const [showWorkspacePanel, setShowWorkspacePanel] = useState(false);
 
 	const [cacheFiles, setCacheFiles] = useState<CacheFile[]>([]);
+	const [isCollapsed, setIsCollapsed] = useState(false);
 
 	const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		if (event.target.files && event.target.files.length > 0) {
 			const files = Array.from(event.target.files);
 			setSelectedFiles(files);
-			setShowPreview(true);
-			const isReadsPerGene = files[0].name
-				.toLowerCase()
-				.endsWith("readspergene.out.tab");
+			const isReadsPerGene = READS_PER_GENE_FILE_REGEX.test(files[0].name);
 
 			const reader = new FileReader();
 			reader.onload = (e) => {
@@ -56,7 +49,13 @@ export function DataUpload({
 					setFileHeaders(["gene", "unstranded", "strand_fwd", "strand_rev"]);
 					const preview = lines
 						.slice(0, numLinesToShow)
-						.map((line) => line.split("\t").map((cell) => cell.trim()));
+						.filter((line) => line.trim().length > 0)
+						.map((line) =>
+							line
+								.trim()
+								.split(/\t+| +/)
+								.map((cell) => cell.trim())
+						);
 					setFilePreview(preview);
 				} else {
 					const headers = lines[0]
@@ -136,7 +135,7 @@ export function DataUpload({
 	const userFiles = cacheFiles.filter((file) => file.isUserUploaded);
 	const cacheArtifacts = cacheFiles.filter((file) => !file.isUserUploaded);
 	const selectedReadsPerGene = selectedFiles.some((file) =>
-		file.name.toLowerCase().endsWith("readspergene.out.tab"),
+		READS_PER_GENE_FILE_REGEX.test(file.name),
 	);
 	const selectedCsv =
 		selectedFiles.length === 1 &&
@@ -206,60 +205,36 @@ export function DataUpload({
 
 			{selectedFiles.length > 0 && (
 				<div className="rounded-lg border border-border/70 bg-background/60 p-3">
-					<div className="flex items-center justify-between gap-2">
-						<div className="text-sm font-medium">Preview</div>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onClick={() => setShowPreview((prev) => !prev)}
-						>
-							{showPreview ? "Hide" : "Show"}
-						</Button>
+					<div className="text-sm font-medium">Preview</div>
+					<div className="mt-2">
+						<FilePreview
+							fileNames={selectedFiles.map((file) => file.name)}
+							fileHeaders={fileHeaders}
+							filePreview={filePreview}
+						/>
 					</div>
-					{showPreview && (
-						<div className="mt-2">
-							<FilePreview
-								fileNames={selectedFiles.map((file) => file.name)}
-								fileHeaders={fileHeaders}
-								filePreview={filePreview}
-							/>
-						</div>
-					)}
 				</div>
 			)}
 
 			{cacheFiles.length > 0 && (
 				<div className="rounded-lg border border-border/70 bg-background/60 p-3">
-					<div className="flex items-center justify-between gap-2">
-						<div className="flex items-center gap-2">
-							<Database className="h-4 w-4 text-muted-foreground" />
-							<div className="text-sm font-medium">Workspace Files</div>
-							<Badge variant="outline" className="font-medium">
-								{cacheFiles.length}
-							</Badge>
-						</div>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onClick={() => setShowWorkspacePanel((prev) => !prev)}
-						>
-							{showWorkspacePanel ? "Hide" : "Show"}
-						</Button>
+					<div className="flex items-center gap-2">
+						<Database className="h-4 w-4 text-muted-foreground" />
+						<div className="text-sm font-medium">Workspace Files</div>
+						<Badge variant="outline" className="font-medium">
+							{cacheFiles.length}
+						</Badge>
 					</div>
-					{showWorkspacePanel && (
-						<div className="mt-2">
-							<FileList
-								cacheFiles={cacheFiles}
-								onRefresh={() => refreshCacheFiles()}
-							/>
-						</div>
-					)}
+					<div className="mt-2">
+						<FileList
+							cacheFiles={cacheFiles}
+							onRefresh={() => refreshCacheFiles()}
+						/>
+					</div>
 				</div>
 			)}
-		</div>
-	);
+			</div>
+		);
 
 	const uploadBody = (
 		<>
@@ -371,14 +346,24 @@ export function DataUpload({
 		</>
 	);
 
-	return cacheFiles?.length == 0 ? (
+	return (
 		<Card className={containerClass}>
-			<CardHeader>
-				<CardTitle className="flex items-center gap-2">
-					<FileUp className="h-4 w-4 text-primary" />
-					Upload Data
+			<CardHeader
+				className="cursor-pointer select-none"
+				onClick={() => setIsCollapsed((prev) => !prev)}
+			>
+				<CardTitle className="flex items-center justify-between gap-2">
+					<span className="flex items-center gap-2">
+						<FileUp className="h-4 w-4 text-primary" />
+						Upload Data
+					</span>
+					{isCollapsed ? (
+						<ChevronRight className="h-4 w-4 text-muted-foreground" />
+					) : (
+						<ChevronDown className="h-4 w-4 text-muted-foreground" />
+					)}
 				</CardTitle>
-				{!embedded && (
+				{!embedded && !isCollapsed && (
 					<CardDescription className="space-y-4">
 						Upload a CSV file with genes as rownames and samples as columns.
 						<br />
@@ -391,44 +376,10 @@ export function DataUpload({
 					</CardDescription>
 				)}
 			</CardHeader>
-			<CardContent>{embedded ? compactUploadBody : uploadBody}</CardContent>
+			{!isCollapsed && (
+				<CardContent>{embedded ? compactUploadBody : uploadBody}</CardContent>
+			)}
 		</Card>
-	) : (
-		<CollapsibleCard className={containerClass}>
-			<CollapsibleCardTrigger>
-				<div className="flex items-center justify-between gap-3 px-6">
-					<div className="flex items-center gap-2">
-						<FileUp className="h-4 w-4 text-primary" />
-						<CardTitle>Upload Data</CardTitle>
-					</div>
-					<div className="hidden sm:flex items-center gap-2">
-						<Badge variant="secondary" className="font-medium">
-							{userFiles.length} uploaded
-						</Badge>
-						<Badge variant="outline" className="font-medium">
-							{cacheFiles.length} total files
-						</Badge>
-					</div>
-				</div>
-			</CollapsibleCardTrigger>
-			<CollapsibleCardContent>
-				{!embedded && (
-					<CardHeader>
-						<CardDescription className="space-y-4">
-							Upload a CSV file with genes as rownames and samples as columns.
-							<br />
-							Or select multiple ReadsPerGene.out.tab files to build a count
-							matrix.
-							<br />
-							<a href="/example-TCGA.csv" className=" text-xs hover:underline">
-								[Download example file]
-							</a>
-						</CardDescription>
-					</CardHeader>
-				)}
-				{embedded ? compactUploadBody : uploadBody}
-			</CollapsibleCardContent>
-		</CollapsibleCard>
 	);
 }
 

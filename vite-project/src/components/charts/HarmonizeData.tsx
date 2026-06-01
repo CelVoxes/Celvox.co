@@ -12,17 +12,52 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+	Card,
 	CardHeader,
 	CardTitle,
+	CardContent,
 	CardDescription,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { CollapsibleCard, CollapsibleCardContent, CollapsibleCardTrigger } from "../ui/collapsible-card";
 import { Spinner } from "../ui/spinner";
-import { RefreshCcw, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ChevronDown, ChevronRight, RefreshCcw, Sparkles } from "lucide-react";
 
-const firstValue = <T,>(value: T | T[] | undefined | null): T | undefined => {
-	return Array.isArray(value) ? value[0] : (value ?? undefined);
+type ReferenceDatabaseOption = {
+	id: ReferenceDiseaseId;
+	disease: ReferenceDiseaseId;
+	lineage: string;
+};
+
+const REFERENCE_DATABASE_OPTIONS: ReferenceDatabaseOption[] = [
+	{ id: "aml",  disease: "aml",  lineage: "AML"   },
+	{ id: "ball", disease: "ball", lineage: "B-ALL" },
+	{ id: "tall", disease: "tall", lineage: "T-ALL" },
+];
+
+const REFERENCE_DISEASE_ORDER: ReferenceDiseaseId[] = ["aml", "ball", "tall"];
+
+const REFERENCE_PRESETS = [
+	{ label: "Pan-Leukemia", description: "AML + B-ALL + T-ALL", diseases: REFERENCE_DISEASE_ORDER },
+	{ label: "Myeloid",      description: "AML only",            diseases: ["aml"] as ReferenceDiseaseId[] },
+	{ label: "Lymphoid",     description: "B-ALL + T-ALL",       diseases: ["ball", "tall"] as ReferenceDiseaseId[] },
+];
+
+const areDiseasesEqual = (left: ReferenceDiseaseId[], right: ReferenceDiseaseId[]) => {
+	const normalize = (values: ReferenceDiseaseId[]) => [...values].sort().join("|");
+	return normalize(left) === normalize(right);
+};
+
+const firstValue = <T,>(value: T | T[] | undefined | null): T | undefined =>
+	Array.isArray(value) ? value[0] : (value ?? undefined);
+
+const normalizeHarmonizedSamples = (names: string[] | null | undefined): string[] => {
+	if (!Array.isArray(names)) return [];
+	return names
+		.map((name) => String(name))
+		.filter((name) => name.length > 0 && name !== "gene_id")
+		.filter((name) => name.endsWith("_sample_data"))
+		.map((name) => name.replace(/_sample_data$/i, ""));
 };
 
 export function HarmonizeData({
@@ -43,46 +78,32 @@ export function HarmonizeData({
 	const [isHarmonizing, setIsHarmonizing] = useState(false);
 	const [harmonizedSamples, setHarmonizedSamples] = useState<string[] | null>(null);
 	const [harmonizationManifest, setHarmonizationManifest] = useState<any | null>(null);
+	const [isCollapsed, setIsCollapsed] = useState(false);
 
 	useEffect(() => {
 		const loadSamples = async () => {
 			try {
 				const sampleData = await fetchSampleDataNames();
 				if (sampleData && sampleData.length > 0) {
-					console.log("Sample data:", sampleData);
 					setSamples(sampleData.slice(1));
 					onDataChanged?.();
 				}
 			} catch (error) {
 				console.error("Error fetching samples:", error);
-				toast({
-					title: "Error",
-					description: "Failed to fetch sample data. Please try again.",
-					variant: "destructive",
-				});
+				toast({ title: "Error", description: "Failed to fetch sample data.", variant: "destructive" });
 			}
 
 			try {
 				const harmonizedData = await fetchHarmonizedDataNames();
-				if (harmonizedData) {
-					console.log("Harmonized data:", harmonizedData);
-					setHarmonizedSamples(harmonizedData);
-					onDataChanged?.();
-				} else {
-					setHarmonizedSamples([]);
-				}
-			} catch (error) {
-				console.error("Error fetching harmonized data:", error);
+				setHarmonizedSamples(harmonizedData ? normalizeHarmonizedSamples(harmonizedData) : []);
+				if (harmonizedData) onDataChanged?.();
+			} catch {
 				setHarmonizedSamples([]);
 			}
 
 			try {
 				const manifest = await fetchHarmonizationManifest();
-				if (manifest && !manifest.error) {
-					setHarmonizationManifest(manifest);
-				} else {
-					setHarmonizationManifest(null);
-				}
+				setHarmonizationManifest(manifest && !manifest.error ? manifest : null);
 			} catch {
 				setHarmonizationManifest(null);
 			}
@@ -90,77 +111,45 @@ export function HarmonizeData({
 
 		loadSamples();
 	}, []);
-	const cardClass = embedded
-		? "border-border/60 shadow-none bg-background/70"
-		: "";
+
+	const cardClass = embedded ? "border-border/60 shadow-none bg-background/70" : "";
 
 	if (harmonizedSamples === null) {
 		return (
-			<CollapsibleCard disabled={true} className={cardClass}>
-				<CollapsibleCardTrigger>
-					<div className="flex items-center justify-between gap-3 px-6">
-						<div className="flex items-center gap-2">
+			<Card className={cardClass}>
+				<CardHeader className="cursor-default select-none">
+					<CardTitle className="flex items-center justify-between gap-2">
+						<span className="flex items-center gap-2">
 							<Sparkles className="h-4 w-4 text-primary" />
-							<CardTitle>Harmonize Data</CardTitle>
-						</div>
+							Harmonize Data
+						</span>
 						<Spinner />
-					</div>
-				</CollapsibleCardTrigger>
-			</CollapsibleCard>
+					</CardTitle>
+				</CardHeader>
+			</Card>
 		);
 	}
 
-	const filteredSamples = samples.filter((sample) =>
-		sample.toLowerCase().includes(searchTerm.toLowerCase())
+	const filteredSamples = samples.filter((s) =>
+		s.toLowerCase().includes(searchTerm.toLowerCase())
 	);
-
-	const unharmonizedSamples = filteredSamples.filter(
-		(sample) => !harmonizedSamples.includes(sample)
-	);
+	const unharmonizedSamples = filteredSamples.filter((s) => !harmonizedSamples.includes(s));
 	const totalSamples = samples.length;
-	const harmonizedCount = samples.filter((sample) =>
-		harmonizedSamples.includes(sample)
-	).length;
+	const harmonizedCount = samples.filter((s) => harmonizedSamples.includes(s)).length;
 	const isEmptySetup = totalSamples === 0;
+	const activePreset = REFERENCE_PRESETS.find((p) => areDiseasesEqual(p.diseases, diseases));
 
-	const handleSelectAll = () => {
-		setSelectedSamples(unharmonizedSamples);
-	};
-
-	const handleSelectNone = () => {
-		setSelectedSamples([]);
-	};
-
-	const referenceOptions: { value: ReferenceDiseaseId; label: string }[] = [
-		{ value: "aml", label: "AML" },
-		{ value: "ball", label: "B-ALL" },
-		{ value: "tall", label: "T-ALL" },
-	];
-
-	const toggleReferenceDisease = (disease: ReferenceDiseaseId) => {
+	const selectPreset = (next: ReferenceDiseaseId[]) => {
 		if (!onDiseasesChange) return;
-		const exists = diseases.includes(disease);
-		if (exists) {
-			const next = diseases.filter((d) => d !== disease);
-			onDiseasesChange(next.length > 0 ? next : [disease]);
-			return;
-		}
-		const order: ReferenceDiseaseId[] = ["aml", "ball", "tall"];
-		onDiseasesChange(
-			[...diseases, disease].sort((a, b) => order.indexOf(a) - order.indexOf(b)),
-		);
+		onDiseasesChange(REFERENCE_DISEASE_ORDER.filter((d) => next.includes(d)));
 	};
 
 	const handleHarmonize = async () => {
-		const alreadyHarmonized = selectedSamples.filter((sample) =>
-			harmonizedSamples.includes(sample)
-		);
-
+		const alreadyHarmonized = selectedSamples.filter((s) => harmonizedSamples.includes(s));
 		if (alreadyHarmonized.length > 0) {
 			toast({
 				title: "Warning",
-				description:
-					"Some selected samples are already harmonized. Please deselect them before continuing.",
+				description: "Some selected samples are already harmonized. Deselect them first.",
 				variant: "destructive",
 			});
 			return;
@@ -169,372 +158,238 @@ export function HarmonizeData({
 		setIsHarmonizing(true);
 		try {
 			await fetchHarmonizedData(selectedSamples, diseases);
-			const updatedHarmonizedData = await fetchHarmonizedDataNames();
-			setHarmonizedSamples(updatedHarmonizedData || []);
+			const updatedNames = await fetchHarmonizedDataNames();
+			setHarmonizedSamples(normalizeHarmonizedSamples(updatedNames));
 			const manifest = await fetchHarmonizationManifest().catch(() => null);
 			setHarmonizationManifest(manifest && !manifest.error ? manifest : null);
 			onDataChanged?.();
 			setSelectedSamples([]);
-			toast({
-				title: "Success",
-				description: "Data harmonization completed successfully.",
-				variant: "default",
-			});
+			toast({ title: "Success", description: "Harmonization completed." });
 		} catch (error) {
 			console.error("Error harmonizing data:", error);
-			toast({
-				title: "Error",
-				description: "Failed to harmonize data. Please try again.",
-				variant: "destructive",
-			});
+			toast({ title: "Error", description: "Failed to harmonize data.", variant: "destructive" });
 		} finally {
 			setIsHarmonizing(false);
 		}
 	};
 
 	return (
-		<CollapsibleCard disabled={harmonizedSamples?.length == 0} className={cardClass}>
-			<CollapsibleCardTrigger>
-				<div className="flex items-center justify-between gap-3 px-6">
-					<div className="flex items-center gap-2">
+		<Card className={cardClass}>
+			<CardHeader
+				className="cursor-pointer select-none"
+				onClick={() => setIsCollapsed((prev) => !prev)}
+			>
+				<CardTitle className="flex items-center justify-between gap-2">
+					<span className="flex items-center gap-2">
 						<Sparkles className="h-4 w-4 text-primary" />
-						<CardTitle>Harmonize Data</CardTitle>
-					</div>
-					<div className="hidden sm:flex items-center gap-2">
-						{totalSamples > 0 && (
-							<>
-								<Badge variant="outline" className="font-medium">
-									{totalSamples} uploaded
-								</Badge>
-								<Badge variant="secondary" className="font-medium">
-									{harmonizedCount} harmonized
-								</Badge>
-							</>
+						Harmonize Data
+					</span>
+					<span className="flex items-center gap-2">
+						{!isCollapsed && totalSamples > 0 && (
+							<span className="hidden sm:flex items-center gap-2">
+								<Badge variant="outline" className="font-medium">{totalSamples} uploaded</Badge>
+								<Badge variant="secondary" className="font-medium">{harmonizedCount} harmonized</Badge>
+							</span>
 						)}
-					</div>
+						{isCollapsed ? (
+							<ChevronRight className="h-4 w-4 text-muted-foreground" />
+						) : (
+							<ChevronDown className="h-4 w-4 text-muted-foreground" />
+						)}
+					</span>
+				</CardTitle>
+			</CardHeader>
+
+			{!isCollapsed && (
+			<CardContent className="pt-0 space-y-4">
+				<CardDescription>
+					Align uploaded samples to the reference dataset for downstream comparisons.
+				</CardDescription>
+
+				{/* Preset selector */}
+				<div className="flex flex-wrap items-center gap-2">
+					<span className="text-xs text-muted-foreground">Reference context:</span>
+					{REFERENCE_PRESETS.map((preset) => (
+						<Button
+							key={preset.label}
+							type="button"
+							variant={areDiseasesEqual(preset.diseases, diseases) ? "default" : "outline"}
+							size="sm"
+							className="h-7 text-xs"
+							onClick={() => selectPreset(preset.diseases)}
+							disabled={!onDiseasesChange}
+							title={preset.description}
+						>
+							{preset.label}
+						</Button>
+					))}
+					<span className="text-xs text-muted-foreground ml-1">
+						{activePreset ? `· ${activePreset.description}` : `· ${REFERENCE_DATABASE_OPTIONS.filter(o => diseases.includes(o.disease)).map(o => o.lineage).join(", ")}`}
+					</span>
 				</div>
-			</CollapsibleCardTrigger>
-			<CollapsibleCardContent>
-				<CardHeader>
-					<CardDescription>
-						Align uploaded samples to the reference dataset so downstream
-						comparisons and reports use harmonized expression values.
-					</CardDescription>
-					<div className="pt-1">
-						<div className="mb-2 flex flex-wrap items-center gap-1.5">
-							<Button
-								type="button"
-								variant={
-									diseases.length === referenceOptions.length
-										? "default"
-										: "outline"
-								}
-								size="sm"
-								className="h-8 text-xs"
-								onClick={() =>
-									onDiseasesChange?.(referenceOptions.map((d) => d.value))
-								}
-								disabled={!onDiseasesChange}
-							>
-								All
-							</Button>
-							{referenceOptions.map((option) => (
-								<Button
-									key={option.value}
-									type="button"
-									variant={
-										diseases.includes(option.value) ? "default" : "outline"
-									}
-									size="sm"
-									className="h-8 text-xs"
-									onClick={() => toggleReferenceDisease(option.value)}
-									disabled={!onDiseasesChange}
+
+				{isEmptySetup ? (
+					<div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+						Upload sample data first, then return here to harmonize.
+					</div>
+				) : (
+					<div className="space-y-3">
+						{/* Search + select controls */}
+						<div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+							<Input
+								placeholder="Search samples..."
+								value={searchTerm}
+								onChange={(e) => setSearchTerm(e.target.value)}
+								className="sm:max-w-[280px] bg-background"
+							/>
+							<div className="flex gap-2 text-xs text-muted-foreground items-center">
+								<button
+									onClick={() => setSelectedSamples(unharmonizedSamples)}
+									disabled={unharmonizedSamples.length === 0}
+									className={cn("hover:text-foreground transition-colors", unharmonizedSamples.length === 0 && "opacity-40 cursor-not-allowed")}
 								>
-									{option.label}
-								</Button>
-							))}
+									Select all ({unharmonizedSamples.length})
+								</button>
+								<span>·</span>
+								<button onClick={() => setSelectedSamples([])} className="hover:text-foreground transition-colors">
+									Clear
+								</button>
+							</div>
 						</div>
-						<Badge variant="outline" className="font-medium">
-							Reference cohort:{" "}
-							{diseases.length === 3
-								? "Pan-Leukemia (AML + B-ALL + T-ALL)"
-								: diseases
-										.map((d) =>
-											d === "aml" ? "AML" : d === "ball" ? "B-ALL" : "T-ALL",
-										)
-										.join(" + ")}
-						</Badge>
-					</div>
-					{totalSamples > 0 && (
-						<div className="flex flex-wrap gap-2 pt-1">
-						<Badge variant="outline" className="font-medium">
-							{totalSamples} total sample{totalSamples === 1 ? "" : "s"}
-						</Badge>
-						<Badge variant="outline" className="font-medium">
-							{filteredSamples.length} visible
-						</Badge>
-						<Badge variant="secondary" className="font-medium">
-							{unharmonizedSamples.length} ready
-						</Badge>
-						</div>
-					)}
-					{isEmptySetup ? (
-						<div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-							Upload sample data first, then return here to harmonize.
-						</div>
-					) : (
-						<>
-					<div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-						<Input
-							placeholder="Search samples..."
-							value={searchTerm}
-							onChange={(e) => setSearchTerm(e.target.value)}
-							className="sm:max-w-[320px] bg-background"
-						/>
-						<div className="flex gap-2">
-							<Button
-								variant="outline"
-								onClick={handleSelectAll}
-								className="whitespace-nowrap flex-1 sm:flex-none"
-								disabled={unharmonizedSamples.length === 0}
-							>
-								Select Visible ({unharmonizedSamples.length})
-							</Button>
-							<Button
-								variant="outline"
-								onClick={handleSelectNone}
-								className="whitespace-nowrap flex-1 sm:flex-none"
-							>
-								Clear
-							</Button>
-						</div>
-					</div>
-						</>
-					)}
-				</CardHeader>
-				{!isEmptySetup && (
-				<div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-					<div className="text-sm text-muted-foreground">
-						{selectedSamples.length} selected
-					</div>
-					<div className="text-xs text-muted-foreground">
-						Harmonized: {harmonizedCount} / {totalSamples}
-					</div>
-				</div>
-				)}
-				{!isEmptySetup && (
-				<ScrollArea className="h-[400px] w-full rounded-md border bg-background/60 p-4">
-					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-						{filteredSamples.map((sample) => {
-							const isHarmonized = harmonizedSamples.includes(sample);
-							return (
-								<div
-									key={sample}
-									className={`flex items-center space-x-2 rounded-md border px-2 py-2 ${
-										isHarmonized
-											? "border-border/50 bg-muted/20"
-											: "border-border/60 hover:bg-muted/20"
-									}`}
-								>
-									<Checkbox
-										id={sample}
-										checked={selectedSamples.includes(sample)}
-										disabled={isHarmonized}
-										onCheckedChange={(checked) => {
-											if (checked) {
-												setSelectedSamples([...selectedSamples, sample]);
-											} else {
-												setSelectedSamples(
-													selectedSamples.filter((s) => s !== sample)
+
+						{/* Sample grid */}
+						<ScrollArea className="h-[280px] w-full rounded-md border bg-background/60 p-3">
+							<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+								{filteredSamples.map((sample) => {
+									const isHarmonized = harmonizedSamples.includes(sample);
+									return (
+										<div
+											key={sample}
+											className={cn(
+												"flex items-center gap-2 rounded-md border px-2 py-2",
+												isHarmonized
+													? "border-border/40 bg-muted/10"
+													: "border-border/60 hover:bg-muted/20 cursor-pointer"
+											)}
+											onClick={() => {
+												if (isHarmonized) return;
+												setSelectedSamples((prev) =>
+													prev.includes(sample)
+														? prev.filter((s) => s !== sample)
+														: [...prev, sample]
 												);
-											}
-										}}
-									/>
-									<label
-										htmlFor={sample}
-										className={`text-xs cursor-pointer truncate ${
-											isHarmonized
-												? "text-muted-foreground line-through"
-												: "hover:text-primary"
-										}`}
-									>
-										{sample}
-										{isHarmonized && " (harmonized)"}
-									</label>
-								</div>
-							);
-						})}
-						{filteredSamples.length === 0 && searchTerm && (
-							<div className="col-span-full text-center text-muted-foreground py-8">
-								No samples found matching "{searchTerm}"
-							</div>
-						)}
-						{filteredSamples.length === 0 && !searchTerm && totalSamples === 0 && (
-							<div className="col-span-full text-center text-muted-foreground py-8">
-								Upload sample data first, then return here to harmonize.
-							</div>
-						)}
-						{filteredSamples.length > 0 && unharmonizedSamples.length === 0 && (
-							<div className="col-span-full rounded-md border border-border/60 bg-muted/20 px-3 py-3 text-sm text-muted-foreground">
-								All visible samples are already harmonized.
-							</div>
-						)}
-					</div>
-				</ScrollArea>
-				)}
-				{!isEmptySetup && (
-				<div className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-					<div className="text-xs text-muted-foreground">
-						Harmonize selected unharmonized samples before t-SNE, KNN, and CNV
-						comparisons.
-					</div>
-					<div className="flex gap-2">
-						<Button
-							variant="outline"
-							onClick={() => {
-								setSearchTerm("");
-								setSelectedSamples([]);
-							}}
-						>
-							<RefreshCcw className="mr-2 h-4 w-4" />
-							Reset
-						</Button>
-						<Button
-							onClick={handleHarmonize}
-							disabled={
-								selectedSamples.length === 0 ||
-								isHarmonizing ||
-								selectedSamples.some((sample) => harmonizedSamples.includes(sample))
-							}
-						>
-							{isHarmonizing
-								? "Harmonizing..."
-								: `Harmonize (${selectedSamples.length})`}
-						</Button>
-					</div>
-				</div>
-				)}
-				{harmonizationManifest && (
-					<div className="mt-4 rounded-md border border-border/60 bg-background/60 p-3">
-						<div className="flex flex-wrap items-center justify-between gap-2">
-							<div className="text-sm font-medium">Harmonization QC (last run)</div>
-							<div className="text-xs text-muted-foreground">
-								{String(firstValue(harmonizationManifest.timestamp_utc) ?? "")}
-							</div>
-						</div>
-						<div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
-							<div className="rounded border border-border/50 px-2 py-2">
-								<div className="text-muted-foreground">Reference</div>
-								<div className="font-medium break-words">
-									{String(
-										firstValue(harmonizationManifest.disease_selection_key) ??
-											"unknown",
-									)}
-								</div>
-							</div>
-							<div className="rounded border border-border/50 px-2 py-2">
-								<div className="text-muted-foreground">Common genes</div>
-								<div className="font-medium">
-									{String(
-										firstValue(harmonizationManifest.overlap?.common_gene_count) ??
-											"n/a",
-									)}
-								</div>
-							</div>
-							<div className="rounded border border-border/50 px-2 py-2">
-								<div className="text-muted-foreground">Uploaded overlap</div>
-								<div className="font-medium">
-									{typeof firstValue(
-										harmonizationManifest.overlap?.uploaded_overlap_fraction,
-									) ===
-									"number"
-										? `${(
-												(firstValue(
-													harmonizationManifest.overlap?.uploaded_overlap_fraction,
-												) as number) * 100
-										  ).toFixed(1)}%`
-										: "n/a"}
-								</div>
-							</div>
-							<div className="rounded border border-border/50 px-2 py-2">
-								<div className="text-muted-foreground">Batches</div>
-								<div className="font-medium">
-									{String(firstValue(harmonizationManifest.batches?.unique) ?? "n/a")} groups
-								</div>
-							</div>
-						</div>
-						<div className="mt-2 grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs">
-							<div className="rounded border border-border/50 px-2 py-2">
-								<div className="text-muted-foreground mb-1">
-									Reference metadata missing (core)
-								</div>
-								<div className="flex flex-wrap gap-2">
-									<Badge variant="outline" className="text-[11px]">
-										study:{" "}
-										{String(
-											firstValue(
-												harmonizationManifest.metadata_alignment
-													?.missing_core_counts?.study,
-											) ?? "n/a",
-										)}
-									</Badge>
-									<Badge variant="outline" className="text-[11px]">
-										sex:{" "}
-										{String(
-											firstValue(
-												harmonizationManifest.metadata_alignment
-													?.missing_core_counts?.sex,
-											) ?? "n/a",
-										)}
-									</Badge>
-									<Badge variant="outline" className="text-[11px]">
-										subtype:{" "}
-										{String(
-											firstValue(
-												harmonizationManifest.metadata_alignment
-													?.missing_core_counts?.subtype,
-											) ?? "n/a",
-										)}
-									</Badge>
-								</div>
-							</div>
-							<div className="rounded border border-border/50 px-2 py-2">
-								<div className="text-muted-foreground mb-1">
-									Reference disease mix
-								</div>
-								<div className="flex flex-wrap gap-1">
-									{Object.entries(
-										(harmonizationManifest.reference?.disease_counts ?? {}) as Record<
-											string,
-											unknown
+											}}
 										>
-									).map(([key, value]) => (
-										<Badge key={key} variant="secondary" className="text-[11px]">
-											{key}: {String(firstValue(value as any) ?? value)}
-										</Badge>
-									))}
-								</div>
+											<Checkbox
+												id={sample}
+												checked={selectedSamples.includes(sample)}
+												disabled={isHarmonized}
+												onCheckedChange={(checked) => {
+													if (isHarmonized) return;
+													setSelectedSamples((prev) =>
+														checked ? [...prev, sample] : prev.filter((s) => s !== sample)
+													);
+												}}
+											/>
+											<label
+												htmlFor={sample}
+												title={sample}
+												className={cn(
+													"text-xs leading-tight break-all",
+													isHarmonized ? "text-muted-foreground line-through" : "cursor-pointer hover:text-primary"
+												)}
+											>
+												{sample}
+											</label>
+										</div>
+									);
+								})}
+								{filteredSamples.length === 0 && searchTerm && (
+									<div className="col-span-full text-center text-muted-foreground py-6 text-sm">
+										No samples match "{searchTerm}"
+									</div>
+								)}
+								{filteredSamples.length > 0 && unharmonizedSamples.length === 0 && (
+									<div className="col-span-full text-center text-muted-foreground py-4 text-sm">
+										All samples are already harmonized.
+									</div>
+								)}
+							</div>
+						</ScrollArea>
+
+						{/* Action row */}
+						<div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+							<div className="text-xs text-muted-foreground">
+								{selectedSamples.length > 0
+									? `${selectedSamples.length} selected`
+									: `${harmonizedCount} / ${totalSamples} harmonized`}
+							</div>
+							<div className="flex gap-2">
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => { setSearchTerm(""); setSelectedSamples([]); }}
+								>
+									<RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
+									Reset
+								</Button>
+								<Button
+									size="sm"
+									onClick={handleHarmonize}
+									disabled={
+										selectedSamples.length === 0 ||
+										isHarmonizing ||
+										selectedSamples.some((s) => harmonizedSamples.includes(s))
+									}
+								>
+									{isHarmonizing ? "Harmonizing…" : `Harmonize (${selectedSamples.length})`}
+								</Button>
 							</div>
 						</div>
-						{(() => {
-							const warningsRaw = harmonizationManifest.warnings;
-							const warningList = Array.isArray(warningsRaw)
-								? warningsRaw.map((w) => String(firstValue(w as any) ?? w))
-								: [];
-							return warningList.length > 0 ? (
-								<div className="mt-2 rounded border border-amber-300/60 bg-amber-50/60 px-2 py-2 text-xs text-amber-900">
-									<div className="font-medium mb-1">Warnings</div>
-									<div className="space-y-1">
-										{warningList.map((w, i) => (
-											<div key={`${i}-${w}`}>- {w}</div>
-										))}
-									</div>
+
+						{/* QC strip */}
+						{harmonizationManifest && (
+							<div className="rounded-md border border-border/60 bg-muted/10 p-3 space-y-2">
+								<div className="flex flex-wrap items-center justify-between gap-1">
+									<span className="text-xs font-medium">QC · last run</span>
+									<span className="text-xs text-muted-foreground">
+										{String(firstValue(harmonizationManifest.timestamp_utc) ?? "")}
+									</span>
 								</div>
-							) : null;
-						})()}
+								<div className="flex flex-wrap gap-2 text-xs">
+									<Badge variant="outline">
+										ref: {String(firstValue(harmonizationManifest.disease_selection_key) ?? "—")}
+									</Badge>
+									<Badge variant="outline">
+										genes: {String(firstValue(harmonizationManifest.overlap?.common_gene_count) ?? "—")}
+									</Badge>
+									<Badge variant="outline">
+										overlap:{" "}
+										{typeof firstValue(harmonizationManifest.overlap?.uploaded_overlap_fraction) === "number"
+											? `${((firstValue(harmonizationManifest.overlap.uploaded_overlap_fraction) as number) * 100).toFixed(1)}%`
+											: "—"}
+									</Badge>
+									<Badge variant="outline">
+										batches: {String(firstValue(harmonizationManifest.batches?.unique) ?? "—")}
+									</Badge>
+								</div>
+								{(() => {
+									const warningsRaw = harmonizationManifest.warnings;
+									const warnings = Array.isArray(warningsRaw)
+										? warningsRaw.map((w) => String(firstValue(w as any) ?? w))
+										: [];
+									return warnings.length > 0 ? (
+										<div className="rounded border border-amber-300/60 bg-amber-50/60 px-2 py-1.5 text-xs text-amber-900">
+											{warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
+										</div>
+									) : null;
+								})()}
+							</div>
+						)}
 					</div>
 				)}
-			</CollapsibleCardContent>
-		</CollapsibleCard>
+			</CardContent>
+			)}
+		</Card>
 	);
 }

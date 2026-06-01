@@ -7,6 +7,7 @@ const API_BASE_URL =
 		? "http://localhost:3001/v1"
 		: "https://celvox.co/api/v1";
 export const DASHBOARD_DISEASE_STORAGE_KEY = "seamless-dashboard-disease";
+const READS_PER_GENE_FILE_REGEX = /readspergene\.out(?: ?\(\d+\))?\.tab$/i;
 
 export type DiseaseId = "aml" | "ball" | "tall" | "pan_leukemia";
 export type ReferenceDiseaseId = "aml" | "ball" | "tall";
@@ -120,9 +121,17 @@ export async function fetchTSNEData(disease?: DiseaseId | ReferenceDiseaseId[]) 
 	}
 }
 
-export async function fetchDeconvolutionData() {
+export async function fetchDeconvolutionData(
+	samples?: string[],
+	includeReference = false,
+) {
 	try {
-		const response = await axios.get(`${API_BASE_URL}/deconvolution`);
+		const response = await axios.get(`${API_BASE_URL}/deconvolution`, {
+			params: withDiseaseParam({
+				samples: samples && samples.length > 0 ? samples.join(",") : undefined,
+				include_reference: includeReference,
+			}),
+		});
 		return response.data;
 	} catch (error) {
 		console.error("Error fetching deconvolution data:", error);
@@ -168,12 +177,12 @@ export async function uploadSampleData(files: File[]) {
 	const isCsvUpload =
 		files.length === 1 && files[0].name.toLowerCase().endsWith(".csv");
 	const isReadsPerGeneUpload = files.every((file) =>
-		file.name.toLowerCase().endsWith("readspergene.out.tab")
+		READS_PER_GENE_FILE_REGEX.test(file.name)
 	);
 
 	if (!isCsvUpload && !isReadsPerGeneUpload) {
 		throw new Error(
-			"Please upload a single CSV or one or more ReadsPerGene.out.tab files"
+			"Please upload a single CSV or one or more ReadsPerGene.out.tab files (including copied names like ReadsPerGene.out(1).tab)"
 		);
 	}
 
@@ -357,6 +366,82 @@ export async function fetchQCMetrics() {
 export async function fetchKNNDEG(k: number, sampleId: string) {
 	const response = await axios.get(`${API_BASE_URL}/knn-deg`, {
 		params: { k, sampleId },
+	});
+	return response.data;
+}
+
+export type DysregulationGene = {
+	gene_id: string;
+	target_expr: number;
+	cohort_mean: number;
+	delta: number;
+	robust_z: number;
+	percentile_rank: number;
+};
+
+export type DysregulationResult = {
+	sample_requested?: string;
+	sample_resolved?: string;
+	warning?: string | null;
+	cohort_size?: number;
+	genes_tested?: number;
+	summary?: {
+		up_count?: number;
+		down_count?: number;
+		extreme_abs_z_count?: number;
+	};
+	top_up?: DysregulationGene[];
+	top_down?: DysregulationGene[];
+	error?: string;
+};
+
+export async function fetchSampleDysregulation(
+	sample: string,
+	topN = 50,
+): Promise<DysregulationResult> {
+	const response = await axios.get(`${API_BASE_URL}/sample-dysregulation`, {
+		params: {
+			sample,
+			top_n: topN,
+		},
+	});
+	return response.data;
+}
+
+export type GseaPathway = {
+	pathway: string;
+	NES: number;
+	pval: number;
+	padj: number;
+	size: number;
+	leading_edge?: string;
+};
+
+export type SampleGseaResult = {
+	sample_requested?: string;
+	sample_resolved?: string;
+	warning?: string | null;
+	collection?: string;
+	cohort_size?: number;
+	genes_ranked?: number;
+	pathways_tested?: number;
+	pathways?: GseaPathway[];
+	error?: string;
+	missing?: string[];
+	install_hint?: string;
+};
+
+export async function fetchSampleGSEA(
+	sample: string,
+	collection: "hallmark" | "reactome" | "go_bp" = "hallmark",
+	topN = 30,
+): Promise<SampleGseaResult> {
+	const response = await axios.get(`${API_BASE_URL}/sample-gsea`, {
+		params: {
+			sample,
+			collection,
+			top_n: topN,
+		},
 	});
 	return response.data;
 }

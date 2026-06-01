@@ -22,9 +22,9 @@ const ModelSelector = ({
 				<SelectValue placeholder="Select a model" />
 			</SelectTrigger>
 			<SelectContent>
-				<SelectItem value="gpt-4o-mini">GPT-4o-mini</SelectItem>
-				<SelectItem value="gpt-4o">GPT-4o</SelectItem>
-				<SelectItem value="gpt-o1-mini">GPT-o1-mini</SelectItem>
+				<SelectItem value="gpt-5.4-mini">GPT-5.4 mini</SelectItem>
+				<SelectItem value="gpt-5.4">GPT-5.4</SelectItem>
+				<SelectItem value="gpt-4.1-mini">GPT-4.1 mini</SelectItem>
 			</SelectContent>
 		</Select>
 	</div>

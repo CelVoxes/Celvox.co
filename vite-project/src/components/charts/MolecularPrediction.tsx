@@ -9,15 +9,8 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Info, Loader2 } from "lucide-react";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { CheckCircle2, ChevronDown, ChevronRight, ExternalLink, Info, Loader2, XCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	fetchMolecularPrediction,
 	fetchMolecularTools,
@@ -26,6 +19,11 @@ import {
 	type MolecularToolCatalogEntry,
 	type MolecularToolId,
 } from "@/utils/api";
+import {
+	MOLECULAR_TOOL_CONFIGS,
+	type MolecularDashboardToolMetadata,
+} from "@/config/dashboard-tools";
+import { cn } from "@/lib/utils";
 
 type SampleOption = {
 	value: string;
@@ -68,45 +66,7 @@ type NormalizedPrediction = {
 	meta: Record<string, string | number | boolean | null>;
 };
 
-type ToolConfig = {
-	id: MolecularToolId;
-	label: string;
-	description: string;
-	runLabel: string;
-};
-
-const TOOL_CONFIGS: ToolConfig[] = [
-	{
-		id: "bridge",
-		label: "Bridge",
-		description: "Pan-leukemia Bridge classifier (official package)",
-		runLabel: "Run Bridge",
-	},
-	{
-		id: "amlmapr",
-		label: "AMLmapR",
-		description: "AML transcriptional subtype predictor",
-		runLabel: "Run AMLmapR",
-	},
-	{
-		id: "allcatchr",
-		label: "ALLCatchR",
-		description: "B-ALL classifier with BCR-ABL1 subcluster outputs (ALLCatchR_bcrabl1)",
-		runLabel: "Run ALLCatchR",
-	},
-	{
-		id: "allsorts",
-		label: "ALLSorts (B-ALL)",
-		description: "B-ALL subtype classifier (ALLSorts)",
-		runLabel: "Run ALLSorts",
-	},
-	{
-		id: "tallsorts",
-		label: "TALLSorts (T-ALL)",
-		description: "T-ALL subtype classifier (TALLSorts)",
-		runLabel: "Run TALLSorts",
-	},
-];
+const TOOL_CONFIGS = MOLECULAR_TOOL_CONFIGS;
 
 type ToolUiMeta = {
 	id: MolecularToolId;
@@ -137,7 +97,33 @@ const isMolecularToolId = (value: string): value is MolecularToolId =>
 
 const asString = (value: unknown): string | undefined => {
 	const v = Array.isArray(value) ? value[0] : value;
-	return typeof v === "string" ? v : v == null ? undefined : String(v);
+	if (typeof v === "string") return v;
+	if (typeof v === "number" || typeof v === "boolean") return String(v);
+	return undefined;
+};
+
+const displayValue = (value: unknown): string => {
+	const v = Array.isArray(value) && value.length === 1 ? value[0] : value;
+	if (v == null) return "N/A";
+	if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+		return String(v);
+	}
+	if (Array.isArray(v)) {
+		return v.map((item) => displayValue(item)).join(", ");
+	}
+	if (typeof v === "object") {
+		const obj = v as Record<string, unknown>;
+		const preferred = ["label", "prediction", "class", "name", "value", "result"];
+		for (const key of preferred) {
+			const text = asString(obj[key]);
+			if (text) return text;
+		}
+		return Object.entries(obj)
+			.slice(0, 4)
+			.map(([key, item]) => `${key}: ${displayValue(item)}`)
+			.join("; ");
+	}
+	return String(v);
 };
 
 const asNumber = (value: unknown): number | undefined => {
@@ -179,7 +165,7 @@ const normalizeProbabilityItems = (value: unknown): ProbabilityItem[] => {
 		.map((item) => {
 			const obj = asObjectRecord(item);
 			if (!obj) return null;
-			const label = asString(obj.label);
+			const label = asString(obj.label) ?? displayValue(obj.label);
 			const probability = asNumber(obj.probability);
 			if (!label || probability == null) return null;
 			return { label, probability } satisfies ProbabilityItem;
@@ -193,7 +179,7 @@ const normalizeScoreItems = (value: unknown): ScoreItem[] => {
 		.map((item) => {
 			const obj = asObjectRecord(item);
 			if (!obj) return null;
-			const label = asString(obj.label);
+			const label = asString(obj.label) ?? displayValue(obj.label);
 			const score = asNumber((obj as { score?: unknown }).score);
 			if (!label || score == null) return null;
 			return { label, score } satisfies ScoreItem;
@@ -207,11 +193,11 @@ const normalizeLevels = (value: unknown): ToolLevelResult[] => {
 		.map((item) => {
 			const obj = asObjectRecord(item);
 			if (!obj) return null;
-			const level = asString(obj.level);
+			const level = asString(obj.level) ?? displayValue(obj.level);
 			if (!level) return null;
 			const normalized: ToolLevelResult = {
 				level,
-				prediction: asString(obj.prediction),
+				prediction: asString(obj.prediction) ?? displayValue(obj.prediction),
 				confidence: asNumber(obj.confidence),
 				topPredictions: normalizeProbabilityItems(obj.top_predictions),
 			};
@@ -240,15 +226,23 @@ const normalizePrediction = (rawValue: unknown): NormalizedPrediction => {
 		log1p_rna: asBoolean(raw.log1p_rna) ?? null,
 		primary_level: asString(raw.primary_level) ?? null,
 		implementation: asString(raw.implementation) ?? null,
-		confidence_label: asString(raw.confidence_label) ?? null,
-		bcr_abl1_maincluster_pred: asString(raw.bcr_abl1_maincluster_pred) ?? null,
-		bcr_abl1_subcluster_pred: asString(raw.bcr_abl1_subcluster_pred) ?? null,
-		bcr_abl1_hyperdiploidy_pred:
-			asString(raw.bcr_abl1_hyperdiploidy_pred) ?? null,
-		immuno: asString(raw.immuno) ?? null,
-		sex_prediction: asString(raw.sex_prediction) ?? null,
-		blast_counts: asNumber(raw.blast_counts) ?? null,
-	};
+			confidence_label: asString(raw.confidence_label) ?? null,
+			bcr_abl1_maincluster_pred: asString(raw.bcr_abl1_maincluster_pred) ?? null,
+			bcr_abl1_maincluster_score:
+				asNumber(raw.bcr_abl1_maincluster_score) ?? null,
+			bcr_abl1_subcluster_pred: asString(raw.bcr_abl1_subcluster_pred) ?? null,
+			bcr_abl1_subcluster_score:
+				asNumber(raw.bcr_abl1_subcluster_score) ?? null,
+			bcr_abl1_hyperdiploidy_pred:
+				asString(raw.bcr_abl1_hyperdiploidy_pred) ?? null,
+			bcr_abl1_hyperdiploidy_score:
+				asNumber(raw.bcr_abl1_hyperdiploidy_score) ?? null,
+			immuno: asString(raw.immuno) ?? null,
+			immuno_score: asNumber(raw.immuno_score) ?? null,
+			sex_prediction: asString(raw.sex_prediction) ?? null,
+			sex_score: asNumber(raw.sex_score) ?? null,
+			blast_counts: asNumber(raw.blast_counts) ?? null,
+		};
 
 	return {
 		raw,
@@ -273,6 +267,13 @@ const normalizePrediction = (rawValue: unknown): NormalizedPrediction => {
 const formatPercent = (value?: number) =>
 	typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "N/A";
 
+const formatScore = (value: unknown) => {
+	const n = asNumber(value);
+	if (n == null) return displayValue(value);
+	if (n >= 0 && n <= 1) return `${(n * 100).toFixed(1)}%`;
+	return n.toFixed(3);
+};
+
 const labelForDisease = (disease?: string) => {
 	if (!disease) return "Unknown";
 	if (disease === "aml") return "AML";
@@ -283,167 +284,228 @@ const labelForDisease = (disease?: string) => {
 	return disease;
 };
 
-const getToolById = (id: MolecularToolId) =>
+const getToolById = (id: MolecularToolId): MolecularDashboardToolMetadata =>
 	TOOL_CONFIGS.find((tool) => tool.id === id) ?? TOOL_CONFIGS[0];
 
-function ProbabilitiesList({
-	items,
-	title,
+const resultKey = (toolId: MolecularToolId, sample: string) => `${toolId}::${sample}`;
+
+const getResultSummary = (result?: NormalizedPrediction) => {
+	if (!result || result.error) return null;
+	if (result.prediction) return result.prediction;
+	if (result.levels.length > 0) {
+		const firstCall = result.levels.find((level) => level.prediction);
+		if (firstCall) return firstCall.prediction;
+	}
+	if (result.topPredictions.length > 0) return result.topPredictions[0].label;
+	if (result.topScores.length > 0) return result.topScores[0].label;
+	return "No call";
+};
+
+function ToolStatusBadge({
+	isBusy,
+	hasError,
+	hasResult,
 }: {
-	items: ProbabilityItem[];
-	title: string;
+	isBusy: boolean;
+	hasError: boolean;
+	hasResult: boolean;
 }) {
-	if (items.length === 0) return null;
-	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>{title}</CardTitle>
-			</CardHeader>
-			<CardContent>
-				<div className="space-y-2">
-					{items.slice(0, 10).map((item) => {
-						const width = Math.max(
-							0,
-							Math.min(100, item.probability * 100)
-						);
-						return (
-							<div key={item.label} className="space-y-1">
-								<div className="flex justify-between text-sm gap-4">
-									<span className="font-medium truncate">{item.label}</span>
-									<span className="text-muted-foreground">
-										{(item.probability * 100).toFixed(2)}%
-									</span>
-								</div>
-								<div className="h-2 rounded bg-muted overflow-hidden">
-									<div className="h-full bg-primary" style={{ width: `${width}%` }} />
-								</div>
-							</div>
-						);
-					})}
-				</div>
-			</CardContent>
-		</Card>
-	);
+	if (isBusy) {
+		return (
+			<Badge variant="secondary" className="gap-1 text-[10px]">
+				<Loader2 className="h-3 w-3 animate-spin" />
+				Running
+			</Badge>
+		);
+	}
+	if (hasError) {
+		return (
+			<Badge variant="destructive" className="gap-1 text-[10px]">
+				<XCircle className="h-3 w-3" />
+				Error
+			</Badge>
+		);
+	}
+	if (hasResult) {
+		return (
+			<Badge variant="default" className="gap-1 text-[10px]">
+				<CheckCircle2 className="h-3 w-3" />
+				Done
+			</Badge>
+		);
+	}
+	return <Badge variant="outline" className="text-[10px]">Not run</Badge>;
 }
 
-function ScoresList({ items }: { items: ScoreItem[] }) {
-	if (items.length === 0) return null;
+function PredictionEvidence({ result }: { result: NormalizedPrediction }) {
+	const probabilityRows = result.topPredictions.slice(0, 10);
+	const scoreRows = result.topScores.slice(0, 10);
+	const levelRows = result.levels;
+	const classifierRows = [
+		{ label: "Primary call", value: result.prediction },
+		{
+			label: "BCR-ABL1 main cluster",
+			value: result.meta.bcr_abl1_maincluster_pred,
+			score: result.meta.bcr_abl1_maincluster_score,
+		},
+		{
+			label: "BCR-ABL1 subcluster",
+			value: result.meta.bcr_abl1_subcluster_pred,
+			score: result.meta.bcr_abl1_subcluster_score,
+		},
+		{
+			label: "BCR-ABL1 hyperdiploidy",
+			value: result.meta.bcr_abl1_hyperdiploidy_pred,
+			score: result.meta.bcr_abl1_hyperdiploidy_score,
+		},
+		{
+			label: "Immunophenotype",
+			value: result.meta.immuno,
+			score: result.meta.immuno_score,
+		},
+		{
+			label: "Sex prediction",
+			value: result.meta.sex_prediction,
+			score: result.meta.sex_score,
+		},
+		{ label: "Blast counts", value: result.meta.blast_counts },
+	].filter(({ value }) => value !== null && value !== undefined && value !== "");
+
+	if (
+		probabilityRows.length === 0 &&
+		scoreRows.length === 0 &&
+		levelRows.length === 0 &&
+		classifierRows.length === 0
+	) {
+		return (
+			<div className="rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+				No ranked evidence returned.
+			</div>
+		);
+	}
+
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>Top AMLmapR Cluster Scores</CardTitle>
-				<CardDescription>
-					Decision boundary distances (higher is more favored)
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
+		<div className="space-y-4">
+			{classifierRows.length > 0 && (
 				<div className="space-y-2">
-					{items.slice(0, 10).map((item) => (
+					<div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						Classifier calls
+					</div>
+					{classifierRows.map(({ label, value, score }) => (
+						<div
+							key={label}
+							className="flex justify-between gap-3 rounded border px-2 py-1 text-xs"
+						>
+							<span className="text-muted-foreground">{label}</span>
+							<span className="font-medium text-right break-words">
+								{displayValue(value)}
+								{score !== null && score !== undefined && (
+									<span className="ml-2 text-muted-foreground">
+										{formatScore(score)}
+									</span>
+								)}
+							</span>
+						</div>
+					))}
+				</div>
+			)}
+			{probabilityRows.length > 0 && (
+				<div className="space-y-2">
+					<div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						Predicted classes
+					</div>
+					{probabilityRows.map((item) => (
+						<div key={item.label} className="space-y-1">
+							<div className="flex justify-between gap-3 text-xs">
+								<span className="truncate">{item.label}</span>
+								<span className="text-muted-foreground tabular-nums">
+									{(item.probability * 100).toFixed(1)}%
+								</span>
+							</div>
+							<div className="h-1.5 overflow-hidden rounded bg-muted">
+								<div
+									className="h-full bg-primary"
+									style={{
+										width: `${Math.max(0, Math.min(100, item.probability * 100))}%`,
+									}}
+								/>
+							</div>
+						</div>
+					))}
+				</div>
+			)}
+			{scoreRows.length > 0 && (
+				<div className="space-y-2">
+					<div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						Class scores
+					</div>
+					{scoreRows.map((item) => (
 						<div
 							key={item.label}
-							className="flex items-center justify-between gap-4 rounded border px-3 py-2 text-sm"
+							className="flex justify-between gap-3 rounded border px-2 py-1 text-xs"
 						>
-							<span className="font-medium truncate">{item.label}</span>
+							<span className="truncate">{item.label}</span>
 							<span className="text-muted-foreground tabular-nums">
 								{item.score.toFixed(4)}
 							</span>
 						</div>
 					))}
 				</div>
-			</CardContent>
-		</Card>
-	);
-}
-
-function TALLLevelsCard({ levels }: { levels: ToolLevelResult[] }) {
-	if (levels.length === 0) return null;
-	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>TALLSorts Hierarchy Levels</CardTitle>
-				<CardDescription>
-					Per-level calls from the T-ALL hierarchical classifier
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<div className="grid gap-3 md:grid-cols-2">
-					{levels.map((level) => (
-						<div key={level.level} className="rounded border p-3 space-y-2">
-							<div className="flex items-center justify-between gap-2">
-								<div className="text-sm font-medium">{level.level}</div>
-								<Badge variant="outline">
+			)}
+			{levelRows.length > 0 && (
+				<div className="space-y-2">
+					<div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						Hierarchy calls
+					</div>
+					{levelRows.map((level) => (
+						<div key={level.level} className="rounded border px-2 py-2 text-xs">
+							<div className="flex justify-between gap-3">
+								<span className="truncate text-muted-foreground">{level.level}</span>
+								<span className="font-medium truncate">
 									{level.prediction ?? "No call"}
-								</Badge>
+								</span>
 							</div>
 							{typeof level.confidence === "number" && (
-								<div className="text-xs text-muted-foreground">
+								<div className="mt-1 text-muted-foreground">
 									Top probability: {formatPercent(level.confidence)}
 								</div>
 							)}
-							<div className="space-y-1">
-								{level.topPredictions.slice(0, 5).map((item) => (
-									<div
-										key={`${level.level}-${item.label}`}
-										className="flex justify-between gap-3 text-xs"
-									>
-										<span className="truncate">{item.label}</span>
-										<span className="text-muted-foreground tabular-nums">
-											{(item.probability * 100).toFixed(1)}%
-										</span>
-									</div>
-								))}
-								{level.topPredictions.length === 0 && (
-									<div className="text-xs text-muted-foreground">No probabilities for this level.</div>
-								)}
-							</div>
+							{level.topPredictions.length > 0 && (
+								<div className="mt-2 space-y-1">
+									{level.topPredictions.slice(0, 5).map((item) => (
+										<div
+											key={`${level.level}-${item.label}`}
+											className="flex justify-between gap-3"
+										>
+											<span className="truncate">{item.label}</span>
+											<span className="text-muted-foreground tabular-nums">
+												{(item.probability * 100).toFixed(1)}%
+											</span>
+										</div>
+									))}
+								</div>
+							)}
 						</div>
 					))}
 				</div>
-			</CardContent>
-		</Card>
-	);
-}
-
-function MetaGrid({ meta }: { meta: NormalizedPrediction["meta"] }) {
-	const rows = Object.entries(meta).filter(([, value]) => value !== null && value !== undefined);
-	if (rows.length === 0) return null;
-	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>Run Metadata</CardTitle>
-			</CardHeader>
-			<CardContent>
-				<ScrollArea className="max-h-56">
-					<div className="space-y-1">
-						{rows.map(([key, value]) => (
-							<div
-								key={key}
-								className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 rounded border px-3 py-2 text-sm"
-							>
-								<span className="text-muted-foreground break-all">{key}</span>
-								<span className="font-medium tabular-nums">
-									{typeof value === "boolean" ? (value ? "true" : "false") : String(value)}
-								</span>
-							</div>
-						))}
-					</div>
-				</ScrollArea>
-			</CardContent>
-		</Card>
+			)}
+		</div>
 	);
 }
 
 export function MolecularPredictionPanel() {
-	const [activeTool, setActiveTool] = useState<MolecularToolId>("bridge");
 	const [sampleOptions, setSampleOptions] = useState<SampleOption[]>([]);
-	const [selectedSample, setSelectedSample] = useState<string>("");
+	const [selectedSamples, setSelectedSamples] = useState<string[]>([]);
 	const [isLoadingSamples, setIsLoadingSamples] = useState(false);
+	const [sampleLoadError, setSampleLoadError] = useState<string | null>(null);
 	const [isRunningAll, setIsRunningAll] = useState(false);
+	const [batchRunningTool, setBatchRunningTool] = useState<MolecularToolId | null>(null);
 	const [predictingByTool, setPredictingByTool] = useState<
-		Partial<Record<MolecularToolId, boolean>>
+		Partial<Record<string, boolean>>
 	>({});
-	const [resultsByTool, setResultsByTool] = useState<Partial<Record<MolecularToolId, NormalizedPrediction>>>({});
-	const [errorByTool, setErrorByTool] = useState<Partial<Record<MolecularToolId, string>>>({});
+	const [resultsByTool, setResultsByTool] = useState<Partial<Record<string, NormalizedPrediction>>>({});
+	const [errorByTool, setErrorByTool] = useState<Partial<Record<string, string>>>({});
+	const [expandedResults, setExpandedResults] = useState<Partial<Record<string, boolean>>>({});
 	const [toolCatalog, setToolCatalog] = useState<
 		Partial<Record<MolecularToolId, MolecularToolCatalogEntry>>
 	>({});
@@ -478,20 +540,19 @@ export function MolecularPredictionPanel() {
 						if (byPriority !== 0) return byPriority;
 						return a.value.localeCompare(b.value);
 					})
-					.map(({ base: _base, ...rest }) => rest);
+					.map(({ value, label }) => ({ value, label }));
 
 				if (!cancelled) {
 					setSampleOptions(options);
 					if (options.length > 0) {
-						setSelectedSample((prev) => prev || options[0].value);
+						setSelectedSamples((prev) => (prev.length > 0 ? prev : [options[0].value]));
 					}
 				}
 			} catch (err) {
 				if (!cancelled) {
-					setErrorByTool((prev) => ({
-						...prev,
-						[activeTool]: err instanceof Error ? err.message : "Failed to load uploaded samples",
-					}));
+					setSampleLoadError(
+						err instanceof Error ? err.message : "Failed to load uploaded samples"
+					);
 				}
 			} finally {
 				if (!cancelled) setIsLoadingSamples(false);
@@ -501,7 +562,7 @@ export function MolecularPredictionPanel() {
 		return () => {
 			cancelled = true;
 		};
-	}, [activeTool]);
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -545,12 +606,6 @@ export function MolecularPredictionPanel() {
 		};
 	}, []);
 
-	const activeToolConfig = useMemo(() => getToolById(activeTool), [activeTool]);
-	const activeResult = resultsByTool[activeTool] ?? null;
-	const activeError = errorByTool[activeTool] ?? null;
-	const isActivePredicting = Boolean(predictingByTool[activeTool]) || isRunningAll;
-	const hasAnyToolResults = TOOL_CONFIGS.some((tool) => Boolean(resultsByTool[tool.id]));
-	const hasAnyToolErrors = TOOL_CONFIGS.some((tool) => Boolean(errorByTool[tool.id]));
 	const currentDiseaseLabel = labelForDisease(catalogRequestDisease || getSelectedDiseaseContext());
 
 	const toolUiMetaById = useMemo(() => {
@@ -587,9 +642,7 @@ export function MolecularPredictionPanel() {
 		return out;
 	}, [toolCatalog]);
 
-	const activeToolMeta = toolUiMetaById[activeTool];
-
-	const pickerTools = useMemo(() => {
+	const orderedTools = useMemo(() => {
 		const context = catalogRequestDisease || getSelectedDiseaseContext();
 		const byContext: Record<string, MolecularToolId[]> = {
 			aml: ["bridge", "amlmapr", "allcatchr", "allsorts", "tallsorts"],
@@ -607,13 +660,13 @@ export function MolecularPredictionPanel() {
 			toolId: MolecularToolId;
 			prediction: string;
 			confidence: number | undefined;
-		}> = TOOL_CONFIGS.map((tool) => {
-			const result = resultsByTool[tool.id];
+		}> = Object.entries(resultsByTool).map(([key, result]) => {
 			if (!result || result.error) return null;
+			const toolId = key.split("::")[0] as MolecularToolId;
 			const pred = result.prediction?.trim();
 			if (!pred) return null;
 			return {
-				toolId: tool.id,
+				toolId,
 				prediction: pred,
 				confidence: result.confidence,
 			};
@@ -630,43 +683,49 @@ export function MolecularPredictionPanel() {
 					? "agreement"
 					: "divergent",
 		};
-	}, [resultsByTool, toolUiMetaById]);
+	}, [resultsByTool]);
 
-	const runPredictionForTool = async (toolId: MolecularToolId) => {
-		if (!selectedSample) return;
-		setPredictingByTool((prev) => ({ ...prev, [toolId]: true }));
-		setErrorByTool((prev) => ({ ...prev, [toolId]: undefined }));
+	const runPredictionForToolAndSample = async (toolId: MolecularToolId, sample: string) => {
+		const key = resultKey(toolId, sample);
+		setPredictingByTool((prev) => ({ ...prev, [key]: true }));
+		setErrorByTool((prev) => ({ ...prev, [key]: undefined }));
 		try {
-			const raw = await fetchMolecularPrediction(toolId, selectedSample);
+			const raw = await fetchMolecularPrediction(toolId, sample);
 			const normalized = normalizePrediction(raw);
-			setResultsByTool((prev) => ({ ...prev, [toolId]: normalized }));
+			setResultsByTool((prev) => ({ ...prev, [key]: normalized }));
 			if (normalized.error) {
-				setErrorByTool((prev) => ({ ...prev, [toolId]: normalized.error }));
+				setErrorByTool((prev) => ({ ...prev, [key]: normalized.error }));
 			}
 		} catch (err) {
-			setResultsByTool((prev) => ({ ...prev, [toolId]: undefined }));
+			setResultsByTool((prev) => ({ ...prev, [key]: undefined }));
 			setErrorByTool((prev) => ({
 				...prev,
-				[toolId]: err instanceof Error ? err.message : "Prediction failed",
+				[key]: err instanceof Error ? err.message : "Prediction failed",
 			}));
 		} finally {
-			setPredictingByTool((prev) => ({ ...prev, [toolId]: false }));
+			setPredictingByTool((prev) => ({ ...prev, [key]: false }));
 		}
 	};
 
-	const runPrediction = async () => {
-		if (!selectedSample || isActivePredicting) return;
-		await runPredictionForTool(activeTool);
+	const runPredictionForTool = async (toolId: MolecularToolId) => {
+		if (selectedSamples.length === 0) return;
+		for (const sample of selectedSamples) {
+			await runPredictionForToolAndSample(toolId, sample);
+		}
 	};
 
 	const runAllPredictions = async () => {
-		if (!selectedSample || isRunningAll) return;
+		if (selectedSamples.length === 0 || isRunningAll) return;
 		setIsRunningAll(true);
 		try {
-			for (const tool of TOOL_CONFIGS) {
-				await runPredictionForTool(tool.id);
+			for (const tool of orderedTools) {
+				setBatchRunningTool(tool.id);
+				for (const sample of selectedSamples) {
+					await runPredictionForToolAndSample(tool.id, sample);
+				}
 			}
 		} finally {
+			setBatchRunningTool(null);
 			setIsRunningAll(false);
 		}
 	};
@@ -677,140 +736,82 @@ export function MolecularPredictionPanel() {
 				<CardHeader>
 					<CardTitle>Molecular Diagnostics</CardTitle>
 					<CardDescription>
-						Run integrated molecular classifiers on uploaded raw RNA counts
+						Run molecular classifiers and compare their outputs in one standard view
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+					<div className="flex flex-wrap items-center gap-2 text-xs">
 						<Badge variant="outline">Disease context: {currentDiseaseLabel}</Badge>
-						<Badge variant="outline">Registry-backed tools</Badge>
+						<Badge variant="secondary">
+							Completed: {consensusSummary.totalCompleted}/{TOOL_CONFIGS.length * selectedSamples.length}
+						</Badge>
+						{consensusSummary.status === "agreement" && (
+							<Badge variant="default">Agreement</Badge>
+						)}
+						{consensusSummary.status === "divergent" && (
+							<Badge variant="outline">
+								Different outputs ({consensusSummary.uniquePredictions.length})
+							</Badge>
+						)}
 					</div>
 
-					<div className="rounded-lg border p-3 space-y-3">
-						<div className="flex flex-wrap items-center justify-between gap-2">
-							<div>
-								<div className="text-sm font-medium">Tool Selection</div>
-								<div className="text-xs text-muted-foreground">
-									Choose a classifier to run. Catalog entries are listed below for reference.
+					<div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+						<div className="flex-1 rounded-lg border bg-muted/20 p-3">
+							<div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+								<div className="text-sm font-medium">Samples</div>
+								<div className="flex gap-2">
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => setSelectedSamples(sampleOptions.map((sample) => sample.value))}
+										disabled={sampleOptions.length === 0}
+									>
+										All
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => setSelectedSamples([])}
+										disabled={selectedSamples.length === 0}
+									>
+										Clear
+									</Button>
 								</div>
 							</div>
-							<Badge variant="outline">{TOOL_CONFIGS.length} runnable tools</Badge>
-						</div>
-
-						<div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-							{pickerTools.map((tool) => {
-								const toolMeta = toolUiMetaById[tool.id];
-								const isSelected = activeTool === tool.id;
-								return (
-									<button
-										key={tool.id}
-										type="button"
-										onClick={() => setActiveTool(tool.id)}
-										className={`rounded-md border p-3 text-left transition-colors ${
-											isSelected
-												? "border-primary bg-primary/5"
-												: "hover:bg-muted/40"
-										}`}
+							<div className="grid max-h-40 gap-2 overflow-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+								{sampleOptions.map((sample) => (
+									<label
+										key={sample.value}
+										className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-xs"
 									>
-										<div className="flex items-start justify-between gap-2">
-											<div className="min-w-0">
-												<div className="text-sm font-medium truncate">
-													{toolMeta?.shortLabel || tool.label}
-												</div>
-												<div className="text-[11px] text-muted-foreground truncate">
-													{toolMeta?.diseaseScope
-														? labelForDisease(toolMeta.diseaseScope)
-														: tool.description}
-												</div>
-											</div>
-											{toolMeta?.available === false && (
-												<Badge variant="destructive" className="text-[10px]">
-													Missing
-												</Badge>
-											)}
-										</div>
-									</button>
-								);
-							})}
-						</div>
-
-						<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-							<Badge variant="secondary">Selected: {activeToolConfig.label}</Badge>
-							{activeToolMeta?.diseaseScope && (
-								<Badge variant="outline">
-									{labelForDisease(activeToolMeta.diseaseScope)}
-								</Badge>
-							)}
-							{activeToolMeta?.repoUrl && (
-								<a
-									href={activeToolMeta.repoUrl}
-									target="_blank"
-									rel="noreferrer"
-									className="inline-flex items-center gap-1 text-primary hover:underline"
-								>
-									GitHub <ExternalLink className="h-3 w-3" />
-								</a>
-							)}
-							{activeToolMeta?.docsUrl && (
-								<a
-									href={activeToolMeta.docsUrl}
-									target="_blank"
-									rel="noreferrer"
-									className="inline-flex items-center gap-1 text-primary hover:underline"
-								>
-									Docs <ExternalLink className="h-3 w-3" />
-								</a>
-							)}
-							{activeToolMeta?.notes && (
-								<span className="line-clamp-1">{activeToolMeta.notes}</span>
-							)}
-						</div>
-					</div>
-
-					<div className="flex flex-col lg:flex-row gap-3">
-						<div className="flex-1">
-							<Select
-								value={selectedSample}
-								onValueChange={setSelectedSample}
-								disabled={isLoadingSamples || sampleOptions.length === 0}
-							>
-								<SelectTrigger>
-									<SelectValue placeholder="Select uploaded sample" />
-								</SelectTrigger>
-								<SelectContent>
-									{sampleOptions.map((sample) => (
-										<SelectItem key={sample.value} value={sample.value}>
-											{sample.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+										<Checkbox
+											checked={selectedSamples.includes(sample.value)}
+											onCheckedChange={(checked) => {
+												setSelectedSamples((prev) =>
+													checked
+														? Array.from(new Set([...prev, sample.value]))
+														: prev.filter((value) => value !== sample.value)
+												);
+											}}
+										/>
+										<span className="min-w-0 truncate">{sample.label}</span>
+									</label>
+								))}
+							</div>
 						</div>
 						<Button
-							onClick={runPrediction}
-							disabled={!selectedSample || isActivePredicting || isLoadingSamples}
-						>
-							{isActivePredicting ? (
-								<>
-									<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-									Running {activeToolConfig.label}
-								</>
-							) : (
-								activeToolConfig.runLabel
-							)}
-						</Button>
-						<Button
-							variant="outline"
 							onClick={runAllPredictions}
-							disabled={!selectedSample || isRunningAll || isLoadingSamples}
+							disabled={selectedSamples.length === 0 || isRunningAll || isLoadingSamples}
 						>
 							{isRunningAll ? (
 								<>
-									<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-									Running All Runnable Tools
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Running {batchRunningTool ? getToolById(batchRunningTool).label : "Tools"}
 								</>
 							) : (
-								"Run All Runnable Tools"
+								"Run All Methods"
 							)}
 						</Button>
 					</div>
@@ -824,208 +825,222 @@ export function MolecularPredictionPanel() {
 						</Alert>
 					)}
 
-					{activeError && (
+					{sampleLoadError && (
 						<Alert>
 							<Info className="h-4 w-4" />
-							<AlertDescription>{activeError}</AlertDescription>
-						</Alert>
-					)}
-
-					{activeResult?.warning && (
-						<Alert>
-							<Info className="h-4 w-4" />
-							<AlertDescription>{activeResult.warning}</AlertDescription>
+							<AlertDescription>{sampleLoadError}</AlertDescription>
 						</Alert>
 					)}
 				</CardContent>
 			</Card>
 
-			{(hasAnyToolResults || hasAnyToolErrors) && (
-				<Card>
-					<CardHeader>
-						<CardTitle>Predictions Overview</CardTitle>
-						<CardDescription>
-							Compare calls across molecular tools for the selected sample
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-							<Badge variant="outline">Context: {currentDiseaseLabel}</Badge>
-							<Badge variant="secondary">
-								Completed: {consensusSummary.totalCompleted}/{TOOL_CONFIGS.length}
-							</Badge>
-							{consensusSummary.status === "agreement" && (
-								<Badge variant="default">Agreement</Badge>
-							)}
-							{consensusSummary.status === "divergent" && (
-								<Badge variant="outline">
-									Divergent calls ({consensusSummary.uniquePredictions.length})
-								</Badge>
-							)}
-							{consensusSummary.status === "insufficient" && (
-								<Badge variant="outline">Run more tools for comparison</Badge>
-							)}
-						</div>
-						<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-							{TOOL_CONFIGS.map((tool) => {
-								const result = resultsByTool[tool.id];
-								const toolError = errorByTool[tool.id];
-								const isBusy = Boolean(predictingByTool[tool.id]) || isRunningAll;
-								const isActive = activeTool === tool.id;
-								const toolMeta = toolUiMetaById[tool.id];
+				<div className="grid gap-3 xl:grid-cols-2">
+					{orderedTools.map((tool) => {
+						const toolMeta = toolUiMetaById[tool.id];
+						const selectedRows = selectedSamples.map((sample) => {
+							const key = resultKey(tool.id, sample);
+							const result = resultsByTool[key];
+							const toolError = errorByTool[key];
+							const isBusy = Boolean(predictingByTool[key]);
+							return {
+								key,
+								sample,
+								result,
+								toolError,
+								isBusy,
+								hasResult: Boolean(result && !result.error),
+								summary: getResultSummary(result),
+							};
+						});
+						const hasAnyResult = selectedRows.some((row) => row.hasResult);
+						const hasAnyError = selectedRows.some((row) => Boolean(row.toolError));
+						const isAnyBusy = selectedRows.some((row) => row.isBusy);
+						const unavailable = toolMeta?.available === false;
 
-								return (
-									<button
-										key={tool.id}
-										type="button"
-										onClick={() => setActiveTool(tool.id)}
-										className={`rounded-lg border p-3 text-left transition-colors ${
-											isActive
-												? "border-primary bg-primary/5"
-												: "hover:bg-muted/40"
-										}`}
-									>
-										<div className="flex items-center justify-between gap-2">
-											<div className="text-sm font-medium">{tool.label}</div>
-											{isBusy && (
-												<Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-											)}
-										</div>
-										<div className="mt-2 space-y-1">
-											<div className="flex flex-wrap gap-1">
-												{toolMeta?.diseaseScope && (
-													<Badge variant="outline" className="text-[10px]">
-														{labelForDisease(toolMeta.diseaseScope)}
-													</Badge>
+					return (
+						<Card
+							key={tool.id}
+								className={cn(
+									"overflow-hidden shadow-sm",
+									isAnyBusy && "ring-1 ring-primary/30"
+								)}
+							>
+							<CardHeader className="space-y-3">
+								<div className="flex flex-wrap items-start justify-between gap-3">
+										<div className="min-w-0">
+											<div className="flex flex-wrap items-center gap-2">
+												<CardTitle className="text-base">
+													{toolMeta?.shortLabel || tool.label}
+												</CardTitle>
+												{toolMeta?.repoUrl && (
+													<a
+														href={toolMeta.repoUrl}
+														target="_blank"
+														rel="noreferrer"
+														className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+													>
+														GitHub <ExternalLink className="h-3 w-3" />
+													</a>
 												)}
-												{toolMeta?.available === false && (
-													<Badge variant="destructive" className="text-[10px]">
-														Unavailable
-													</Badge>
+												{toolMeta?.docsUrl && (
+													<a
+														href={toolMeta.docsUrl}
+														target="_blank"
+														rel="noreferrer"
+														className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+													>
+														Docs <ExternalLink className="h-3 w-3" />
+													</a>
 												)}
 											</div>
-											{toolError ? (
-												<div className="text-xs text-destructive line-clamp-3">
-													{toolError}
-												</div>
-											) : result && !result.error ? (
-												<>
-													<div className="text-base font-semibold truncate">
-														{result.prediction ?? "No call"}
+											<CardDescription>{tool.question}</CardDescription>
+										</div>
+										<ToolStatusBadge
+											isBusy={isAnyBusy}
+											hasError={hasAnyError}
+											hasResult={hasAnyResult}
+										/>
+								</div>
+								<div className="flex flex-wrap gap-1">
+									<Badge variant="secondary" className="text-[10px]">
+										{tool.outputType}
+									</Badge>
+									{toolMeta?.diseaseScope && (
+										<Badge variant="outline" className="text-[10px]">
+											{labelForDisease(toolMeta.diseaseScope)}
+										</Badge>
+									)}
+									{unavailable && (
+										<Badge variant="destructive" className="text-[10px]">
+											Missing runtime
+										</Badge>
+									)}
+								</div>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									<div className="space-y-2">
+										{selectedRows.length === 0 && (
+											<div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+												Select at least one sample.
+											</div>
+										)}
+										{selectedRows.map(({ key, sample, result, toolError, isBusy, hasResult, summary }) => {
+											const isExpanded = Boolean(expandedResults[key]);
+											return (
+												<div key={key} className="rounded-lg border bg-muted/20 p-3">
+													<div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+														<button
+															type="button"
+															onClick={() =>
+																setExpandedResults((prev) => ({
+																	...prev,
+																	[key]: !prev[key],
+																}))
+															}
+															className="flex min-w-0 items-start gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+														>
+															{isExpanded ? (
+																<ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+															) : (
+																<ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+															)}
+															<div className="min-w-0">
+																<div className="truncate text-xs text-muted-foreground">
+																	{sample}
+																</div>
+																{toolError ? (
+																	<div className="mt-1 text-sm font-medium text-destructive">
+																		{toolError}
+																	</div>
+																) : summary ? (
+																	<div className="mt-1 text-xl font-semibold break-words">
+																		{summary}
+																	</div>
+																) : (
+																	<div className="mt-1 text-sm text-muted-foreground">
+																		Not run yet
+																	</div>
+																)}
+															</div>
+															</button>
+															<div className="flex flex-wrap items-start gap-1 sm:justify-end">
+																{(isBusy || toolError || !hasResult) && (
+																	<ToolStatusBadge
+																		isBusy={isBusy}
+																		hasError={Boolean(toolError)}
+																		hasResult={hasResult}
+																	/>
+																)}
+																{result && typeof result.confidence === "number" && (
+																<Badge variant="outline" className="text-[10px]">
+																	{formatPercent(result.confidence)}
+																</Badge>
+															)}
+															{result && typeof result.passCutoff === "boolean" && (
+																<Badge
+																	variant={result.passCutoff ? "default" : "outline"}
+																	className="text-[10px]"
+																>
+																	{result.passCutoff ? "Pass" : "Fail"}
+																</Badge>
+															)}
+														</div>
 													</div>
-													<div className="flex flex-wrap gap-1">
-														{typeof result.confidence === "number" && (
-															<Badge variant="secondary" className="text-[10px]">
-																{formatPercent(result.confidence)}
-															</Badge>
-														)}
-														{typeof result.passCutoff === "boolean" && (
-															<Badge
-																variant={result.passCutoff ? "default" : "outline"}
-																className="text-[10px]"
-															>
-																AMLmapR {result.passCutoff ? "pass" : "fail"}
-															</Badge>
-														)}
-													</div>
-													{result.warning && (
-														<div className="text-[11px] text-muted-foreground line-clamp-2">
-															{result.warning}
+
+													{isExpanded && result && !result.error && (
+														<div className="mt-3 space-y-3">
+															<PredictionEvidence result={result} />
+															{result.warning && (
+																<Alert>
+																	<Info className="h-4 w-4" />
+																	<AlertDescription>{result.warning}</AlertDescription>
+																</Alert>
+															)}
+															{result.details && (
+																<div className="rounded border p-3 text-xs text-destructive whitespace-pre-wrap">
+																	{result.details}
+																</div>
+															)}
 														</div>
 													)}
-												</>
-											) : (
-												<div className="text-xs text-muted-foreground">Not run yet</div>
-											)}
+												</div>
+											);
+										})}
+									</div>
+
+									<div className="flex flex-wrap items-center justify-between gap-2">
+										<div className="text-xs text-muted-foreground">
+											{selectedSamples.length} selected sample{selectedSamples.length === 1 ? "" : "s"}
 										</div>
-									</button>
-								);
-							})}
-						</div>
-					</CardContent>
-				</Card>
-			)}
-
-			{activeResult && !activeResult.error && (
-				<>
-					<Card>
-						<CardHeader>
-							<CardTitle>{activeToolConfig.label} Result</CardTitle>
-							<CardDescription>
-								{activeResult.model ?? activeToolConfig.label} | Sample: {activeResult.sampleId ?? selectedSample}
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="rounded-lg border p-4 bg-muted/30">
-								<div className="text-xs uppercase tracking-wide text-muted-foreground">
-									Primary Prediction
+										<Button
+										variant="outline"
+										size="sm"
+											onClick={() => runPredictionForTool(tool.id)}
+											disabled={
+												selectedSamples.length === 0 ||
+												isAnyBusy ||
+												isRunningAll ||
+												isLoadingSamples ||
+												unavailable
+										}
+										>
+											{isAnyBusy ? (
+												<>
+													<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+													Running
+												</>
+											) : hasAnyResult || hasAnyError ? (
+												"Rerun"
+											) : (
+											"Run"
+										)}
+									</Button>
 								</div>
-								<div className="text-2xl font-semibold">
-									{activeResult.prediction ?? "No call"}
-								</div>
-								<div className="mt-2 flex flex-wrap gap-2 text-xs">
-									{typeof activeResult.confidence === "number" && (
-										<Badge variant="secondary">Confidence: {formatPercent(activeResult.confidence)}</Badge>
-									)}
-									{typeof activeResult.passCutoff === "boolean" && (
-										<Badge variant={activeResult.passCutoff ? "default" : "outline"}>
-											AMLmapR cutoff: {activeResult.passCutoff ? "pass" : "fail"}
-										</Badge>
-									)}
-									{activeResult.disease && (
-										<Badge variant="outline">
-											Context: {labelForDisease(activeResult.disease)}
-										</Badge>
-									)}
-								</div>
-							</div>
-
-							<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 text-sm">
-								{activeResult.requestedSample && (
-									<div className="rounded border p-3">
-										<div className="text-muted-foreground">Requested sample</div>
-										<div className="font-medium break-all">{activeResult.requestedSample}</div>
-									</div>
-								)}
-								{activeResult.resolvedSampleColumn && (
-									<div className="rounded border p-3">
-										<div className="text-muted-foreground">Count column used</div>
-										<div className="font-medium break-all">{activeResult.resolvedSampleColumn}</div>
-									</div>
-								)}
-								{activeResult.model && (
-									<div className="rounded border p-3">
-										<div className="text-muted-foreground">Model</div>
-										<div className="font-medium break-all">{activeResult.model}</div>
-									</div>
-								)}
-								{activeResult.meta.implementation && (
-									<div className="rounded border p-3">
-										<div className="text-muted-foreground">Implementation</div>
-										<div className="font-medium break-all">{String(activeResult.meta.implementation)}</div>
-									</div>
-								)}
-							</div>
-
-							{asString(activeResult.raw.gene_id_note) && (
-								<div className="text-xs text-muted-foreground rounded border p-3">
-									{asString(activeResult.raw.gene_id_note)}
-								</div>
-							)}
-							{activeResult.details && (
-								<div className="text-xs text-destructive rounded border p-3 whitespace-pre-wrap">
-									{activeResult.details}
-								</div>
-							)}
-						</CardContent>
-					</Card>
-
-					<ProbabilitiesList items={activeResult.topPredictions} title="Top Predictions" />
-					<ScoresList items={activeResult.topScores} />
-					<TALLLevelsCard levels={activeResult.levels} />
-					<MetaGrid meta={activeResult.meta} />
-				</>
-			)}
+							</CardContent>
+						</Card>
+					);
+				})}
+			</div>
 		</div>
 	);
 }
