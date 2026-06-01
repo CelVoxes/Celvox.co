@@ -255,9 +255,19 @@ three existing diseases (regression-safe). Order is dependency-driven.
   (after Phase 4), when it actually pays off.
 
 **Phase 3 — Backend layering**
-- Split `plumber.R` into `ingest/ harmonize/ analysis/ predict/ report/ api/`.
-- Endpoints become thin adapters over services; everything keyed on
-  `{modality, cohorts[]}`, `disease` accepted as a back-compat alias.
+- *Extraction half* ✅ *delivered.* The un-annotated business-logic helpers are
+  pulled out of `plumber.R` (3579 → 2516 lines) into sourced service modules:
+  `ingest.R`, `predict.R`, `analysis.R`, `metadata.R`, `reference.R`, `report.R`.
+  The `#* @get/@post` endpoint handlers stay in `plumber.R` (plumber parses
+  annotations from the main file). Pure code movement — verified behavior-
+  identical (golden byte-match on `/catalog` + `/molecular-tools`; 200s across the
+  AML session endpoints). Two constraints: modules are sourced `local = TRUE`
+  (else they land in globalenv and can't see `plumber.R`'s helpers — a 500 on the
+  first try); functions under an annotation are handlers, not helpers.
+- *Rewiring half* (next): endpoints become thin adapters over the services;
+  everything keyed on `{modality, cohorts[]}` via `context.R`, with `disease`
+  accepted as a back-compat alias. Route the existing resolvers through
+  `resolve.R`. This is the behavioral surface — golden-verified per endpoint group.
 
 **Phase 4 — Modality abstraction proven**
 - Make `rna_bulk` a first-class modality implementation behind the abstraction
