@@ -893,7 +893,7 @@ export function MolecularPredictionPanel() {
 													</a>
 												)}
 											</div>
-											<CardDescription>{tool.question}</CardDescription>
+											<CardDescription>{tool.description}</CardDescription>
 										</div>
 										<ToolStatusBadge
 											isBusy={isAnyBusy}
@@ -902,9 +902,6 @@ export function MolecularPredictionPanel() {
 										/>
 								</div>
 								<div className="flex flex-wrap gap-1">
-									<Badge variant="secondary" className="text-[10px]">
-										{tool.outputType}
-									</Badge>
 									{toolMeta?.diseaseScope && (
 										<Badge variant="outline" className="text-[10px]">
 											{labelForDisease(toolMeta.diseaseScope)}

@@ -32,6 +32,14 @@ interface QCMetrics {
 	expression_quantiles: number[][]; // Changed from expression_stats
 }
 
+type HeatmapPoint = {
+	x: string;
+	y: string;
+	v: number;
+	xFull: string;
+	yFull: string;
+};
+
 const toFiniteNumber = (value: unknown): number | null => {
 	const num = typeof value === "number" ? value : Number(value);
 	return Number.isFinite(num) ? num : null;
@@ -107,7 +115,7 @@ export function QCCharts() {
 	// Store chart instances
 	const libSizeChartRef = useRef<Chart | null>(null);
 	const boxplotChartRef = useRef<Chart | null>(null);
-	const heatmapChartRef = useRef<Chart | null>(null);
+	const heatmapChartRef = useRef<Chart<"matrix", HeatmapPoint[]> | null>(null);
 	const genesDetectedChartRef = useRef<Chart | null>(null);
 
 	// Store canvas refs

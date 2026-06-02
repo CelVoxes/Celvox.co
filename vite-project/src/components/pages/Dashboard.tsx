@@ -118,9 +118,6 @@ export function Dashboard({ user }: { user: User | null }) {
 		) ?? dashboardSections[0];
 	const mobileQuickTabs = activeSection.tabs;
 	const setupReady = setupStatus.uploadedCount > 0;
-	const harmonizeComplete =
-		setupReady &&
-		setupStatus.harmonizedUploadedCount >= setupStatus.uploadedCount;
 
 	const refreshSetupStatus = useCallback(async () => {
 		try {
