@@ -1,672 +1,304 @@
 {
   "capabilities": [
     {
-      "data_requirement": [
-        "requires_samples"
-      ],
-      "id": [
-        "qc"
-      ],
-      "label": [
-        "QC Metrics"
-      ],
+      "data_requirement": "requires_samples",
+      "id": "qc",
+      "label": "QC Metrics",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "requires_cohort_data": []
     },
     {
-      "data_requirement": [
-        "both"
-      ],
-      "id": [
-        "tsne"
-      ],
-      "label": [
-        "Clustering"
-      ],
+      "data_requirement": "both",
+      "id": "tsne",
+      "label": "Clustering",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "requires_cohort_data": []
     },
     {
-      "data_requirement": [
-        "requires_samples"
-      ],
-      "id": [
-        "knn"
-      ],
-      "label": [
-        "KNN Report"
-      ],
+      "data_requirement": "requires_samples",
+      "id": "knn",
+      "label": "KNN Report",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "requires_cohort_data": []
     },
     {
-      "data_requirement": [
-        "requires_samples"
-      ],
-      "id": [
-        "dysregulation"
-      ],
-      "label": [
-        "Dysregulation"
-      ],
+      "data_requirement": "requires_samples",
+      "id": "dysregulation",
+      "label": "Dysregulation",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "requires_cohort_data": []
     },
     {
-      "data_requirement": [
-        "both"
-      ],
-      "id": [
-        "deconvolution"
-      ],
-      "label": [
-        "Deconvolution"
-      ],
+      "data_requirement": "both",
+      "id": "deconvolution",
+      "label": "Deconvolution",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "requires_cohort_data": []
     },
     {
-      "data_requirement": [
-        "both"
-      ],
-      "id": [
-        "drug"
-      ],
-      "label": [
-        "Drug Response"
-      ],
+      "data_requirement": "both",
+      "id": "drug",
+      "label": "Drug Response",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "requires_cohort_data": [
-        [
-          "drug_response"
-        ]
+        "drug_response"
       ]
     },
     {
-      "data_requirement": [
-        "requires_samples"
-      ],
-      "id": [
-        "cnv"
-      ],
-      "label": [
-        "CNV"
-      ],
+      "data_requirement": "requires_samples",
+      "id": "cnv",
+      "label": "CNV",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "requires_cohort_data": [
-        [
-          "cnv_reference"
-        ]
+        "cnv_reference"
       ]
     },
     {
-      "data_requirement": [
-        "requires_samples"
-      ],
-      "id": [
-        "hamlet"
-      ],
-      "label": [
-        "HAMLET"
-      ],
+      "data_requirement": "requires_samples",
+      "id": "hamlet",
+      "label": "HAMLET",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "requires_cohort_data": []
     },
     {
-      "data_requirement": [
-        "requires_samples"
-      ],
-      "id": [
-        "molecular-prediction"
-      ],
-      "label": [
-        "Molecular Prediction"
-      ],
+      "data_requirement": "requires_samples",
+      "id": "molecular-prediction",
+      "label": "Molecular Prediction",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "requires_cohort_data": []
     },
     {
-      "data_requirement": [
-        "both"
-      ],
-      "id": [
-        "ask-ai"
-      ],
-      "label": [
-        "Ask AI"
-      ],
+      "data_requirement": "both",
+      "id": "ask-ai",
+      "label": "Ask AI",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "requires_cohort_data": []
     }
   ],
   "cohorts": [
     {
-      "full_name": [
-        "Acute Myeloid Leukemia"
-      ],
-      "id": [
-        "aml"
-      ],
-      "label": [
-        "AML"
-      ],
-      "lineage": [
-        "myeloid"
-      ],
+      "full_name": "Acute Myeloid Leukemia",
+      "id": "aml",
+      "label": "AML",
+      "lineage": "myeloid",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "provides": {
         "rna_bulk": [
-          [
-            "reference_expression"
-          ],
-          [
-            "metadata"
-          ],
-          [
-            "drug_response"
-          ],
-          [
-            "aberrations"
-          ],
-          [
-            "cnv_reference"
-          ]
+          "reference_expression",
+          "metadata",
+          "drug_response",
+          "aberrations",
+          "cnv_reference"
         ]
       }
     },
     {
-      "full_name": [
-        "B-cell Acute Lymphoblastic Leukemia"
-      ],
-      "id": [
-        "ball"
-      ],
-      "label": [
-        "B-ALL"
-      ],
-      "lineage": [
-        "b_lymphoid"
-      ],
+      "full_name": "B-cell Acute Lymphoblastic Leukemia",
+      "id": "ball",
+      "label": "B-ALL",
+      "lineage": "b_lymphoid",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "provides": {
         "rna_bulk": [
-          [
-            "reference_expression"
-          ],
-          [
-            "metadata"
-          ]
+          "reference_expression",
+          "metadata"
         ]
       }
     },
     {
-      "full_name": [
-        "T-cell Acute Lymphoblastic Leukemia"
-      ],
-      "id": [
-        "tall"
-      ],
-      "label": [
-        "T-ALL"
-      ],
-      "lineage": [
-        "t_lymphoid"
-      ],
+      "full_name": "T-cell Acute Lymphoblastic Leukemia",
+      "id": "tall",
+      "label": "T-ALL",
+      "lineage": "t_lymphoid",
       "modalities": [
-        [
-          "rna_bulk"
-        ]
+        "rna_bulk"
       ],
       "provides": {
         "rna_bulk": [
-          [
-            "reference_expression"
-          ],
-          [
-            "metadata"
-          ]
+          "reference_expression",
+          "metadata"
         ]
       }
     }
   ],
-  "generated_at": [
-    "2026-06-01 11:31:05 UTC"
-  ],
+  "generated_at": "2026-06-02 07:42:09 UTC",
   "modalities": [
     {
-      "feature_identifier": [
-        "ensembl_or_symbol"
-      ],
-      "harmonization": [
-        "combat_seq"
-      ],
-      "id": [
-        "rna_bulk"
-      ],
-      "label": [
-        "Bulk RNA-seq"
-      ],
-      "status": [
-        "available"
-      ]
+      "feature_identifier": "ensembl_or_symbol",
+      "harmonization": "combat_seq",
+      "id": "rna_bulk",
+      "label": "Bulk RNA-seq",
+      "status": "available"
     },
     {
-      "feature_identifier": [
-        "cpg_probe"
-      ],
-      "harmonization": [
-        null
-      ],
-      "id": [
-        "methylation"
-      ],
-      "label": [
-        "DNA Methylation"
-      ],
-      "status": [
-        "planned"
-      ]
+      "feature_identifier": "cpg_probe",
+      "harmonization": null,
+      "id": "methylation",
+      "label": "DNA Methylation",
+      "status": "planned"
     },
     {
-      "feature_identifier": [
-        "variant_locus"
-      ],
-      "harmonization": [
-        null
-      ],
-      "id": [
-        "variants"
-      ],
-      "label": [
-        "Variants (WGS/WES)"
-      ],
-      "status": [
-        "planned"
-      ]
+      "feature_identifier": "variant_locus",
+      "harmonization": null,
+      "id": "variants",
+      "label": "Variants (WGS/WES)",
+      "status": "planned"
     }
   ],
   "tools": [
     {
-      "docs_url": [
-        null
-      ],
-      "endpoint": [
-        "bridge-predict"
-      ],
-      "family": [
-        "molecular_diagnostic"
-      ],
-      "gene_identifier": [
-        "ensembl"
-      ],
-      "id": [
-        "bridge"
-      ],
-      "input_modality": [
-        "raw_rna_counts"
-      ],
-      "integrated": [
-        true
-      ],
-      "label": [
-        "Bridge"
-      ],
-      "modality": [
-        "rna_bulk"
-      ],
-      "notes": [
-        "Pan-leukemia Bridge bundle (official Bridge Python package)."
-      ],
-      "output_kind": [
-        "multiclass_probabilities"
-      ],
-      "repo_url": [
-        "https://github.com/eonurk/Bridge"
-      ],
-      "short_label": [
-        "Bridge"
-      ],
+      "docs_url": null,
+      "endpoint": "bridge-predict",
+      "family": "molecular_diagnostic",
+      "gene_identifier": "ensembl",
+      "id": "bridge",
+      "input_modality": "raw_rna_counts",
+      "integrated": true,
+      "label": "Bridge",
+      "modality": "rna_bulk",
+      "notes": "Pan-leukemia Bridge bundle (official Bridge Python package).",
+      "output_kind": "multiclass_probabilities",
+      "repo_url": "https://github.com/eonurk/Bridge",
+      "short_label": "Bridge",
       "supported_cohorts": [
-        [
-          "aml"
-        ],
-        [
-          "ball"
-        ],
-        [
-          "tall"
-        ]
+        "aml",
+        "ball",
+        "tall"
       ]
     },
     {
-      "docs_url": [
-        null
-      ],
-      "endpoint": [
-        "amlmapr-predict"
-      ],
-      "family": [
-        "molecular_diagnostic"
-      ],
-      "gene_identifier": [
-        "ensembl"
-      ],
-      "id": [
-        "amlmapr"
-      ],
-      "input_modality": [
-        "raw_rna_counts"
-      ],
-      "integrated": [
-        true
-      ],
-      "label": [
-        "AMLmapR"
-      ],
-      "modality": [
-        "rna_bulk"
-      ],
-      "notes": [
-        "AML-specific transcriptional subtype predictor."
-      ],
-      "output_kind": [
-        "aml_cluster_scores"
-      ],
-      "repo_url": [
-        "https://github.com/jeppeseverens/AMLmapR"
-      ],
-      "short_label": [
-        "AMLmapR"
-      ],
+      "docs_url": null,
+      "endpoint": "amlmapr-predict",
+      "family": "molecular_diagnostic",
+      "gene_identifier": "ensembl",
+      "id": "amlmapr",
+      "input_modality": "raw_rna_counts",
+      "integrated": true,
+      "label": "AMLmapR",
+      "modality": "rna_bulk",
+      "notes": "AML-specific transcriptional subtype predictor.",
+      "output_kind": "aml_cluster_scores",
+      "repo_url": "https://github.com/jeppeseverens/AMLmapR",
+      "short_label": "AMLmapR",
       "supported_cohorts": [
-        [
-          "aml"
-        ]
+        "aml"
       ]
     },
     {
-      "docs_url": [
-        null
-      ],
-      "endpoint": [
-        "allsorts-predict"
-      ],
-      "family": [
-        "molecular_diagnostic"
-      ],
-      "gene_identifier": [
-        "gene_symbol"
-      ],
-      "id": [
-        "allsorts"
-      ],
-      "input_modality": [
-        "raw_rna_counts"
-      ],
-      "integrated": [
-        true
-      ],
-      "label": [
-        "ALLSorts (B-ALL)"
-      ],
-      "modality": [
-        "rna_bulk"
-      ],
-      "notes": [
-        "B-ALL subtype classifier; Ensembl counts are converted to symbols before inference."
-      ],
-      "output_kind": [
-        "multiclass_probabilities"
-      ],
-      "repo_url": [
-        "https://github.com/Oshlack/ALLSorts"
-      ],
-      "short_label": [
-        "ALLSorts"
-      ],
+      "docs_url": null,
+      "endpoint": "allsorts-predict",
+      "family": "molecular_diagnostic",
+      "gene_identifier": "gene_symbol",
+      "id": "allsorts",
+      "input_modality": "raw_rna_counts",
+      "integrated": true,
+      "label": "ALLSorts (B-ALL)",
+      "modality": "rna_bulk",
+      "notes": "B-ALL subtype classifier; Ensembl counts are converted to symbols before inference.",
+      "output_kind": "multiclass_probabilities",
+      "repo_url": "https://github.com/Oshlack/ALLSorts",
+      "short_label": "ALLSorts",
       "supported_cohorts": [
-        [
-          "ball"
-        ]
+        "ball"
       ]
     },
     {
-      "docs_url": [
-        null
-      ],
-      "endpoint": [
-        "tallsorts-predict"
-      ],
-      "family": [
-        "molecular_diagnostic"
-      ],
-      "gene_identifier": [
-        "ensembl"
-      ],
-      "id": [
-        "tallsorts"
-      ],
-      "input_modality": [
-        "raw_rna_counts"
-      ],
-      "integrated": [
-        true
-      ],
-      "label": [
-        "TALLSorts (T-ALL)"
-      ],
-      "modality": [
-        "rna_bulk"
-      ],
-      "notes": [
-        "T-ALL hierarchical subtype classifier."
-      ],
-      "output_kind": [
-        "hierarchical_probabilities"
-      ],
-      "repo_url": [
-        "https://github.com/Oshlack/TALLSorts"
-      ],
-      "short_label": [
-        "TALLSorts"
-      ],
+      "docs_url": null,
+      "endpoint": "tallsorts-predict",
+      "family": "molecular_diagnostic",
+      "gene_identifier": "ensembl",
+      "id": "tallsorts",
+      "input_modality": "raw_rna_counts",
+      "integrated": true,
+      "label": "TALLSorts (T-ALL)",
+      "modality": "rna_bulk",
+      "notes": "T-ALL hierarchical subtype classifier.",
+      "output_kind": "hierarchical_probabilities",
+      "repo_url": "https://github.com/Oshlack/TALLSorts",
+      "short_label": "TALLSorts",
       "supported_cohorts": [
-        [
-          "tall"
-        ]
+        "tall"
       ]
     },
     {
-      "docs_url": [
-        null
-      ],
-      "endpoint": [
-        "allcatchr-predict"
-      ],
-      "family": [
-        "molecular_diagnostic"
-      ],
-      "gene_identifier": [
-        "ensembl_or_symbol"
-      ],
-      "id": [
-        "allcatchr"
-      ],
-      "input_modality": [
-        "raw_rna_counts"
-      ],
-      "integrated": [
-        true
-      ],
-      "label": [
-        "ALLCatchR (BCR-ABL1)"
-      ],
-      "modality": [
-        "rna_bulk"
-      ],
-      "notes": [
-        "BCP-ALL gene expression classifier (ALLCatchR_bcrabl1); predicts subtype plus BCR::ABL1 subclusters."
-      ],
-      "output_kind": [
-        "b_all_subtype_classifier_with_bcrabl1_subclusters"
-      ],
-      "repo_url": [
-        "https://github.com/ThomasBeder/ALLCatchR_bcrabl1"
-      ],
-      "short_label": [
-        "ALLCatchR"
-      ],
+      "docs_url": null,
+      "endpoint": "allcatchr-predict",
+      "family": "molecular_diagnostic",
+      "gene_identifier": "ensembl_or_symbol",
+      "id": "allcatchr",
+      "input_modality": "raw_rna_counts",
+      "integrated": true,
+      "label": "ALLCatchR (BCR-ABL1)",
+      "modality": "rna_bulk",
+      "notes": "BCP-ALL gene expression classifier (ALLCatchR_bcrabl1); predicts subtype plus BCR::ABL1 subclusters.",
+      "output_kind": "b_all_subtype_classifier_with_bcrabl1_subclusters",
+      "repo_url": "https://github.com/ThomasBeder/ALLCatchR_bcrabl1",
+      "short_label": "ALLCatchR",
       "supported_cohorts": [
-        [
-          "ball"
-        ]
+        "ball"
       ]
     },
     {
-      "docs_url": [
-        null
-      ],
-      "endpoint": [
-        null
-      ],
-      "family": [
-        "molecular_diagnostic"
-      ],
-      "gene_identifier": [
-        "mixed"
-      ],
-      "id": [
-        "md_all"
-      ],
-      "input_modality": [
-        "integrative_rna_and_genetic_events"
-      ],
-      "integrated": [
-        false
-      ],
-      "label": [
-        "MD-ALL"
-      ],
-      "modality": [
-        "rna_bulk"
-      ],
-      "notes": [
-        "Integrative B-ALL molecular diagnostic platform (catalog entry; not yet integrated)."
-      ],
-      "output_kind": [
-        "integrative_b_all_diagnostic_platform"
-      ],
-      "repo_url": [
-        "https://github.com/gu-lab20/MD-ALL"
-      ],
-      "short_label": [
-        "MD-ALL"
-      ],
+      "docs_url": null,
+      "endpoint": null,
+      "family": "molecular_diagnostic",
+      "gene_identifier": "mixed",
+      "id": "md_all",
+      "input_modality": "integrative_rna_and_genetic_events",
+      "integrated": false,
+      "label": "MD-ALL",
+      "modality": "rna_bulk",
+      "notes": "Integrative B-ALL molecular diagnostic platform (catalog entry; not yet integrated).",
+      "output_kind": "integrative_b_all_diagnostic_platform",
+      "repo_url": "https://github.com/gu-lab20/MD-ALL",
+      "short_label": "MD-ALL",
       "supported_cohorts": [
-        [
-          "ball"
-        ]
+        "ball"
       ]
     },
     {
-      "docs_url": [
-        "https://nrctm-bioinfo.github.io/HematoMap/index.html"
-      ],
-      "endpoint": [
-        null
-      ],
-      "family": [
-        "molecular_diagnostic"
-      ],
-      "gene_identifier": [
-        "mixed"
-      ],
-      "id": [
-        "hematomap"
-      ],
-      "input_modality": [
-        "bulk_or_single_cell_rna"
-      ],
-      "integrated": [
-        false
-      ],
-      "label": [
-        "HematoMap"
-      ],
-      "modality": [
-        "rna_bulk"
-      ],
-      "notes": [
-        "Lineage aberration / hierarchy projection tool (reported for AML and BCP-ALL; catalog entry)."
-      ],
-      "output_kind": [
-        "lineage_aberration_projection"
-      ],
-      "repo_url": [
-        "https://github.com/NRCTM-bioinfo/HematoMap"
-      ],
-      "short_label": [
-        "HematoMap"
-      ],
+      "docs_url": "https://nrctm-bioinfo.github.io/HematoMap/index.html",
+      "endpoint": null,
+      "family": "molecular_diagnostic",
+      "gene_identifier": "mixed",
+      "id": "hematomap",
+      "input_modality": "bulk_or_single_cell_rna",
+      "integrated": false,
+      "label": "HematoMap",
+      "modality": "rna_bulk",
+      "notes": "Lineage aberration / hierarchy projection tool (reported for AML and BCP-ALL; catalog entry).",
+      "output_kind": "lineage_aberration_projection",
+      "repo_url": "https://github.com/NRCTM-bioinfo/HematoMap",
+      "short_label": "HematoMap",
       "supported_cohorts": [
-        [
-          "aml"
-        ],
-        [
-          "ball"
-        ]
+        "aml",
+        "ball"
       ]
     }
   ],
-  "version": [
-    "0"
-  ]
+  "version": "0"
 }

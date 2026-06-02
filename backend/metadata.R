@@ -45,14 +45,15 @@ disease_selection_key <- function(diseases) {
     paste(vals, collapse = "+")
 }
 
+# Back-compat shim: the legacy disease-selection parsing now routes through the
+# universal context parser, so every endpoint shares ONE request-scope parser
+# (which also validates `modality` and honors the new `cohort`/`cohorts` params).
+# parse_analysis_context()$diseases is byte-identical to the old normalize path
+# for disease/diseases inputs — see tests/context_equivalence.R. The downstream
+# key transforms (disease_selection_key, get_request_disease) are unchanged and
+# still operate on this selection vector.
 get_request_disease_selection <- function(req, default = "aml") {
-    if (!is.null(req$args$diseases)) {
-        return(normalize_disease_selection(req$args$diseases, default = default))
-    }
-    if (!is.null(req$args$disease)) {
-        return(normalize_disease_selection(req$args$disease, default = default))
-    }
-    normalize_disease_selection(default, default = default)
+    parse_analysis_context(req, default_cohort = default)$diseases
 }
 
 coalesce_metadata_columns <- function(df, candidates, fallback = NA_character_) {

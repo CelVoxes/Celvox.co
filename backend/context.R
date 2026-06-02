@@ -39,8 +39,10 @@ parse_request_cohorts <- function(req, default = DEFAULT_COHORT) {
         if (identical(key, "pan_leukemia")) known else key
     }), use.names = FALSE)
 
-    expanded <- expanded[expanded %in% known]
-    unique(expanded)
+    expanded <- unique(expanded[expanded %in% known])
+    # Canonical cohort order (matches the legacy preferred_order so the derived
+    # `disease` key / "+"-joined reference id is byte-identical to the old path).
+    expanded[order(match(expanded, known))]
 }
 
 parse_request_modality <- function(req, default = DEFAULT_MODALITY) {
@@ -50,12 +52,28 @@ parse_request_modality <- function(req, default = DEFAULT_MODALITY) {
     if (is_available_modality(key)) key else default
 }
 
-# Derive the legacy single `disease` key from a cohort selection, mirroring the
-# frontend's deriveDiseaseParam: >1 cohort collapses to "pan_leukemia".
+# The modality as REQUESTED (normalized), defaulting only when absent — it does
+# NOT coerce an unavailable modality to the default. Endpoints use this so the
+# availability guard can reject a planned/unknown modality instead of silently
+# serving rna_bulk. (parse_request_modality keeps the coercing behavior for the
+# context's validated `modality` field.)
+parse_requested_modality <- function(req, default = DEFAULT_MODALITY) {
+    raw <- req$args$modality
+    if (is.null(raw) || !nzchar(as.character(raw)[1])) return(default)
+    tolower(trimws(as.character(raw)[1]))
+}
+
+# Derive the legacy single `disease` key from a cohort selection. This reproduces
+# the old disease_selection_key() exactly: the full leukemia trio collapses to
+# "pan_leukemia", any other multi-cohort selection becomes a "+"-joined key (e.g.
+# "ball+tall", which maps to a real reference dataset), a single cohort stays as-is.
 cohorts_to_legacy_disease <- function(cohorts) {
     if (length(cohorts) == 0) return(normalize_cohort_id(DEFAULT_COHORT))
-    if (length(cohorts) > 1) return("pan_leukemia")
-    cohorts[[1]]
+    if (length(cohorts) == 3 && all(c("aml", "ball", "tall") %in% cohorts)) {
+        return("pan_leukemia")
+    }
+    if (length(cohorts) == 1) return(cohorts[[1]])
+    paste(cohorts, collapse = "+")
 }
 
 # Parse the full analysis context from a request. Returns a list carrying both

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { SeamlessHeader } from "@/components/charts/SeamlessHeader";
 import { DeconvolutionChart } from "@/components/charts/deconvolution";
 import { TSNEChart } from "@/components/charts/tsne-chart";
 import { DrugResponseTSNE } from "@/components/charts/tsne-drugresponse";
@@ -30,7 +29,6 @@ import { SampleDysregulationPanel } from "@/components/charts/SampleDysregulatio
 import {
 	DASHBOARD_SECTIONS,
 	DASHBOARD_VIEW_REGISTRY,
-	DEFAULT_DASHBOARD_VIEW_ID,
 	computeViewAvailability,
 	type DashboardViewId,
 	type ViewAvailability,
@@ -46,28 +44,35 @@ import {
 import {
 	Card,
 	CardContent,
-	CardDescription,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { HelpCircle, Lock } from "lucide-react";
-export const description = "A collection of AML samples.";
+import { Lock, Plus, X, Pencil, Compass, FlaskConical } from "lucide-react";
 
-const REFERENCE_DISEASE_OPTIONS: { value: ReferenceDiseaseId; label: string }[] = [
+export const description = "A collection of leukemia reference samples.";
+
+const ACTIVE_MODALITY = "rna_bulk";
+const REFERENCE_COHORTS: { value: ReferenceDiseaseId; label: string }[] = [
 	{ value: "aml", label: "AML" },
 	{ value: "ball", label: "B-ALL" },
 	{ value: "tall", label: "T-ALL" },
 ];
+
+type Mode = "explore" | "analyze";
+const CONTEXT_KEY = "seamless-analysis-context";
+const TILES_KEY = "seamless-analysis-tiles";
+const DEFAULT_COHORTS: ReferenceDiseaseId[] = ["aml"];
+const DEFAULT_TILES: DashboardViewId[] = ["tsne", "deconvolution"];
 
 type SetupStatus = {
 	uploadedCount: number;
@@ -76,83 +81,71 @@ type SetupStatus = {
 	isLoading: boolean;
 };
 
-const dashboardSections = DASHBOARD_SECTIONS.map((section) => ({
-	...section,
-	tabs: section.viewIds.map((viewId) => DASHBOARD_VIEW_REGISTRY[viewId]),
-}));
-const dashboardViewIds = DASHBOARD_SECTIONS.flatMap((section) => section.viewIds);
+const isViewId = (v: string): v is DashboardViewId => v in DASHBOARD_VIEW_REGISTRY;
 
-const isDashboardViewId = (value: string): value is DashboardViewId =>
-	value in DASHBOARD_VIEW_REGISTRY;
+function loadCohorts(): ReferenceDiseaseId[] {
+	const stored = getSelectedReferenceDiseases();
+	return stored.length ? stored : DEFAULT_COHORTS;
+}
+function loadMode(): Mode {
+	try {
+		const raw = window.localStorage.getItem(CONTEXT_KEY);
+		if (raw) {
+			const parsed = JSON.parse(raw) as { mode?: Mode };
+			if (parsed.mode === "analyze" || parsed.mode === "explore") return parsed.mode;
+		}
+	} catch {
+		/* ignore */
+	}
+	return "explore";
+}
+function loadTiles(): DashboardViewId[] {
+	try {
+		const raw = window.localStorage.getItem(TILES_KEY);
+		if (raw) {
+			const parsed = JSON.parse(raw) as string[];
+			const valid = parsed.filter(isViewId);
+			if (valid.length) return valid;
+		}
+	} catch {
+		/* ignore */
+	}
+	return DEFAULT_TILES;
+}
 
 export function Dashboard({ user }: { user: User | null }) {
-	const [activeTab, setActiveTab] = useState<DashboardViewId>(
-		DEFAULT_DASHBOARD_VIEW_ID,
-	);
-	const [selectedDiseases, setSelectedDiseases] = useState<ReferenceDiseaseId[]>([
-		"aml",
-	]);
-	const [showOverview, setShowOverview] = useState(false);
+	const { catalog } = useCatalog();
+	const [cohorts, setCohorts] = useState<ReferenceDiseaseId[]>(loadCohorts);
+	const [mode, setMode] = useState<Mode>(loadMode);
+	const [tiles, setTiles] = useState<DashboardViewId[]>(loadTiles);
+	const [editOpen, setEditOpen] = useState(false);
+	const [addOpen, setAddOpen] = useState(false);
+	const [dragIndex, setDragIndex] = useState<number | null>(null);
 	const [setupStatus, setSetupStatus] = useState<SetupStatus>({
 		uploadedCount: 0,
 		harmonizedUploadedCount: 0,
 		totalHarmonizedColumns: 0,
 		isLoading: true,
 	});
-	const handleSelectTab = (tabValue: string) => {
-		if (isDashboardViewId(tabValue)) {
-			setActiveTab(tabValue);
-		}
-	};
-	const selectedDiseaseLabel =
-		selectedDiseases.length === 3
-			? "Pan-Leukemia"
-			: selectedDiseases
-					.map(
-						(d) =>
-							REFERENCE_DISEASE_OPTIONS.find((option) => option.value === d)
-								?.label ?? d.toUpperCase(),
-					)
-					.join(" + ");
-	const setupReady = setupStatus.uploadedCount > 0;
-	const harmonizeComplete =
-		setupReady &&
-		setupStatus.harmonizedUploadedCount >= setupStatus.uploadedCount;
 
-	// Capability gating: derive which analysis views are available / locked for
-	// the current data type + selected cohorts (see config/dashboard-tools.ts).
-	// reference_only / both views stay open so cohorts are explorable with no
-	// upload; requires_samples views are locked until samples are harmonized.
-	const activeModality = "rna_bulk";
-	const { catalog } = useCatalog();
-	const availability = useMemo(
-		() =>
-			computeViewAvailability(catalog, {
-				modality: activeModality,
-				cohorts: selectedDiseases,
-				samplesReady: harmonizeComplete,
-			}),
-		[catalog, selectedDiseases, harmonizeComplete],
-	);
-	const viewAvail = useCallback(
-		(id: DashboardViewId): ViewAvailability =>
-			availability[id] ?? { available: true, locked: false },
-		[availability],
-	);
+	// Ready once ANY uploaded sample has been harmonized (users upload several
+	// columns per sample but harmonize only the subset they select).
+	const harmonizeComplete = setupStatus.harmonizedUploadedCount > 0;
+	const cohortsKey = cohorts.join(",");
 
-	const navSectionsForDisplay = dashboardSections
-		.map((section) => ({
-			...section,
-			tabs: section.tabs
-				.filter((tab) => viewAvail(tab.id).available)
-				.map((tab) => ({ ...tab, ...viewAvail(tab.id) })),
-		}))
-		.filter((section) => section.tabs.length > 0);
-	const activeSection =
-		navSectionsForDisplay.find((section) =>
-			section.tabs.some((tab) => tab.id === activeTab),
-		) ?? navSectionsForDisplay[0];
-	const mobileQuickTabs = activeSection?.tabs ?? [];
+	// Persist context + keep the cohort selection in the key the chart components
+	// read (DASHBOARD_DISEASE_STORAGE_KEY) so they fetch the right cohort's data.
+	useEffect(() => {
+		window.localStorage.setItem(
+			DASHBOARD_DISEASE_STORAGE_KEY,
+			JSON.stringify(cohorts),
+		);
+		window.localStorage.setItem(CONTEXT_KEY, JSON.stringify({ cohorts, mode }));
+	}, [cohorts, mode]);
+
+	useEffect(() => {
+		window.localStorage.setItem(TILES_KEY, JSON.stringify(tiles));
+	}, [tiles]);
 
 	const refreshSetupStatus = useCallback(async () => {
 		try {
@@ -192,54 +185,67 @@ export function Dashboard({ user }: { user: User | null }) {
 	useEffect(() => {
 		void refreshSetupStatus();
 	}, [refreshSetupStatus]);
-
 	useEffect(() => {
-		setSelectedDiseases(getSelectedReferenceDiseases());
-
-		const savedOverview = window.localStorage.getItem(
-			"dashboard-overview-hidden",
-		);
-		if (savedOverview === "0") setShowOverview(true);
-		if (savedOverview === "1") setShowOverview(false);
-	}, []);
-
-	useEffect(() => {
-		window.localStorage.setItem(
-			DASHBOARD_DISEASE_STORAGE_KEY,
-			JSON.stringify(selectedDiseases),
-		);
-	}, [selectedDiseases]);
-
-	useEffect(() => {
-		window.localStorage.setItem(
-			"dashboard-overview-hidden",
-			showOverview ? "0" : "1",
-		);
-	}, [showOverview]);
-
-	useEffect(() => {
-		const onFocus = () => {
-			void refreshSetupStatus();
-		};
+		const onFocus = () => void refreshSetupStatus();
 		window.addEventListener("focus", onFocus);
 		return () => window.removeEventListener("focus", onFocus);
 	}, [refreshSetupStatus]);
 
-	// If the active view becomes unavailable (e.g. after switching cohort), move
-	// to the first usable view — preferring one that's explorable without upload.
-	useEffect(() => {
-		if (viewAvail(activeTab).available) return;
-		const firstUsable =
-			dashboardViewIds.find((id) => {
-				const a = viewAvail(id);
-				return a.available && !a.locked;
-			}) ??
-			dashboardViewIds.find((id) => viewAvail(id).available) ??
-			DEFAULT_DASHBOARD_VIEW_ID;
-		setActiveTab(firstUsable);
-	}, [viewAvail, activeTab]);
+	const availability = useMemo(
+		() =>
+			computeViewAvailability(catalog, {
+				modality: ACTIVE_MODALITY,
+				cohorts,
+				samplesReady: harmonizeComplete,
+			}),
+		[catalog, cohorts, harmonizeComplete],
+	);
+	const viewAvail = useCallback(
+		(id: DashboardViewId): ViewAvailability =>
+			availability[id] ?? { available: true, locked: false },
+		[availability],
+	);
 
-	const dashboardPanels = {
+	const cohortLabel =
+		cohorts.length === REFERENCE_COHORTS.length
+			? "Pan-Leukemia"
+			: cohorts
+					.map(
+						(c) =>
+							REFERENCE_COHORTS.find((o) => o.value === c)?.label ??
+							c.toUpperCase(),
+					)
+					.join(" + ");
+
+	const toggleCohort = (value: ReferenceDiseaseId) => {
+		setCohorts((prev) => {
+			if (prev.includes(value)) {
+				const next = prev.filter((c) => c !== value);
+				return next.length ? next : prev; // keep at least one
+			}
+			return [...REFERENCE_COHORTS.map((o) => o.value)].filter(
+				(c) => prev.includes(c) || c === value,
+			);
+		});
+	};
+
+	const addTile = (id: DashboardViewId) =>
+		setTiles((prev) => (prev.includes(id) ? prev : [...prev, id]));
+	const removeTile = (id: DashboardViewId) =>
+		setTiles((prev) => prev.filter((t) => t !== id));
+
+	const onDrop = (target: number) => {
+		setTiles((prev) => {
+			if (dragIndex === null || dragIndex === target) return prev;
+			const next = [...prev];
+			const [moved] = next.splice(dragIndex, 1);
+			next.splice(target, 0, moved);
+			return next;
+		});
+		setDragIndex(null);
+	};
+
+	const dashboardPanels: Record<DashboardViewId, JSX.Element> = {
 		qc: <QCCharts />,
 		tsne: (
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -250,7 +256,7 @@ export function Dashboard({ user }: { user: User | null }) {
 			</div>
 		),
 		knn: (
-			<div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+			<div className="grid grid-cols-1 gap-4">
 				<TSNEKNNChart />
 				<KNNReport />
 				<KNNReportAberrations />
@@ -262,7 +268,7 @@ export function Dashboard({ user }: { user: User | null }) {
 		deconvolution: <DeconvolutionChart />,
 		drug: (
 			<>
-				<p className="text-red-600 dark:text-red-500 font-medium text-center my-4 text-bold">
+				<p className="text-red-600 dark:text-red-500 font-medium text-center my-4">
 					Please be aware that these are based on{" "}
 					<span className="italic">ex-vivo</span> drug responses and not
 					recommendations.
@@ -281,217 +287,349 @@ export function Dashboard({ user }: { user: User | null }) {
 		hamlet: <HamletDashboard />,
 		"molecular-prediction": <MolecularPredictionPanel />,
 		"ask-ai": <AIAMLReport />,
-	} satisfies Record<DashboardViewId, JSX.Element>;
+	};
 
-	if (!user) {
-		return <Navigate to="/login" replace />;
-	}
+	if (!user) return <Navigate to="/login" replace />;
 
 	return (
-		<>
-			{user && (
-				<div className="space-y-6 h-full w-full">
-					<Navbar />
-					<section className="space-y-3">
-						<div className="rounded-xl border border-border/70 bg-card/60 p-4 shadow-sm">
-							<div className="flex flex-wrap items-center justify-between gap-3">
-								<div className="flex flex-wrap items-center gap-2">
-									<Badge variant="outline" className="font-medium">
-										Help / Overview
-									</Badge>
-									<p className="text-sm text-muted-foreground">
-										Quick guidance for new users and a summary of dashboard
-										capabilities.
-									</p>
-								</div>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() => setShowOverview((prev) => !prev)}
-									className="gap-1.5"
+		<div className="space-y-5 h-full w-full">
+			<Navbar />
+
+			{/* Context bar — the live selection summary + editor */}
+			<section className="space-y-3">
+				<Card className="border-border/70 bg-card/60 shadow-sm">
+					<CardContent className="p-4 space-y-4">
+						<div className="flex flex-wrap items-center justify-between gap-3">
+							<div className="flex flex-wrap items-center gap-2 text-sm">
+								<Badge variant="secondary" className="gap-1">
+									<FlaskConical className="h-3 w-3" /> {cohortLabel}
+								</Badge>
+								<span className="text-muted-foreground">·</span>
+								<Badge variant="outline">Bulk RNA-seq</Badge>
+								<span className="text-muted-foreground">·</span>
+								<Badge
+									variant={mode === "explore" ? "secondary" : "default"}
+									className="gap-1"
 								>
-									<HelpCircle className="h-4 w-4" />
-									{showOverview ? "Hide Overview" : "Show Overview"}
-								</Button>
+									{mode === "explore" ? (
+										<Compass className="h-3 w-3" />
+									) : (
+										<FlaskConical className="h-3 w-3" />
+									)}
+									{mode === "explore" ? "Explore reference" : "Analyze samples"}
+								</Badge>
 							</div>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="gap-1.5"
+								onClick={() => setEditOpen((p) => !p)}
+							>
+								<Pencil className="h-3.5 w-3.5" />
+								{editOpen ? "Done" : "Edit selection"}
+							</Button>
 						</div>
-						{showOverview && <SeamlessHeader />}
-					</section>
-					<section className="space-y-3">
-						<div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 items-start">
-							<DataUpload
-								embedded
-								onDataChanged={() => void refreshSetupStatus()}
-							/>
-							{setupReady ? (
-								<HarmonizeData
-									embedded
-									diseases={selectedDiseases}
-									onDiseasesChange={setSelectedDiseases}
-									onDataChanged={() => void refreshSetupStatus()}
-								/>
-							) : (
-								<Card className="border-border/60 shadow-none bg-background/70">
-									<CardHeader>
-										<CardTitle className="text-base">
-											Harmonize Data
-										</CardTitle>
-										<CardDescription>
-											Upload sample data first. This step becomes available
-											after a count matrix is uploaded.
-										</CardDescription>
-									</CardHeader>
-									<CardContent>
-										<div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-											Waiting for uploaded samples.
+
+						{editOpen && (
+							<div className="space-y-4 rounded-lg border border-border/60 bg-background/50 p-4">
+								<div className="grid gap-4 md:grid-cols-3">
+									{/* Modality */}
+									<div className="space-y-1.5">
+										<div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+											Data type
 										</div>
-									</CardContent>
-								</Card>
-							)}
-						</div>
-					</section>
-
-					<section className="space-y-2">
-						<div className="px-1 text-xs text-muted-foreground">
-							Step 2: Analysis views ({selectedDiseaseLabel} context)
-						</div>
-
-					<div className="space-y-2">
-						<Card className="lg:hidden border-border/70 shadow-sm">
-							<CardContent className="p-3 space-y-3">
-								<div className="space-y-1">
-									<div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-										Navigate Analysis Views
+										<div className="flex flex-col gap-1.5">
+											{(catalog.modalities ?? []).map((m) => {
+												const available = m.status === "available";
+												return (
+													<button
+														key={m.id}
+														type="button"
+														disabled={!available}
+														className={cn(
+															"flex items-center justify-between rounded-md border px-3 py-1.5 text-sm",
+															m.id === ACTIVE_MODALITY
+																? "border-primary bg-primary/10 text-primary"
+																: "border-border/70",
+															!available && "opacity-50 cursor-not-allowed",
+														)}
+													>
+														<span>{m.label}</span>
+														{!available && (
+															<span className="text-[10px] uppercase">soon</span>
+														)}
+													</button>
+												);
+											})}
+										</div>
 									</div>
-									<Select value={activeTab} onValueChange={handleSelectTab}>
-										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select dashboard view" />
-											</SelectTrigger>
-											<SelectContent>
-											{navSectionsForDisplay.map((section) => (
-													<div key={section.title}>
-														<div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-															{section.title}
-														</div>
-													{section.tabs.map((tab) => (
-														<SelectItem key={tab.id} value={tab.id}>
-															{tab.label}
-														</SelectItem>
-													))}
-												</div>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-									<div className="flex flex-wrap gap-2">
-										{mobileQuickTabs.map((tab) => (
+
+									{/* Cohorts */}
+									<div className="space-y-1.5">
+										<div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+											Reference cohorts
+										</div>
+										<div className="flex flex-col gap-1.5">
+											{REFERENCE_COHORTS.map((o) => {
+												const checked = cohorts.includes(o.value);
+												return (
+													<button
+														key={o.value}
+														type="button"
+														onClick={() => toggleCohort(o.value)}
+														className={cn(
+															"flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm",
+															checked
+																? "border-primary bg-primary/10 text-primary"
+																: "border-border/70 hover:bg-muted",
+														)}
+													>
+														<span
+															className={cn(
+																"flex h-4 w-4 items-center justify-center rounded border",
+																checked
+																	? "border-primary bg-primary text-primary-foreground"
+																	: "border-border",
+															)}
+														>
+															{checked && <span className="text-[10px]">✓</span>}
+														</span>
+														{o.label}
+													</button>
+												);
+											})}
+										</div>
+									</div>
+
+									{/* Mode */}
+									<div className="space-y-1.5">
+										<div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+											Mode
+										</div>
+										<div className="flex flex-col gap-1.5">
 											<button
-												key={tab.id}
 												type="button"
-												title={tab.reason}
-												onClick={() => handleSelectTab(tab.id)}
+												onClick={() => setMode("explore")}
 												className={cn(
-													"inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium leading-tight transition-colors",
-													activeTab === tab.id
-														? "bg-primary text-primary-foreground border-primary"
-														: "bg-background text-foreground border-border/70 hover:bg-muted",
-													tab.locked && "opacity-60",
+													"flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm text-left",
+													mode === "explore"
+														? "border-primary bg-primary/10 text-primary"
+														: "border-border/70 hover:bg-muted",
 												)}
 											>
-												{tab.locked && <Lock className="h-3 w-3" />}
-												{tab.mobileLabel ?? tab.label}
+												<Compass className="h-4 w-4 shrink-0" />
+												<span>
+													Explore reference
+													<span className="block text-[11px] text-muted-foreground">
+														No upload needed
+													</span>
+												</span>
 											</button>
-										))}
-									</div>
-							</CardContent>
-						</Card>
-
-						<Card className="hidden lg:block border-border/70 shadow-sm">
-							<CardContent className="p-1.5">
-								<nav className="space-y-1.5" aria-label="Dashboard sections">
-									{navSectionsForDisplay.map((section) => {
-										return (
-											<div
-												key={section.title}
-												className="rounded-md border border-border/60 bg-background/40 px-2 py-1"
+											<button
+												type="button"
+												onClick={() => setMode("analyze")}
+												className={cn(
+													"flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm text-left",
+													mode === "analyze"
+														? "border-primary bg-primary/10 text-primary"
+														: "border-border/70 hover:bg-muted",
+												)}
 											>
-												<div className="flex items-center gap-1.5">
-													<div className="w-16 shrink-0 text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-														{section.title}
-													</div>
-													<div className="flex flex-wrap gap-1">
-														{section.tabs.map((tab) => {
-															const Icon = tab.locked ? Lock : tab.icon;
-															const isActive = activeTab === tab.id;
-															return (
-																<button
-																	key={tab.id}
-																	type="button"
-																	aria-current={isActive ? "page" : undefined}
-																	title={tab.reason}
-																	onClick={() => handleSelectTab(tab.id)}
-																	className={cn(
-																		"inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors",
-																		isActive
-																			? "border-primary bg-primary/10 text-primary"
-																			: "border-border/70 bg-background hover:bg-muted",
-																		tab.locked && "opacity-60",
-																	)}
-																>
-																	<Icon className="h-2.5 w-2.5" />
-																	<span>{tab.label}</span>
-																</button>
-															);
-														})}
-													</div>
-												</div>
-											</div>
-										);
-										})}
-									</nav>
-								</CardContent>
-							</Card>
-							<div className="min-w-0">
-								{dashboardViewIds.map((viewId) => {
-									const avail = viewAvail(viewId);
-									if (!avail.available) return null;
-									return (
-										<div
-											key={viewId}
-											className={activeTab === viewId ? "" : "hidden"}
-										>
-											{avail.locked ? (
-												<Card className="border-border/60 shadow-none bg-background/70">
-													<CardHeader>
-														<CardTitle className="flex items-center gap-2 text-base">
-															<Lock className="h-4 w-4" />
-															{DASHBOARD_VIEW_REGISTRY[viewId].label}
-														</CardTitle>
-														<CardDescription>
-															{avail.reason ??
-																"Upload and harmonize samples to use this view."}
-														</CardDescription>
-													</CardHeader>
-													<CardContent>
-														<div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-															This view analyses your uploaded samples. Other
-															views let you explore the reference cohort without
-															uploading.
-														</div>
-													</CardContent>
-												</Card>
-											) : (
-												dashboardPanels[viewId]
+												<FlaskConical className="h-4 w-4 shrink-0" />
+												<span>
+													Analyze my samples
+													<span className="block text-[11px] text-muted-foreground">
+														Upload &amp; harmonize
+													</span>
+												</span>
+											</button>
+										</div>
+									</div>
+								</div>
+
+								{mode === "analyze" && (
+									<div className="grid grid-cols-1 gap-4 2xl:grid-cols-2 items-start border-t border-border/50 pt-4">
+										<DataUpload
+											embedded
+											onDataChanged={() => void refreshSetupStatus()}
+										/>
+										<HarmonizeData
+											embedded
+											diseases={cohorts}
+											onDiseasesChange={setCohorts}
+											onDataChanged={() => void refreshSetupStatus()}
+										/>
+									</div>
+								)}
+							</div>
+						)}
+					</CardContent>
+				</Card>
+			</section>
+
+			{/* Builder toolbar */}
+			<section className="flex items-center justify-between gap-3">
+				<div className="text-sm text-muted-foreground">
+					{tiles.length} {tiles.length === 1 ? "analysis" : "analyses"} on your
+					workspace
+				</div>
+				<Button
+					type="button"
+					size="sm"
+					className="gap-1.5"
+					onClick={() => setAddOpen(true)}
+				>
+					<Plus className="h-4 w-4" />
+					Add analysis
+				</Button>
+			</section>
+
+			{/* Tiles */}
+			{tiles.length === 0 ? (
+				<Card className="border-dashed border-border/70 bg-muted/10">
+					<CardContent className="py-16 text-center space-y-3">
+						<p className="text-sm text-muted-foreground">
+							Your workspace is empty. Add an analysis to start exploring the{" "}
+							{cohortLabel} reference.
+						</p>
+						<Button type="button" variant="outline" onClick={() => setAddOpen(true)}>
+							<Plus className="mr-1.5 h-4 w-4" /> Add analysis
+						</Button>
+					</CardContent>
+				</Card>
+			) : (
+				<div className="space-y-4">
+					{tiles.map((id, index) => {
+						const entry = DASHBOARD_VIEW_REGISTRY[id];
+						const avail = viewAvail(id);
+						const Icon = entry.icon;
+						return (
+							<Card
+								key={`${id}-${cohortsKey}`}
+								draggable
+								onDragStart={() => setDragIndex(index)}
+								onDragOver={(e) => e.preventDefault()}
+								onDrop={() => onDrop(index)}
+								className="border-border/70 shadow-sm"
+							>
+								<CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 py-3">
+									<CardTitle className="flex items-center gap-2 text-base">
+										<Icon className="h-4 w-4" />
+										{entry.label}
+										{avail.locked && (
+											<Badge variant="outline" className="gap-1 text-[10px]">
+												<Lock className="h-3 w-3" /> locked
+											</Badge>
+										)}
+									</CardTitle>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										className="h-7 w-7 text-muted-foreground"
+										onClick={() => removeTile(id)}
+										title="Remove from workspace"
+									>
+										<X className="h-4 w-4" />
+									</Button>
+								</CardHeader>
+								<CardContent>
+									{avail.locked ? (
+										<div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground space-y-3">
+											<p>
+												{avail.reason ??
+													"This analysis runs on your uploaded samples."}
+											</p>
+											{mode === "explore" && (
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													onClick={() => {
+														setMode("analyze");
+														setEditOpen(true);
+													}}
+												>
+													Switch to Analyze &amp; upload samples
+												</Button>
 											)}
 										</div>
-									);
-								})}
-							</div>
-						</div>
-					</section>
+									) : (
+										dashboardPanels[id]
+									)}
+								</CardContent>
+							</Card>
+						);
+					})}
 				</div>
 			)}
-		</>
+
+			{/* Add-analysis palette */}
+			<Dialog open={addOpen} onOpenChange={setAddOpen}>
+				<DialogContent className="max-w-2xl">
+					<DialogHeader>
+						<DialogTitle>Add analysis</DialogTitle>
+						<DialogDescription>
+							Pick analyses for {cohortLabel} (Bulk RNA-seq). Locked ones need
+							uploaded &amp; harmonized samples.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
+						{DASHBOARD_SECTIONS.map((section) => {
+							const items = section.viewIds
+								.map((id) => ({ id, avail: viewAvail(id) }))
+								.filter((x) => x.avail.available);
+							if (!items.length) return null;
+							return (
+								<div key={section.title} className="space-y-1.5">
+									<div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+										{section.title}
+									</div>
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+										{items.map(({ id, avail }) => {
+											const entry = DASHBOARD_VIEW_REGISTRY[id];
+											const Icon = entry.icon;
+											const added = tiles.includes(id);
+											return (
+												<button
+													key={id}
+													type="button"
+													onClick={() => (added ? removeTile(id) : addTile(id))}
+													className={cn(
+														"flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm text-left transition-colors",
+														added
+															? "border-primary bg-primary/10"
+															: "border-border/70 hover:bg-muted",
+													)}
+												>
+													<span className="flex items-center gap-2">
+														<Icon className="h-4 w-4 shrink-0" />
+														<span>
+															{entry.label}
+															{avail.locked && (
+																<span className="ml-1 inline-flex items-center text-[10px] text-muted-foreground">
+																	<Lock className="mr-0.5 h-3 w-3" />
+																	needs samples
+																</span>
+															)}
+														</span>
+													</span>
+													{added ? (
+														<span className="text-xs text-primary">Added ✓</span>
+													) : (
+														<Plus className="h-4 w-4 text-muted-foreground" />
+													)}
+												</button>
+											);
+										})}
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				</DialogContent>
+			</Dialog>
+		</div>
 	);
 }

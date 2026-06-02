@@ -227,10 +227,10 @@ molecular_tool_runtime_status <- function(tool_id) {
 
     if (identical(key, "bridge")) {
         assets <- resolve_bridge_assets("pan_leukemia")
-        bundle_path <- first_existing_path(assets$bundle_candidates)
-        meta_path <- first_existing_path(assets$meta_candidates)
-        ckpt_path <- first_existing_path(assets$ckpt_candidates)
-        lr_path <- first_existing_path(assets$lr_candidates)
+        bundle_path <- resolve_asset(assets$bundle_candidates)
+        meta_path <- resolve_asset(assets$meta_candidates)
+        ckpt_path <- resolve_asset(assets$ckpt_candidates)
+        lr_path <- resolve_asset(assets$lr_candidates)
         script_path <- "bridge_predict.py"
 
         if (is.null(bundle_path)) {

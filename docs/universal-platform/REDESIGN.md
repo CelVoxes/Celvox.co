@@ -264,16 +264,34 @@ three existing diseases (regression-safe). Order is dependency-driven.
   AML session endpoints). Two constraints: modules are sourced `local = TRUE`
   (else they land in globalenv and can't see `plumber.R`'s helpers — a 500 on the
   first try); functions under an annotation are handlers, not helpers.
-- *Rewiring half* (next): endpoints become thin adapters over the services;
-  everything keyed on `{modality, cohorts[]}` via `context.R`, with `disease`
-  accepted as a back-compat alias. Route the existing resolvers through
-  `resolve.R`. This is the behavioral surface — golden-verified per endpoint group.
+- *Rewiring half* ✅ *delivered.* `context.R` is now the single request-scope
+  parser: `get_request_disease_selection` delegates to `parse_analysis_context`,
+  so every endpoint validates `modality` and honors the new `cohort`/`cohorts`
+  params, with `disease`/`diseases` kept as back-compat aliases. The two legacy
+  key transforms (`disease_selection_key`, `get_request_disease`) are unchanged
+  and still operate on the selection vector — important because they differ
+  (`disease_selection_key("ball,tall") = "ball+tall"`, a real reference dataset;
+  `get_request_disease` returns the first cohort, only the full trio →
+  `pan_leukemia`). Equivalence is locked down by `tests/context_equivalence.R`
+  (expected outputs captured from the original implementation). Tool-asset
+  resolution now routes through `resolve.R`'s `resolve_asset` (canonical-first +
+  `SEAMLESS_INCLUDE_LEGACY_PATHS` gate) in `tools_registry.R`/`predict.R`/
+  `plumber.R` — blocker #6. Verified: goldens byte-match, all session endpoints
+  200, multi-cohort `+`-join and bogus-modality handled.
 
-**Phase 4 — Modality abstraction proven**
-- Make `rna_bulk` a first-class modality implementation behind the abstraction
-  (no behavior change). Add **scaffolds** for `methylation` and `variants`
-  (ingestion + harmonization + capability stubs) to validate the seams — full
-  models land later when a dataset exists.
+**Phase 4 — Modality abstraction proven** ✅ *delivered*
+- `modality_pipeline.R` adds the behavioral seam over `modalities.R`: each
+  modality declares, per pipeline stage (`ingest`/`harmonize`/`qc`), a strategy
+  label + a handler (resolved lazily by name). `rna_bulk` is the first-class
+  implementation — its `ingest` stage is wired to the real `read_readspergene_files`,
+  and `harmonize`/`qc` record their strategy (`combat_seq` / `rna_bulk_qc`) while
+  their logic still lives in the endpoint handlers, to migrate behind the seam
+  later. `methylation` and `variants` are **scaffolds** (all handlers `NULL`).
+  `dispatch_modality_stage()` calls the real handler or raises a structured
+  `planned_modality_response`; `require_available_modality()` guards. Proven by
+  `tests/modality_dispatch.R` (19 checks). Purely additive — `/catalog` shape
+  (and its golden) unchanged; surfacing the pipeline summary in the catalog is a
+  deliberate opt-in next step (would change the catalog golden).
 
 **Phase 5 — Cleanup / product polish**
 - Retire `disease` aliases and legacy paths. AML branding pass. Docs + deploy

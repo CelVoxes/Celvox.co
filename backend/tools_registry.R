@@ -194,34 +194,34 @@ resolve_molecular_tool_assets <- function(tool) {
     if (identical(tool_key, "amlmapr")) {
         return(list(
             tool = "amlmapr",
-            root = first_existing_path(tool_registry_get("shared", "molecular_diagnostic", "aml", "amlmapr", "root")),
-            functions_r = first_existing_path(tool_registry_get("shared", "molecular_diagnostic", "aml", "amlmapr", "functions_r")),
-            sysdata_rda = first_existing_path(tool_registry_get("shared", "molecular_diagnostic", "aml", "amlmapr", "sysdata_rda")),
-            example_matrix_rda = first_existing_path(tool_registry_get("shared", "molecular_diagnostic", "aml", "amlmapr", "example_matrix_rda"))
+            root = resolve_asset(tool_registry_get("shared", "molecular_diagnostic", "aml", "amlmapr", "root")),
+            functions_r = resolve_asset(tool_registry_get("shared", "molecular_diagnostic", "aml", "amlmapr", "functions_r")),
+            sysdata_rda = resolve_asset(tool_registry_get("shared", "molecular_diagnostic", "aml", "amlmapr", "sysdata_rda")),
+            example_matrix_rda = resolve_asset(tool_registry_get("shared", "molecular_diagnostic", "aml", "amlmapr", "example_matrix_rda"))
         ))
     }
 
     if (identical(tool_key, "allsorts")) {
         return(list(
             tool = "allsorts",
-            root = first_existing_path(tool_registry_get("shared", "molecular_diagnostic", "ball", "allsorts", "root")),
-            model_dir = first_existing_path(tool_registry_get("shared", "molecular_diagnostic", "ball", "allsorts", "model_dir")),
-            model = first_existing_path(tool_registry_get("shared", "molecular_diagnostic", "ball", "allsorts", "model"))
+            root = resolve_asset(tool_registry_get("shared", "molecular_diagnostic", "ball", "allsorts", "root")),
+            model_dir = resolve_asset(tool_registry_get("shared", "molecular_diagnostic", "ball", "allsorts", "model_dir")),
+            model = resolve_asset(tool_registry_get("shared", "molecular_diagnostic", "ball", "allsorts", "model"))
         ))
     }
 
     if (identical(tool_key, "allcatchr")) {
         return(list(
             tool = "allcatchr",
-            root = first_existing_path(tool_registry_get("shared", "molecular_diagnostic", "ball", "allcatchr", "root"))
+            root = resolve_asset(tool_registry_get("shared", "molecular_diagnostic", "ball", "allcatchr", "root"))
         ))
     }
 
     if (identical(tool_key, "tallsorts")) {
         return(list(
             tool = "tallsorts",
-            root = first_existing_path(tool_registry_get("shared", "molecular_diagnostic", "tall", "tallsorts", "root")),
-            model = first_existing_path(tool_registry_get("shared", "molecular_diagnostic", "tall", "tallsorts", "model"))
+            root = resolve_asset(tool_registry_get("shared", "molecular_diagnostic", "tall", "tallsorts", "root")),
+            model = resolve_asset(tool_registry_get("shared", "molecular_diagnostic", "tall", "tallsorts", "model"))
         ))
     }
 

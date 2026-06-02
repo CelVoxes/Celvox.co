@@ -8,10 +8,14 @@
 # forward.
 #
 # Resolution order is "canonical runtime roots first, legacy roots last". Legacy
-# roots are gated behind SEAMLESS_INCLUDE_LEGACY_PATHS so deployments can opt out
-# once assets are consolidated under the canonical layout. The flag DEFAULTS ON,
-# so behavior is unchanged until a deployment turns it off — important while the
-# golden baseline (backend/tests/capture_golden.sh) is not yet captured.
+# roots are gated behind SEAMLESS_INCLUDE_LEGACY_PATHS.
+#
+# The flag now DEFAULTS OFF (canonical roots only) — the legacy migration paths
+# are retired by default. The audit in tests/legacy_path_audit.R confirmed every
+# molecular-tool asset resolves under a canonical root (tools_runtime/ tools/
+# data/tools), so nothing legacy-only remains. Any environment whose assets are
+# not yet consolidated can opt back in with SEAMLESS_INCLUDE_LEGACY_PATHS=true.
+# Run the audit against a new deployment layout before relying on the default.
 #
 # Depends on data_registry.R: first_existing_path(), %||%.
 
@@ -20,8 +24,9 @@
 CANONICAL_ASSET_ROOTS <- c("tools_runtime", "tools", file.path("data", "tools"))
 
 legacy_paths_enabled <- function() {
-    val <- tolower(trimws(Sys.getenv("SEAMLESS_INCLUDE_LEGACY_PATHS", "true")))
-    !(val %in% c("0", "false", "no", "off"))
+    # Default OFF: legacy migration paths are retired unless explicitly opted in.
+    val <- tolower(trimws(Sys.getenv("SEAMLESS_INCLUDE_LEGACY_PATHS", "false")))
+    val %in% c("1", "true", "yes", "on")
 }
 
 is_canonical_path <- function(path) {
