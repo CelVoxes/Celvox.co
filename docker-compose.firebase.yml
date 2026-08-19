@@ -1,0 +1,22 @@
+# Overlay that swaps the development auth bypass for real Firebase verification.
+#
+#   1. Download a service account key from the Firebase console
+#      (Project Settings -> Service accounts -> Generate new private key)
+#      and save it as backend/service/firebase-credentials.json
+#   2. Put your web app's VITE_FIREBASE_* values in .env
+#   3. docker compose -f docker-compose.yml -f docker-compose.firebase.yml up
+#
+# With this overlay the frontend uses the real login screen, so you need a user
+# in that Firebase project.
+
+services:
+  service:
+    environment:
+      SEAMLESS_DEV_AUTH: "0"
+      SEAMLESS_FIREBASE_CREDENTIALS: /run/secrets/firebase-credentials.json
+    volumes:
+      - ./backend/service/firebase-credentials.json:/run/secrets/firebase-credentials.json:ro
+
+  frontend:
+    environment:
+      VITE_DEV_AUTH: "0"

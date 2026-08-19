@@ -1,8 +1,8 @@
 import { useState, useEffect, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
-import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/firebase";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 type SolutionNavItem = { title: string; href: string; description: string };
@@ -21,7 +21,7 @@ interface NavItemProps {
 
 const MobileNav: React.FC<MobileNavProps> = ({ isOpen, toggleMenu }) => {
 	const [submenuOpen, setSubmenuOpen] = useState(false);
-	const [user] = useAuthState(auth);
+	const user = useCurrentUser();
 	const navigate = useNavigate();
  
 	const [solutions, setSolutions] = useState<SolutionNavItem[]>([]);

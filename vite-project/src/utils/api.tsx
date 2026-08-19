@@ -1,11 +1,17 @@
 import { auth } from "@/firebase";
 import axiosLib, { isAxiosError } from "axios";
 
-const axios = axiosLib.create();
+import { DEV_AUTH_ENABLED, DEV_ID_TOKEN } from "@/lib/devAuth";
+
+// VITE_API_BASE_URL wins when set (needed when the stack is reached over
+// anything other than localhost, e.g. a Docker host on the LAN).
 const API_BASE_URL =
-	window.location.hostname === "localhost"
+	import.meta.env.VITE_API_BASE_URL ||
+	(window.location.hostname === "localhost"
 		? "http://localhost:3001/v1"
-		: "https://celvox.co/api/v1";
+		: "https://celvox.co/api/v1");
+
+const axios = axiosLib.create();
 export const DASHBOARD_DISEASE_STORAGE_KEY = "seamless-dashboard-disease";
 const READS_PER_GENE_FILE_REGEX = /readspergene\.out(?: ?\(\d+\))?\.tab$/i;
 
@@ -103,9 +109,10 @@ function withDiseaseParam<T extends Record<string, unknown>>(
 }
 
 axios.interceptors.request.use(async (config) => {
-	config.headers[
-		"Authorization"
-	] = `Bearer ${await auth.currentUser?.getIdToken()}`;
+	const token = DEV_AUTH_ENABLED
+		? DEV_ID_TOKEN
+		: await auth.currentUser?.getIdToken();
+	config.headers["Authorization"] = `Bearer ${token}`;
 	return config;
 });
 

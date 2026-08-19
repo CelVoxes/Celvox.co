@@ -1,0 +1,31 @@
+# Keep the build context small: the multi-gigabyte reference data and tool
+# artifacts are bind-mounted at run time, never copied into an image.
+backend/data
+backend/tools
+backend/tools_runtime
+backend/cache
+backend/logs
+backend/service/uploads
+backend/service/logs
+backend/service/dist
+backend/Rplots.pdf
+backend/__pycache__
+backend/.Rhistory
+
+**/node_modules
+vite-project/dist
+vite-project/*.tsbuildinfo
+backend/service/*.tsbuildinfo
+
+.git
+.github
+**/.DS_Store
+.RData
+.Rhistory
+*.log
+
+# Secrets never belong in an image layer.
+.env
+vite-project/.env
+backend/service/firebase-credentials.json
+firebase_do_not_delete.json

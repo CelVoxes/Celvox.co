@@ -1,3 +1,24 @@
+# seAMLess
+
+AI-assisted molecular analysis of leukemia RNA-seq: deconvolution, harmonization
+against reference cohorts, subtype classification, and drug-response views.
+
+## Running it
+
+**Use Docker** — one command, no environment to reproduce by hand:
+
+```bash
+cp .env.example .env
+./scripts/check-assets.sh
+docker compose up            # then open http://localhost:3000
+```
+
+See **[docs/DOCKER.md](docs/DOCKER.md)** for the reference-data bundle,
+authentication modes, and troubleshooting, and
+[DEVELOPMENT.md](DEVELOPMENT.md) for the native workflow.
+
+---
+
 # Backend Installation
 
 ```bash

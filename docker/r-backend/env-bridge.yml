@@ -1,0 +1,27 @@
+# Python runtime for the Bridge multi-omic classifier.
+# Replaces the `aml_bridge_m1` env. Torch is installed from the PyTorch CPU
+# wheel index so the image does not pull ~2.5GB of CUDA libraries.
+name: bridge
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy=1.26.*
+  - pandas
+  - scipy
+  - scikit-learn
+  - h5py
+  - pip:
+      - --extra-index-url=https://download.pytorch.org/whl/cpu
+      - torch==2.4.1
+      - pytorch-lightning==2.5.5
+      - torchmetrics==1.8.2
+      - pyarrow==21.0.0
+      - fastparquet==2024.11.0
+      - pyreadr==0.5.3
+      - onnx==1.21.0
+      - onnxruntime==1.25.1
+      - seaborn==0.13.2
+      - umap-learn==0.5.9.post2
+      - Bridge @ git+https://github.com/eonurk/Bridge.git@15bdd2f95380ad727874d93b1194c0bbb3f19bc8

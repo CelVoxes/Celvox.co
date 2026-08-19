@@ -12,6 +12,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "@/components/pages/Home";
 import LoginPage from "@/components/pages/LoginPage";
 import "@/firebase";
+import { DEV_AUTH_ENABLED, DEV_USER } from "@/lib/devAuth";
 import About from "@/components/pages/About";
 import ContactPage from "@/components/pages/ContactPage";
 import Blog from "@/components/pages/Blog";
@@ -23,10 +24,14 @@ import Axon from "@/components/pages/solutions/Axon";
 import SeAMLess from "@/components/pages/solutions/seAMLess";
 
 function App() {
-	const [user, setUser] = useState<FirebaseUser | null>(null);
+	const [user, setUser] = useState<FirebaseUser | null>(
+		DEV_AUTH_ENABLED ? DEV_USER : null,
+	);
 	const auth = getAuth();
 
 	useEffect(() => {
+		// The dev bypass has no Firebase session to observe.
+		if (DEV_AUTH_ENABLED) return;
 		const unsubscribe = onAuthStateChanged(auth, (user) => {
 			setUser(user);
 		});

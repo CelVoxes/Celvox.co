@@ -1,0 +1,48 @@
+# R compute environment for the seAMLess plumber API.
+# Mirrors the historical `celvox_env` micromamba environment.
+name: base
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  # --- R itself + web layer ---------------------------------------------
+  - r-base=4.4.3
+  - r-plumber
+  - r-swagger
+  - r-webutils
+  - r-sodium
+  - r-httpuv
+  # --- core data handling ----------------------------------------------
+  - r-data.table
+  - r-fst
+  - r-jsonlite
+  - r-httr
+  - r-rlang
+  - r-remotes
+  - r-ggplot2
+  - r-optparse
+  - r-plyr
+  # --- modelling / embedding -------------------------------------------
+  - r-rtsne
+  - r-fnn
+  - r-caret
+  - r-kernlab
+  - r-kknn
+  - r-ranger
+  - r-glmnet
+  - r-liblinear
+  - r-randomforest
+  - r-e1071
+  # --- MuSiC / seAMLess deconvolution deps -----------------------------
+  - r-nnls
+  - r-mcmcpack
+  # --- gene set / expression analysis ----------------------------------
+  - r-msigdbr
+  - bioconductor-biobase
+  - bioconductor-sva
+  - bioconductor-limma
+  - bioconductor-edger
+  - bioconductor-fgsea
+  - bioconductor-gseabase
+  # ALLCatchRbcrabl1 dependency
+  - bioconductor-singscore

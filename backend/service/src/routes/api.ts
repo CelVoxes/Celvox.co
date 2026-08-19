@@ -4,14 +4,18 @@ import axios from 'axios'
 import { isAxiosError } from 'axios'
 import path from 'path'
 
-import { requireAuthentication } from '#root/services/authentication'
+import { devAuthentication, requireAuthentication } from '#root/services/authentication'
 import { FirebaseModule } from '#root/services/firebase'
 import { AppConfig } from '#root/services/app'
 
 
-export function apiRoute(props: {config: AppConfig, firebase: FirebaseModule}) {
+export function apiRoute(props: {config: AppConfig, firebase: FirebaseModule | null}) {
   const route = express.Router();
-  route.use(requireAuthentication(props.firebase))
+  if (props.config.devAuth?.enabled) {
+    route.use(devAuthentication(props.config.devAuth.email))
+  } else {
+    route.use(requireAuthentication(props.firebase!))
+  }
 
   const upload = multer({ dest: props.config.uploadsFolder || '/tmp/seamless/uploads/' })
   

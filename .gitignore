@@ -33,3 +33,6 @@ backend/service/debug.config.json
 backend/counts_all_strands.csv
 
 backend/__pycache__
+
+# Docker
+.env

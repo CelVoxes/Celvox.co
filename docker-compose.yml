@@ -1,0 +1,124 @@
+# seAMLess local stack.
+#
+#   docker compose up            # build (first run only) and start everything
+#   open http://localhost:3000
+#
+# Reference data and molecular-tool artifacts are bind-mounted from ./backend
+# because they are not in git. See docs/DOCKER.md.
+
+name: seamless
+
+services:
+  # --------------------------------------------------------------------------
+  # R plumber compute API
+  # --------------------------------------------------------------------------
+  r-backend:
+    build:
+      context: .
+      dockerfile: docker/r-backend/Dockerfile
+      args:
+        # Set to 0 to skip the torch/Bridge environment (much faster build).
+        WITH_BRIDGE: ${WITH_BRIDGE:-1}
+    image: seamless/r-backend:local
+    environment:
+      R_BACKEND_HOST: 0.0.0.0
+      R_BACKEND_PORT: 5555
+      R_ENV: ${R_ENV:-production}
+      SEAMLESS_UPLOADS_DIR: /shared/uploads
+      # Used by /ai-report; leave unset to disable that endpoint.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      # Whole backend tree: source, reference data, tool artifacts, user cache.
+      - ./backend:/app/backend
+      # Uploads must be visible at the SAME path in both containers: the
+      # service hands the R backend absolute file paths.
+      - uploads:/shared/uploads
+      # ALLCatchRbcrabl1 is compiled on first run; keep it across restarts.
+      - r-libs:/opt/rlibs
+    ports:
+      - "${R_BACKEND_PORT:-5555}:5555"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:5555/molecular-tools?disease=aml >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      # The first plumber boot parses a 3.5k-line API and loads reference data.
+      start_period: 300s
+      retries: 5
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Node API service (auth + proxy to the compute API)
+  # --------------------------------------------------------------------------
+  service:
+    build:
+      context: .
+      dockerfile: docker/service/Dockerfile
+      target: ${SERVICE_TARGET:-dev}
+    image: seamless/service:local
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3001
+      SEAMLESS_COMPUTE_BACKEND_URL: http://r-backend:5555
+      SEAMLESS_UPLOADS_DIR: /shared/uploads
+      SEAMLESS_CORS_ORIGINS: ${SEAMLESS_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      # Either run with the dev bypass...
+      SEAMLESS_DEV_AUTH: ${SEAMLESS_DEV_AUTH:-1}
+      SEAMLESS_DEV_USER_EMAIL: ${SEAMLESS_DEV_USER_EMAIL:-dev@localhost}
+      # ...or point this at a mounted Firebase service account JSON.
+      SEAMLESS_FIREBASE_CREDENTIALS: ${SEAMLESS_FIREBASE_CREDENTIALS:-}
+    volumes:
+      - ./backend/service/src:/app/src
+      - ./backend/service/tsconfig.json:/app/tsconfig.json:ro
+      # Keep the image's Linux node_modules, not the host's.
+      - /app/node_modules
+      - uploads:/shared/uploads
+    ports:
+      - "${SERVICE_PORT:-3001}:3001"
+    depends_on:
+      r-backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3001/ >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Vite dev server
+  # --------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      target: dev
+    image: seamless/frontend:local
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3001/v1}
+      VITE_DEV_AUTH: ${VITE_DEV_AUTH:-1}
+      VITE_DEV_USER_EMAIL: ${SEAMLESS_DEV_USER_EMAIL:-dev@localhost}
+      VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+      VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+      VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
+      VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET:-}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID:-}
+      VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
+      VITE_FIREBASE_MEASUREMENT_ID: ${VITE_FIREBASE_MEASUREMENT_ID:-}
+    volumes:
+      - ./vite-project/src:/app/src
+      - ./vite-project/public:/app/public
+      - ./vite-project/index.html:/app/index.html:ro
+      - ./vite-project/vite.config.ts:/app/vite.config.ts:ro
+      - ./vite-project/tailwind.config.js:/app/tailwind.config.js:ro
+      - ./vite-project/postcss.config.js:/app/postcss.config.js:ro
+      - /app/node_modules
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - service
+    restart: unless-stopped
+
+volumes:
+  uploads:
+  r-libs:

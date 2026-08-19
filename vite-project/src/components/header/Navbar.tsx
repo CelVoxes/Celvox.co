@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { signOut } from "firebase/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { auth } from "@/firebase";
-import { useAuthState } from "react-firebase-hooks/auth";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 type SolutionNavItem = { title: string; href: string; description: string };
 
 const fetchSolutions = async (): Promise<SolutionNavItem[]> => {
@@ -34,7 +34,7 @@ const fetchSolutions = async (): Promise<SolutionNavItem[]> => {
 };
 
 export function Navbar() {
-	const [user] = useAuthState(auth);
+	const user = useCurrentUser();
 
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 	const [solutions, setSolutions] = useState<SolutionNavItem[]>([]);

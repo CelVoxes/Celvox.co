@@ -1,19 +1,48 @@
-## How to run celvox locally?
+## How to run seAMLess locally
 
-celvox consists of 3 parts:
+### With Docker (recommended)
 
-### 1. Running the compute backend
-
-Setup R environment as seen in [[celvox/README]] and visit [[backend/README.md]]
-
-### 2. Running the service backend
-
-See [[backend/service/README.md]]
-
-### 3. How to run web app locally?
-
+```bash
+cp .env.example .env
+./scripts/check-assets.sh    # confirms the reference data bundle is unpacked
+docker compose up
 ```
-cd vite-project
-npm install
-npm run dev
+
+Open <http://localhost:3000>. You are signed in automatically as `dev@localhost`;
+no Firebase project is required.
+
+Full details — the data bundle, per-tool availability, real Firebase auth,
+production-shaped images, troubleshooting — are in **[docs/DOCKER.md](docs/DOCKER.md)**.
+
+### Natively
+
+seAMLess is three processes:
+
+**1. Compute backend (R plumber, :5555)**
+
+Set up the R environment as described in the [README](README.md), then:
+
+```bash
+make r-backend
 ```
+
+**2. API service (Node, :3001)**
+
+See [backend/service/README.md](backend/service/README.md).
+
+```bash
+make service
+```
+
+**3. Web app (Vite, :3000)**
+
+```bash
+make frontend
+```
+
+Or all three at once with `make dev`.
+
+The native path also needs two Python environments for the molecular
+classifiers (ALLSorts/TALLSorts, and Bridge). Docker builds these for you; doing
+it by hand means reproducing what `docker/r-backend/env-moltools.yml` and
+`env-bridge.yml` describe.

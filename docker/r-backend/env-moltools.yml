@@ -1,0 +1,28 @@
+# Python runtime for ALLSorts (B-ALL) and TALLSorts (T-ALL), plus the
+# parquet/STAR count helper scripts. Replaces the `molecular_diag_py310` env.
+#
+# ALLSorts/TALLSorts themselves are NOT installed here: they live in the
+# bind-mounted backend/tools/ tree and are picked up via PYTHONPATH.
+name: moltools
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - numpy=1.26.*
+  - pandas=2.2.*
+  - scipy
+  - scikit-learn=1.1.3
+  - joblib=1.2.*
+  - matplotlib-base=3.6.*
+  - plotly=5.11.*
+  # umap-learn must stay at 0.5.3: newer releases import
+  # sklearn.base.ClassNamePrefixFeaturesOutMixin, which does not exist in
+  # scikit-learn 1.1.3, and ALLSorts pins itself to that sklearn.
+  - umap-learn=0.5.3
+  - pynndescent=0.5.13
+  - numba
+  - pyarrow
+  - pip:
+      - conorm==1.2.0
+      - kaleido==0.2.1
